@@ -1,7 +1,5 @@
-{"timestamp":"00:00:03.523","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:00:03.524","source":"Server","level":"LOG","message":"  We detected TypeScript in your project and created a tsconfig.json file for you."}
-{"timestamp":"00:00:04.066","source":"Server","level":"LOG","message":""}
-{"timestamp":"00:04:15.600","source":"Server","level":"LOG","message":"○ Compiling / ..."}
-{"timestamp":"00:04:20.032","source":"Browser","level":"WARN","message":"Image with src \"/logo.png\" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: \"auto\"' or 'height: \"auto\"' to maintain the aspect ratio."}
-{"timestamp":"00:04:20.208","source":"Server","level":"WARN","message":"[browser] \"\\u001b[33mImage with src \\\"/logo.png\\\" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: \\\"auto\\\"' or 'height: \\\"auto\\\"' to maintain the aspect ratio.\\u001b[39m\" \"\\u001b[2m(file://C:/Users/evale/OneDrive/Desktop/March 2026/COS40005/ShuttleFlow/shuttleflow/user-app/.next/dev/static/chunks/0edr_next_dist_084xone._.js:2477:13)\\u001b[22m\""}
-{"timestamp":"00:04:20.218","source":"Browser","level":"WARN","message":"\u001b[33mImage with src \"/logo.png\" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: \"auto\"' or 'height: \"auto\"' to maintain the aspect ratio.\u001b[39m"}
+{"timestamp":"00:00:05.488","source":"Server","level":"LOG","message":"It looks like you're trying to use TypeScript but do not have the required package(s) installed.\nInstalling dependencies\n\nIf you are not trying to use TypeScript, please remove the tsconfig.json file from your package root (and any TypeScript files in your app and pages directories).\n"}
+{"timestamp":"00:00:05.640","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:05.642","source":"Server","level":"LOG","message":"Installing devDependencies (npm):"}
+{"timestamp":"00:00:05.648","source":"Server","level":"LOG","message":"- @types/node"}
+{"timestamp":"00:00:05.654","source":"Server","level":"LOG","message":""}
