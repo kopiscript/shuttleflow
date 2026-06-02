@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -118,6 +119,7 @@ model Notification {
   type      String   @db.VarChar(50)
   title     String   @db.VarChar(200)
   message   String
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("notifications")

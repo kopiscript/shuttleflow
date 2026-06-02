@@ -1,9 +1,10 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
@@ -16,6 +17,44 @@ const Map = dynamic(() => import("../components/Map"), {
 
 export default function HomePage() {
   const [selectedRoute, setSelectedRoute] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+  try {
+    console.log("Fetching notifications...");
+    const response = await fetch("/api/notifications");
+    const data = await response.json();
+    
+    if (data.success && data.notifications) {
+      // Get read IDs from localStorage
+      const readIdsRaw = localStorage.getItem('readNotifications');
+      console.log("Read IDs from localStorage:", readIdsRaw);
+      
+      let readIds: number[] = [];
+      if (readIdsRaw) {
+        readIds = JSON.parse(readIdsRaw);
+      }
+      
+      // Count unread notifications
+      const unread = data.notifications.filter((n: any) => !readIds.includes(n.id)).length;
+      console.log("Total notifications:", data.notifications.length);
+      console.log("Unread count:", unread);
+      setUnreadCount(unread);
+    }
+  } catch (error) {
+    console.error("Failed to fetch notifications:", error);
+  }
+};
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  
 
   return (
     /* <div className="relative flex flex-col min-h-screen bg-[#EEEBE4] overflow-x-hidden"> */
@@ -61,11 +100,30 @@ export default function HomePage() {
           />
 
           {/* Bell Notification Icon */}
-          <button className="w-7 h-7 relative">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </button>
+          <Link 
+            href="/notifications" 
+            className="relative block cursor-pointer transition-transform hover:scale-105 active:scale-95"
+          >
+            <div className="relative">
+              <svg 
+                className="w-7 h-7 text-white cursor-pointer hover:text-gray-200 transition-colors" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
+                />
+              </svg>
+              
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full animate-pulse shadow-md"></span>
+              )}
+            </div>
+          </Link>
         </div>
 
         {/* Title */}
