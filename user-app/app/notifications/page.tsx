@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -14,6 +15,7 @@ type Notification = {
 };
 
 export default function NotificationPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,19 +48,19 @@ export default function NotificationPage() {
       setLoading(true);
       const response = await fetch("/api/notifications");
       const data = await response.json();
-      
+
       if (data.success) {
         console.log("📋 Fetched notifications:", data.notifications.length);
         console.log("📌 Current read IDs:", readIds);
-        
+
         const notificationsWithReadStatus = data.notifications.map((n: Notification) => ({
           ...n,
           isRead: readIds.includes(n.id)
         }));
-        
+
         const unreadCount = notificationsWithReadStatus.filter((n: Notification) => !n.isRead).length;
         console.log(`🔔 Unread count: ${unreadCount} / ${notificationsWithReadStatus.length}`);
-        
+
         setNotifications(notificationsWithReadStatus);
       } else {
         setError(data.error);
@@ -88,7 +90,7 @@ export default function NotificationPage() {
     if (!readIds.includes(id)) {
       const newReadIds = [...readIds, id];
       setReadIds(newReadIds);
-      
+
       setNotifications(prev =>
         prev.map(notif =>
           notif.id === id ? { ...notif, isRead: true } : notif
@@ -102,7 +104,7 @@ export default function NotificationPage() {
     console.log("✏️ Marking all as read");
     const allIds = notifications.map(n => n.id);
     setReadIds(allIds);
-    
+
     setNotifications(prev =>
       prev.map(notif => ({ ...notif, isRead: true }))
     );
@@ -113,17 +115,22 @@ export default function NotificationPage() {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = String(date.getFullYear()).slice(-2);
-    
+
     let hours = date.getHours();
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const ampm = hours >= 12 ? 'pm' : 'am';
     hours = hours % 12;
     hours = hours ? hours : 12;
-    
+
     return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // Handle back button click
+  const handleBack = () => {
+    router.back();
+  };
 
   if (loading && notifications.length === 0) {
     return (
@@ -140,26 +147,28 @@ export default function NotificationPage() {
     <div className="relative flex flex-col h-screen bg-[#EEEBE4] overflow-hidden">
       <div className="relative z-10 px-6 pt-5 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <Link href="/" className="block">
-            <button className="w-5 h-5 flex items-center justify-center">
-              <svg className="w-5 h-5 text-[#171821]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </Link>
+          {/* Back Button - NOW USES router.back() */}
+          <button
+            onClick={handleBack}
+            className="w-5 h-5 flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 text-[#171821]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-          <Image 
-            src="/logo.png" 
-            alt="Logo" 
-            width={148} 
-            height={34} 
+          <Image
+            src="/logo.png"
+            alt="Logo"
+            width={148}
+            height={34}
             className="object-contain"
           />
 
-          {/* Mark all read button - BIGGER */}
+          {/* Mark all read button */}
           {unreadCount > 0 ? (
-            <button 
-              onClick={markAllAsRead} 
+            <button
+              onClick={markAllAsRead}
               className="bg-[#99121A] text-white text-xs px-3 py-1.5 rounded-full hover:bg-[#7a0e14] transition font-medium"
             >
               Mark all as READ
@@ -178,7 +187,7 @@ export default function NotificationPage() {
         </p>
       </div>
 
-      {/* Notifications List - Smaller left/right space */}
+      {/* Notifications List */}
       <div className="relative flex-1 mt-4 min-h-0 overflow-y-auto">
         <div className="px-4 pb-6">
           <div className="space-y-0 max-w-2xl mx-auto">
@@ -210,13 +219,13 @@ export default function NotificationPage() {
                           {formatDateTime(notification.createdAt)}
                         </span>
                       </div>
-                      
+
                       <p className="text-[#6E6E6E] text-sm sm:text-base leading-relaxed">
                         {notification.message}
                       </p>
                     </div>
-                    
-                    {/* Icon Button instead of text button */}
+
+                    {/* Mark as read button */}
                     {!notification.isRead && (
                       <button
                         onClick={() => markAsRead(notification.id)}
@@ -228,8 +237,8 @@ export default function NotificationPage() {
                         </svg>
                       </button>
                     )}
-                    
-                    {/* Read icon - already read */}
+
+                    {/* Read icon */}
                     {notification.isRead && (
                       <div className="self-start sm:self-center flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-[#6E6E6E] flex items-center justify-center">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,7 +248,7 @@ export default function NotificationPage() {
                     )}
                   </div>
                 </div>
-                
+
                 {index < notifications.length - 1 && (
                   <div className="border-t border-[#6E6E6E] opacity-30" />
                 )}
