@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import PageShell from "../../components/PageShell";
-import FileUpload from "../../components/FileUpload";
+import FileUpload from "./FileUpload";
 import SuccessModal from "../../components/SuccessModal";
 
 type ReportType = "feedback" | "bus_delay" | "driver_issue" | "route_problem" | "other";
@@ -43,8 +43,16 @@ export default function SupportPage() {
     return (
         <>
             <PageShell
-                title="How Can We Help?"
-                subtitle="Report an issue or share your feedback about your ride."
+                header={
+                    <>
+                        <h1 className="text-center text-white text-3xl font-bold">
+                            How Can We Help?
+                        </h1>
+                        <p className="text-center text-white/80 text-sm mt-2">
+                            Report an issue or share your feedback about your ride.
+                        </p>
+                    </>
+                }
             >
                 <div className="px-6 pb-8">
                     <form onSubmit={handleSubmit} className="max-w-md mx-auto">
@@ -56,7 +64,7 @@ export default function SupportPage() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Email address"
                                 required
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
+                                className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
                             />
                         </div>
 
@@ -67,7 +75,7 @@ export default function SupportPage() {
                                     value={reportType}
                                     onChange={(e) => setReportType(e.target.value as ReportType)}
                                     required
-                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
+                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
                                 >
                                     <option value="" disabled>Select report type</option>
                                     <option value="feedback">General Feedback</option>
@@ -95,7 +103,7 @@ export default function SupportPage() {
                                 placeholder="Describe the issue..."
                                 rows={4}
                                 required
-                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all resize-none shadow-md"
+                                className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all resize-none shadow-md"
                             />
                         </div>
 

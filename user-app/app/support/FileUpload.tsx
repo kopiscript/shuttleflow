@@ -83,7 +83,7 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
                     <button
                         type="button"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="px-10 py-1.5 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-2xl transition-colors text-sm"
+                        className="px-10 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-2xl transition-colors text-sm"
                     >
                         Add File
                     </button>
