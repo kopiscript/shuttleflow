@@ -19,7 +19,7 @@ export default function NotificationPage() {
   const [error, setError] = useState<string | null>(null);
   const [readIds, setReadIds] = useState<number[]>([]);
 
-  // ✅ Load read IDs from localStorage when page loads
+  // Load read IDs from localStorage when page loads
   useEffect(() => {
     const stored = localStorage.getItem('readNotifications');
     console.log("📦 Loading read IDs from localStorage:", stored);
@@ -30,9 +30,9 @@ export default function NotificationPage() {
     } else {
       console.log("ℹ️ No read IDs found in localStorage");
     }
-  }, []); // Empty array = runs once when page mounts
+  }, []);
 
-  // ✅ Save read IDs to localStorage whenever they change
+  // Save read IDs to localStorage whenever they change
   useEffect(() => {
     if (readIds.length > 0) {
       localStorage.setItem('readNotifications', JSON.stringify(readIds));
@@ -51,7 +51,6 @@ export default function NotificationPage() {
         console.log("📋 Fetched notifications:", data.notifications.length);
         console.log("📌 Current read IDs:", readIds);
         
-        // Mark notifications as read based on localStorage
         const notificationsWithReadStatus = data.notifications.map((n: Notification) => ({
           ...n,
           isRead: readIds.includes(n.id)
@@ -70,7 +69,7 @@ export default function NotificationPage() {
     } finally {
       setLoading(false);
     }
-  }, [readIds]); // Re-run when readIds changes
+  }, [readIds]);
 
   // Fetch when component mounts AND when readIds changes
   useEffect(() => {
@@ -90,7 +89,6 @@ export default function NotificationPage() {
       const newReadIds = [...readIds, id];
       setReadIds(newReadIds);
       
-      // Update local state
       setNotifications(prev =>
         prev.map(notif =>
           notif.id === id ? { ...notif, isRead: true } : notif
@@ -158,15 +156,16 @@ export default function NotificationPage() {
             className="object-contain"
           />
 
+          {/* Mark all read button - BIGGER */}
           {unreadCount > 0 ? (
             <button 
               onClick={markAllAsRead} 
               className="bg-[#99121A] text-white text-xs px-3 py-1.5 rounded-full hover:bg-[#7a0e14] transition font-medium"
             >
-              Mark all read
+              Mark all as READ
             </button>
           ) : (
-            <div className="w-16" />
+            <div className="w-20" />
           )}
         </div>
 
@@ -179,8 +178,9 @@ export default function NotificationPage() {
         </p>
       </div>
 
+      {/* Notifications List - Smaller left/right space */}
       <div className="relative flex-1 mt-4 min-h-0 overflow-y-auto">
-        <div className="px-6 pb-6">
+        <div className="px-4 pb-6">
           <div className="space-y-0 max-w-2xl mx-auto">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
@@ -216,18 +216,25 @@ export default function NotificationPage() {
                       </p>
                     </div>
                     
+                    {/* Icon Button instead of text button */}
                     {!notification.isRead && (
                       <button
                         onClick={() => markAsRead(notification.id)}
-                        className="self-start sm:self-center flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#99121A] text-white hover:bg-[#7a0e14] transition shadow-sm"
+                        className="self-start sm:self-center flex-shrink-0 w-8 h-8 rounded-full bg-[#99121A] text-white hover:bg-[#7a0e14] transition shadow-sm flex items-center justify-center"
+                        title="Mark as read"
                       >
-                        ✓ Mark read
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
                       </button>
                     )}
                     
+                    {/* Read icon - already read */}
                     {notification.isRead && (
-                      <div className="self-start sm:self-center flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-[#6E6E6E]">
-                        ✓ Read
+                      <div className="self-start sm:self-center flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-[#6E6E6E] flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
                       </div>
                     )}
                   </div>
