@@ -1,10 +1,9 @@
 // app/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import PageShell from "../components/PageShell";
 
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
@@ -17,130 +16,25 @@ const Map = dynamic(() => import("../components/Map"), {
 
 export default function HomePage() {
   const [selectedRoute, setSelectedRoute] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // Fetch unread notification count
-  const fetchUnreadCount = async () => {
-  try {
-    console.log("Fetching notifications...");
-    const response = await fetch("/api/notifications");
-    const data = await response.json();
-    
-    if (data.success && data.notifications) {
-      // Get read IDs from localStorage
-      const readIdsRaw = localStorage.getItem('readNotifications');
-      console.log("Read IDs from localStorage:", readIdsRaw);
-      
-      let readIds: number[] = [];
-      if (readIdsRaw) {
-        readIds = JSON.parse(readIdsRaw);
-      }
-      
-      // Count unread notifications
-      const unread = data.notifications.filter((n: any) => !readIds.includes(n.id)).length;
-      console.log("Total notifications:", data.notifications.length);
-      console.log("Unread count:", unread);
-      setUnreadCount(unread);
-    }
-  } catch (error) {
-    console.error("Failed to fetch notifications:", error);
-  }
-};
-
-  useEffect(() => {
-    fetchUnreadCount();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  
 
   return (
-    /* <div className="relative flex flex-col min-h-screen bg-[#EEEBE4] overflow-x-hidden"> */
-    <div className="relative flex flex-col h-screen bg-[#EEEBE4] overflow-hidden">
-      {/* Gradient Background Elements - Exact Figma Positions */}
-      
-      {/* First gradient: Top Left - moved further left */}
-      <div 
-        className="absolute w-[569px] h-[414px] top-[-106px] bg-[#99121A] blur-[100px] opacity-50"
-        style={{ 
-          left: "calc(50% - 568.85px/2 - 280px)",
-          transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
-        }}
-      />
-      
-      {/* Second gradient: Right Top to Middle */}
-      <div 
-        className="absolute w-[604px] h-[871px] top-[-322px] bg-[#CF2B10] opacity-30 blur-[150px]"
-        style={{ 
-          left: "calc(50% - 604px/2 + 31.5px)",
-          transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
-        }}
-      />
-
-      {/* Header */}
-      <div className="relative z-10 px-6 pt-5 flex-shrink-0">
-        {/* Top Bar */}
-        <div className="flex items-center justify-between">
-          {/* Hamburger Menu */}
-          <button className="w-5 h-5 flex flex-col justify-between">
-            <span className="block w-5 h-[2px] bg-white rounded-full" />
-            <span className="block w-5 h-[2px] bg-white rounded-full" />
-            <span className="block w-5 h-[2px] bg-white rounded-full" />
-          </button>
-
-          {/* Logo */}
-          <Image 
-            src="/logo.png" 
-            alt="Logo" 
-            width={148} 
-            height={34} 
-            className="object-contain"
-          />
-
-          {/* Bell Notification Icon */}
-          <Link 
-            href="/notifications" 
-            className="relative block cursor-pointer transition-transform hover:scale-105 active:scale-95"
-          >
-            <div className="relative">
-              <svg 
-                className="w-7 h-7 text-white cursor-pointer hover:text-gray-200 transition-colors" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" 
-                />
-              </svg>
-              
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full animate-pulse shadow-md"></span>
-              )}
-            </div>
-          </Link>
-        </div>
-
-        {/* Title */}
-        <h1 className="text-center text-white text-2xl font-bold mt-6">
-          Track your Bus
-        </h1>
-
-        {/* Description */}
-        <p className="text-center text-white text-base font-medium mt-2 px-4">
-          Choose a route to track the bus live on the map and view its estimated arrival time instantly.
-        </p>
-      </div>
-
+    <PageShell
+      fullHeight={true}
+      header={
+        <>
+          <h1 className="text-center text-white text-2xl font-bold">
+            Track your Bus
+          </h1>
+          <p className="text-center text-white text-base font-medium mt-2 px-4">
+            Choose a route to track the bus live on the map and view its estimated arrival time instantly.
+          </p>
+        </>
+      }
+    >
       {/* Map Section - fills remaining space */}
-      <div className="relative flex-1 mt-4 min-h-0">
-        {/* Map Placeholder - fills entire container */}
-        <div className="absolute inset-x-0 bottom-0 top-0 z-0">
+      <div className="relative w-full h-full">
+        {/* Map fills entire container */}
+        <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
         </div>
 
@@ -171,6 +65,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
