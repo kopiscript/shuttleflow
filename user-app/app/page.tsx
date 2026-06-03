@@ -1,9 +1,10 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import PageShell from "../components/PageShell";
+import CustomDropdown from "../components/CustomDropdown";
 
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
@@ -14,8 +15,56 @@ const Map = dynamic(() => import("../components/Map"), {
   ),
 });
 
+interface Route {
+  id: number;
+  routeName: string;
+  pickupStop: string;
+  dropoffStop: string;
+}
+
 export default function HomePage() {
   const [selectedRoute, setSelectedRoute] = useState("");
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [eta, setEta] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Fetch routes when page loads
+  useEffect(() => {
+    fetch("/api/routes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setRoutes(data.routes);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch routes:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  // Fetch ETA when route is selected
+  useEffect(() => {
+    if (!selectedRoute) {
+      setEta("");
+      return;
+    }
+
+    fetch(`/api/routes/${selectedRoute}/eta`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setEta(`ETA: ${data.eta}`);
+        } else {
+          setEta("ETA unavailable");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch ETA:", err);
+        setEta("ETA unavailable");
+      });
+  }, [selectedRoute]);
 
   return (
     <PageShell
@@ -38,14 +87,15 @@ export default function HomePage() {
           <Map selectedRoute={selectedRoute} />
         </div>
 
-        {/* Floating Route Dropdown (top of map) */}
+        {/* Floating Route Dropdown (top of map) - Custom Dropdown */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
-          <div className="bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center justify-between">
-            <span className="font-['Inter'] text-gray-400 text-sm">Select route</span>
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+          <CustomDropdown
+            options={routes}
+            value={selectedRoute}
+            onChange={setSelectedRoute}
+            loading={loading}
+            placeholder="Select route"
+          />
         </div>
 
         {/* Floating ETA Card (bottom of screen) */}
@@ -53,7 +103,9 @@ export default function HomePage() {
           <div className="bg-white rounded-2xl shadow-lg p-4">
             {/* ETA */}
             <div className="flex items-center gap-2">
-              <span className="font-['Inter'] text-gray-800 font-semibold text-sm">ETA: 9:03 AM</span>
+              <span className="font-['Inter'] text-gray-800 font-semibold text-sm">
+                {eta || "Select a route to see ETA"}
+              </span>
             </div>
             {/* Disclaimer with Star Icon */}
             <div className="flex items-center gap-2 mt-2">
