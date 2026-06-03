@@ -45,16 +45,16 @@ export default function SupportPage() {
             <PageShell
                 header={
                     <>
-                        <h1 className="text-center text-white text-3xl font-bold">
+                        <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold">
                             How Can We Help?
                         </h1>
-                        <p className="text-center text-white/80 text-sm mt-2">
+                        <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
                             Report an issue or share your feedback about your ride.
                         </p>
                     </>
                 }
             >
-                <div className="px-6 pb-8">
+                <div className="font-['Inter'] px-6 pb-8">
                     <form onSubmit={handleSubmit} className="max-w-md mx-auto">
                         {/* Email Input */}
                         <div className="mb-7">

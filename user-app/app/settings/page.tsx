@@ -22,17 +22,17 @@ export default function SettingsPage() {
         <PageShell
             header={
                 <>
-                    <h1 className="text-center text-white text-3xl font-bold">
+                    <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                         Settings
                     </h1>
-                    <p className="text-center text-white/80 text-sm mt-2">
+                    <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
                         Manage your preferences
                     </p>
                 </>
             }
         >
             <div className="px-6 pb-8">
-                <div className="max-w-md mx-auto">
+                <div className="font-['Inter'] max-w-md mx-auto">
 
                     {/* System Notification Toggle */}
                     <div className="mb-7">
