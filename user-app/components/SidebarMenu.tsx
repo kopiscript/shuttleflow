@@ -11,7 +11,6 @@ interface SidebarMenuProps {
 }
 
 export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
-    // Close sidebar when pressing Escape key
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
@@ -22,7 +21,6 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
-    // Prevent body scroll when sidebar is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -37,29 +35,34 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
     if (!isOpen) return null;
 
     const menuItems = [
-        { name: "Home", href: "/", icon: "🏠" },
-        { name: "About", href: "/about", icon: "ℹ️" },
-        { name: "Support", href: "/support", icon: "💬" },
-        { name: "Settings", href: "/settings", icon: "⚙️" },
-        { name: "Notifications", href: "/notifications", icon: "🔔" },
+        { name: "Home", href: "/" },
+        { name: "About", href: "/about" },
+        { name: "Support", href: "/support" },
+        { name: "Settings", href: "/settings" },
     ];
-
-    const handleNavigation = () => {
-        onClose(); // Close sidebar after navigation
-    };
 
     return (
         <>
-            {/* Backdrop - darker background */}
+            {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 animate-fade-in"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
                 onClick={onClose}
             />
 
-            {/* Sidebar Menu - slides from left with #EEEBE4 background */}
-            <div className="fixed top-0 left-0 bottom-0 w-[75vw] max-w-[320px] bg-[#EEEBE4] shadow-2xl z-50 animate-slide-in">
-                {/* Header with logo and close button */}
-                <div className="p-5 mb-20 flex items-center justify-between">
+            {/* Sidebar Menu - Figma width 288px */}
+            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-[#EEEBE4] shadow-2xl z-50">
+                {/* Close button - top right */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-5 right-5 text-[#6E6E6E] hover:text-[#99121A] transition-colors"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                {/* Logo - top left */}
+                <div className="absolute top-5 left-5">
                     <Image
                         src="/logo.png"
                         alt="Logo"
@@ -67,31 +70,22 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                         height={28}
                         className="object-contain"
                     />
-                    <button
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
                 </div>
 
-                {/* Menu Items with dividers */}
-                <nav className="p-4">
+                {/* Menu Items with divider lines - at left: 42px, top: 171px */}
+                <nav className="absolute left-[42px] top-[171px]">
                     {menuItems.map((item, index) => (
                         <div key={item.name}>
                             <Link
                                 href={item.href}
-                                onClick={handleNavigation}
-                                className="flex items-center gap-4 px-4 py-3 rounded-xl text-gray-700 hover:bg-white/50 hover:text-[#99121A] transition-colors"
+                                onClick={onClose}
+                                className="block font-['Bai_Jamjuree'] font-medium text-base text-[#6E6E6E] hover:text-[#99121A] transition-colors mb-3"
                             >
-                                <span className="text-xl">{item.icon}</span>
-                                <span className="font-medium">{item.name}</span>
+                                {item.name}
                             </Link>
-                            {/* Add divider line after each item except the last one */}
+                            {/* Divider line after each item except the last */}
                             {index < menuItems.length - 1 && (
-                                <div className="border-t border-gray-300 my-1" />
+                                <div className="w-[199px] border-t border-[#6E6E6E] my-2" />
                             )}
                         </div>
                     ))}
