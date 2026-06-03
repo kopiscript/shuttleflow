@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 
 // Fix for default marker icons in Next.js
@@ -15,23 +15,38 @@ interface MapProps {
   selectedRoute?: string;
 }
 
+interface Bus {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  routeId: number;
+  status: string;
+}
+
+// Mock bus data (replace with real API later)
+const mockBuses: Bus[] = [
+  { id: 1, name: "Bus B001", lat: 3.0742, lng: 101.5438, routeId: 2, status: "active" },
+  { id: 2, name: "Bus B002", lat: 2.9289, lng: 101.7778, routeId: 3, status: "active" },
+];
+
 export default function Map({ selectedRoute = "" }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const [buses, setBuses] = useState<Bus[]>(mockBuses);
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Initialize map centered on INTI Subang
     mapRef.current = L.map(mapContainerRef.current).setView([3.0742, 101.5438], 13);
 
-    // Add tile layer (OpenStreetMap)
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(mapRef.current);
 
-    // Cleanup
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -45,14 +60,40 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     if (!mapRef.current) return;
 
     const routeViews: Record<string, [number, number, number]> = {
-      "campus-loop": [3.0742, 101.5438, 14],
-      "north-south": [2.9289, 101.7778, 12],
-      "evening-shuttle": [3.0500, 101.6000, 13],
+      "2": [3.0742, 101.5438, 14],   // Subang to Nilai (your route ID)
+      "3": [2.9289, 101.7778, 12],   // Nilai to Subang
     };
 
     const view = routeViews[selectedRoute] || [3.0742, 101.5438, 13];
     mapRef.current.setView(view, view[2]);
   }, [selectedRoute]);
+
+  // Update bus markers when selected route changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    // Filter buses by selected route (if a route is selected)
+    const filteredBuses = selectedRoute 
+      ? buses.filter(bus => bus.routeId === parseInt(selectedRoute))
+      : buses;
+
+    // Add markers for filtered buses
+    filteredBuses.forEach((bus) => {
+      const marker = L.marker([bus.lat, bus.lng])
+        .bindPopup(`
+          <b>${bus.name}</b><br/>
+          Status: ${bus.status}<br/>
+          Route ID: ${bus.routeId}
+        `)
+        .addTo(mapRef.current!);
+      
+      markersRef.current.push(marker);
+    });
+  }, [buses, selectedRoute]);
 
   return <div ref={mapContainerRef} className="w-full h-full" />;
 }
