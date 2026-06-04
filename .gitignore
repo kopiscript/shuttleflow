@@ -48,5 +48,6 @@ next-env.d.ts
 prisma/generated/
 prisma/*.db
 prisma/*.db-journal
+src/generated/
 
 public/uploads/
