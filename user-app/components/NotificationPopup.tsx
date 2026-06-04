@@ -16,15 +16,33 @@ export default function NotificationPopup() {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Listen for new notifications
     const handleNewNotification = (event: CustomEvent<NotificationPopupType>) => {
+      // Check if system notifications are enabled in settings
+      const savedSettings = localStorage.getItem('shuttleflow_settings');
+      let systemNotificationsEnabled = true;
+
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          systemNotificationsEnabled = settings.systemNotifications ?? true;
+        } catch (error) {
+          console.error("Error reading settings:", error);
+        }
+      }
+
+      // Don't show popup if disabled
+      if (!systemNotificationsEnabled) {
+        console.log("🔕 System notifications disabled - popup suppressed:", event.detail.title);
+        return;
+      }
+
       const newNotif = event.detail;
       console.log("📢 Popup triggered:", newNotif.title);
-      
-      setNotifications(prev => [newNotif, ...prev].slice(0, 3)); // Max 3 notifications
-      
-      // Auto-remove after 5 seconds
+
+      setNotifications(prev => [newNotif, ...prev].slice(0, 3));
+
       setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== newNotif.id));
       }, 5000);
@@ -83,9 +101,9 @@ export default function NotificationPopup() {
 
           {/* Progress bar */}
           <div className="h-1 bg-white/20 rounded-b-[15px] overflow-hidden">
-            <div 
+            <div
               className="h-full bg-white/50"
-              style={{ 
+              style={{
                 animation: `shrink 5s linear forwards`,
               }}
             />

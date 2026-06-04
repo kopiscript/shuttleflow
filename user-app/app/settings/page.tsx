@@ -1,22 +1,92 @@
 // app/settings/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageShell from "../../components/PageShell";
 import { FaSun, FaMoon } from "react-icons/fa";
 
 export default function SettingsPage() {
-    // State for toggles
-    const [systemNotifications, setSystemNotifications] = useState(true);
-    const [emailNotifications, setEmailNotifications] = useState(true);
-
-    // State for selections
-    const [language, setLanguage] = useState("English");
-    const [theme, setTheme] = useState("Light");
+    // State for toggles - initialize with null first
+    const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
+    const [emailNotifications, setEmailNotifications] = useState<boolean | null>(null);
+    const [language, setLanguage] = useState<string | null>(null);
+    const [theme, setTheme] = useState<string | null>(null);
 
     // Options
     const languages = ["English", "中文", "Bahasa Malaysia"];
     const isDarkMode = theme === "Dark";
+
+    // Load settings from localStorage when page loads
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('shuttleflow_settings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                setSystemNotifications(settings.systemNotifications ?? true);
+                setEmailNotifications(settings.emailNotifications ?? true);
+                setLanguage(settings.language ?? "English");
+                setTheme(settings.theme ?? "Light");
+            } catch (error) {
+                console.error("Failed to load settings:", error);
+                // Set defaults if error
+                setSystemNotifications(true);
+                setEmailNotifications(true);
+                setLanguage("English");
+                setTheme("Light");
+            }
+        } else {
+            // No saved settings, use defaults
+            setSystemNotifications(true);
+            setEmailNotifications(true);
+            setLanguage("English");
+            setTheme("Light");
+        }
+    }, []);
+
+    // Save settings to localStorage whenever any setting changes
+    useEffect(() => {
+        // Only save if all settings have been initialized (not null)
+        if (systemNotifications !== null && emailNotifications !== null && language !== null && theme !== null) {
+            const settings = {
+                systemNotifications,
+                emailNotifications,
+                language,
+                theme,
+            };
+            localStorage.setItem('shuttleflow_settings', JSON.stringify(settings));
+
+            // Apply theme to document body
+            if (theme === "Dark") {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    }, [systemNotifications, emailNotifications, language, theme]);
+
+    // Don't render until settings are loaded
+    if (systemNotifications === null || emailNotifications === null || language === null || theme === null) {
+        return (
+            <PageShell
+                header={
+                    <>
+                        <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                            Settings
+                        </h1>
+                        <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
+                            Manage your preferences
+                        </p>
+                    </>
+                }
+            >
+                <div className="px-6 pb-8">
+                    <div className="font-['Inter'] max-w-md mx-auto">
+                        <div className="text-center text-white">Loading settings...</div>
+                    </div>
+                </div>
+            </PageShell>
+        );
+    }
 
     return (
         <PageShell
