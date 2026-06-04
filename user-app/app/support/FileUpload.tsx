@@ -4,11 +4,16 @@
 import { useState, useRef, useEffect } from "react";
 
 interface FileUploadProps {
-    onFileSelect: (file: File | null) => void;
-    selectedFile: File | null;
+    onFileSelect: (files: File[] | null) => void;
+    selectedFiles: File[] | null;
 }
 
-export default function FileUpload({ onFileSelect, selectedFile }: FileUploadProps) {
+interface FilePreview {
+    file: File;
+    previewUrl: string;
+}
+
+export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +34,7 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.jpg,.jpeg,.png';
+        input.multiple = true; // ✅ Allow multiple file selection
 
         if (type === 'camera') {
             input.capture = 'environment';
@@ -36,19 +42,35 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
 
         input.onchange = (e) => {
             const event = e as unknown as React.ChangeEvent<HTMLInputElement>;
-            const file = event.target.files?.[0];
-            if (file && (file.type === "image/jpeg" || file.type === "image/png")) {
-                onFileSelect(file);
-            } else if (file) {
-                alert("Only .jpg and .png files are supported");
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                const validFiles: File[] = [];
+                const fileArray = Array.from(files);
+
+                for (const file of fileArray) {
+                    if (file.type === "image/jpeg" || file.type === "image/png") {
+                        validFiles.push(file);
+                    } else {
+                        alert(`"${file.name}" is not supported. Only .jpg and .png files are allowed.`);
+                    }
+                }
+
+                if (validFiles.length > 0) {
+                    const currentFiles = selectedFiles || [];
+                    const allFiles = [...currentFiles, ...validFiles];
+                    onFileSelect(allFiles);
+                }
             }
         };
 
         input.click();
     };
 
-    const handleRemoveFile = () => {
-        onFileSelect(null);
+    const handleRemoveFile = (indexToRemove: number) => {
+        if (selectedFiles) {
+            const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+            onFileSelect(newFiles.length > 0 ? newFiles : null);
+        }
     };
 
     // Format file size to readable format
@@ -76,6 +98,9 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
                     <span className="text-black font-bold">
                         File Upload
                     </span>
+                    <p className="text-gray-400 text-xs mt-1">
+                        You can upload multiple images (max 5 files)
+                    </p>
                 </div>
 
                 {/* Add File button */}
@@ -85,7 +110,7 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         className="px-10 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-2xl transition-colors text-sm"
                     >
-                        Add File
+                        Add Files
                     </button>
 
                     {/* Dropdown */}
@@ -115,41 +140,45 @@ export default function FileUpload({ onFileSelect, selectedFile }: FileUploadPro
                                 className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100"
                             >
                                 <span className="text-base">📁</span>
-                                <span className="text-gray-700">Choose File</span>
+                                <span className="text-gray-700">Choose Files</span>
                             </button>
                         </div>
                     )}
 
-                    {/* File Preview Card - Shows when file is selected */}
-                    {selectedFile && (
-                        <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between">
-                            {/* Left side: Icon + File info */}
-                            <div className="flex items-center gap-3">
-                                <div className="text-2xl">
-                                    {getFileIcon(selectedFile.name)}
-                                </div>
-                                <div>
-                                    <p className="text-black font-medium text-sm">
-                                        {selectedFile.name.length > 30
-                                            ? selectedFile.name.substring(0, 27) + '...'
-                                            : selectedFile.name}
-                                    </p>
-                                    <p className="text-gray-400 text-xs">
-                                        {formatFileSize(selectedFile.size)}
-                                    </p>
-                                </div>
-                            </div>
+                    {/* File Preview Cards - Shows all selected files */}
+                    {selectedFiles && selectedFiles.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            {selectedFiles.map((file, index) => (
+                                <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between">
+                                    {/* Left side: Icon + File info */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-2xl">
+                                            {getFileIcon(file.name)}
+                                        </div>
+                                        <div>
+                                            <p className="text-black font-medium text-sm">
+                                                {file.name.length > 30
+                                                    ? file.name.substring(0, 27) + '...'
+                                                    : file.name}
+                                            </p>
+                                            <p className="text-gray-400 text-xs">
+                                                {formatFileSize(file.size)}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                            {/* Right side: Delete button */}
-                            <button
-                                type="button"
-                                onClick={handleRemoveFile}
-                                className="text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
+                                    {/* Right side: Delete button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveFile(index)}
+                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
 

@@ -45,4 +45,8 @@ next-env.d.ts
 
 # prisma
 /app/generated/prisma
-prisma/
+prisma/generated/
+prisma/*.db
+prisma/*.db-journal
+
+public/uploads/
