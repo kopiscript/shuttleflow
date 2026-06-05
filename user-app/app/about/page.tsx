@@ -15,12 +15,12 @@ import { useLanguage } from "../../context/LanguageContext";
 export default function AboutPage() {
   const { t } = useLanguage();
 
-  // Team members data (names and roles are hardcoded as they are proper names)
+  // Team members data (names and roles)
   const teamMembers = [
-    { name: "Eva Lew Tze Ling", role: t("about.team.roles.projectLead"), avatar: "/avatars/avatar1.png" },
-    { name: "Chok Li En", role: t("about.team.roles.frontendDatabase"), avatar: "/avatars/avatar2.png" },
-    { name: "Tan Yi Chin", role: t("about.team.roles.backendSupport"), avatar: "/avatars/avatar3.png" },
-    { name: "Tan Zong Seng", role: t("about.team.roles.iotDeveloper"), avatar: "/avatars/avatar4.png" },
+    { name: "Eva Lew Tze Ling", role: t("about.team.roles.projectLead"), avatar: "/avatars/eva.png" },
+    { name: "Chok Li En", role: t("about.team.roles.frontendDatabase"), avatar: "/avatars/lien.png" },
+    { name: "Tan Yi Chin", role: t("about.team.roles.backendSupport"), avatar: "/avatars/casey.png" },
+    { name: "Tan Zong Seng", role: t("about.team.roles.iotDeveloper"), avatar: "/avatars/johnson.png" },
   ];
 
   // Features data
@@ -77,7 +77,7 @@ export default function AboutPage() {
       <div className="px-6 pb-8 overflow-y-auto h-full">
         <div className="max-w-4xl mx-auto">
 
-          {/* Title Section with Animation */}
+          {/* Title Section */}
           <motion.div
             initial="hidden"
             animate="visible"
@@ -202,28 +202,29 @@ export default function AboutPage() {
               {t("about.team.subtitle")}
             </motion.p>
 
-            {/* Team Members */}
+            {/* Team Members pics */}
             <div className="overflow-x-auto md:overflow-visible pb-4">
-              <div className="flex md:grid md:grid-cols-4 gap-5 min-w-max md:min-w-0">
+              <div className="flex md:grid md:grid-cols-4 gap-6 min-w-max md:min-w-0 justify-center">
                 {teamMembers.map((member, index) => (
                   <motion.div
                     key={index}
                     variants={fadeInUp}
-                    className="flex flex-col items-center w-[120px] flex-shrink-0 md:w-auto"
+                    className="flex flex-col items-center w-[140px] flex-shrink-0 md:w-auto"
                   >
-                    {/* Avatar Circle */}
-                    <div className="w-[100px] h-[100px] rounded-full bg-white/70 backdrop-blur-md border border-white/30 shadow-md flex items-center justify-center mb-3 overflow-hidden">
+                    {/* image */}
+                    <div className="w-[200px] sm:w-[220px] md:w-[300px] h-[200px] sm:h-[220px] md:h-[300px]">
                       {member.avatar ? (
                         <Image
                           src={member.avatar}
                           alt={member.name}
-                          width={80}
-                          height={80}
-                          className="object-cover"
+                          width={200}
+                          height={200}
+                          className="object-contain w-full h-full"
+                          priority
                         />
                       ) : (
-                        <div className="w-[80px] h-[80px] rounded-full bg-gray-200 flex items-center justify-center">
-                          <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
+                          <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                         </div>
@@ -231,12 +232,12 @@ export default function AboutPage() {
                     </div>
 
                     {/* Member Name */}
-                    <h3 className="text-[#171821] text-sm font-semibold text-center font-['Inter']">
+                    <h3 className="text-[#171821] font-semibold text-center font-['Inter'] text-sm mt-1">
                       {member.name}
                     </h3>
 
                     {/* Member Role */}
-                    <p className="text-[#6E6E6E] text-xs text-center font-['Inter'] mt-1">
+                    <p className="text-[#6E6E6E] text-xs text-center font-['Inter'] mt-0.5 max-w-[120px]">
                       {member.role}
                     </p>
                   </motion.div>
