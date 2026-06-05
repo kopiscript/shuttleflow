@@ -18,6 +18,24 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
 
+    // ✅ ADD THIS: Load saved language from localStorage when app starts
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('shuttleflow_settings');
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+                const savedLanguage = settings.language;
+                // Map display language to code
+                if (savedLanguage === 'English') setLanguage('en');
+                else if (savedLanguage === '中文') setLanguage('zh');
+                else if (savedLanguage === 'Bahasa Malaysia') setLanguage('ms');
+                else setLanguage('en');
+            } catch (error) {
+                console.error("Failed to load language from settings:", error);
+            }
+        }
+    }, []); // Runs once on mount
+
     // Load translations when language changes
     useEffect(() => {
         const loadTranslations = async () => {
@@ -63,7 +81,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     };
 
     if (isLoading) {
-        // Return children anyway, just with empty translations
         return (
             <LanguageContext.Provider value={{ language, setLanguage, t }}>
                 {children}
