@@ -1,0 +1,115 @@
+{
+    "home": {
+        "title": "Track your Bus",
+        "subtitle": "Choose a route to track the bus live on the map and view its estimated arrival time instantly.",
+        "selectRoute": "Select route",
+        "selectRouteHint": "Select a route to see ETA",
+        "etaUnavailable": "ETA unavailable",
+        "disclaimer": "Disclaimer: ETA may vary due to traffic",
+        "loadingRoutes": "Loading routes...",
+        "noRoutes": "No routes available"
+    },
+    "about": {
+        "title": "About Us",
+        "subtitle": "ShuttleFlow is a smart campus shuttle tracking system designed to provide real-time bus visibility, accurate ETA predictions, and seamless campus transportation management for students.",
+        "vision": {
+            "title": "Our Vision",
+            "description": "To enhance campus mobility by delivering a reliable, real-time, and user-friendly shuttle tracking experience that improves convenience, safety, and transportation efficiency for the university community."
+        },
+        "mission": {
+            "title": "Our Mission",
+            "description": "To become a smart and scalable campus transportation platform that transforms the way students and staff experience daily commuting through technology-driven mobility solutions."
+        },
+        "features": {
+            "title": "Key Features",
+            "subtitle": "Everything you need for a smarter campus commute",
+            "realTimeTracking": {
+                "title": "Real-time GPS Tracking",
+                "description": "Track your shuttle's live location on an interactive map with accurate positioning."
+            },
+            "etaPredictions": {
+                "title": "ETA Predictions",
+                "description": "Get arrival times based on real-time traffic conditions and historical data."
+            },
+            "delayNotifications": {
+                "title": "Delay Notifications",
+                "description": "Receive alerts about delays, breakdowns, or schedule changes."
+            },
+            "crossPlatform": {
+                "title": "Cross-platform Web Access",
+                "description": "Access from any device - phone, tablet, or laptop - no app installation needed."
+            }
+        },
+        "team": {
+            "title": "Meet the Team",
+            "subtitle": "Passionate individuals dedicated to improving campus mobility",
+            "roles": {
+                "projectLead": "Project Lead & UI/UX Designer",
+                "frontendDatabase": "Frontend & Database Developer",
+                "backendSupport": "Frontend & Backend Support Developer",
+                "iotDeveloper": "IoT Developer"
+            }
+        }
+    },
+    "settings": {
+        "title": "Settings",
+        "subtitle": "Manage your preferences",
+        "systemNotification": "System Notification",
+        "emailNotification": "Email Notification",
+        "languages": "Languages",
+        "theme": "Theme"
+    },
+    "support": {
+        "title": "How Can We Help?",
+        "subtitle": "Report an issue or share your feedback about your ride.",
+        "email": "Email address",
+        "reportType": "Select report type",
+        "description": "Describe the issue...",
+        "submit": "Submit",
+        "submitError": "Failed to submit. Please try again.",
+        "uploadFailed": "Failed to upload file:",
+        "networkError": "Network error. Please check your connection.",
+        "reportTypes": {
+            "feedback": "General Feedback",
+            "busDelay": "Bus Delay",
+            "driverIssue": "Driver Issue",
+            "routeProblem": "Route Problem",
+            "other": "Other.."
+        },
+        "fileUpload": {
+            "title": "File Upload",
+            "maxFiles": "You can upload multiple images",
+            "addFiles": "Add Files",
+            "photoLibrary": "Photo Library",
+            "takePhoto": "Take Photo or Video",
+            "chooseFiles": "Choose Files",
+            "remove": "Remove file",
+            "supportedTypes": "Only support .jpg and .png files"
+        }
+    },
+    "notifications": {
+        "title": "Notifications",
+        "subtitle": "Stay updated with shuttle alerts and announcements",
+        "markAllRead": "Mark all as READ",
+        "noNotifications": "No notifications",
+        "allCaughtUp": "You're all caught up!",
+        "markAsRead": "Mark as read",
+        "error": "Failed to load notifications"
+    },
+    "successModal": {
+        "title": "Thanks for your feedback!",
+        "subtitle": "Your message has been submitted successfully for review"
+    },
+    "sidebar": {
+        "home": "Home",
+        "about": "About",
+        "support": "Support",
+        "settings": "Settings"
+    },
+    "common": {
+        "loading": "Loading notifications...",
+        "retry": "Try again",
+        "submit": "Submit",
+        "cancel": "Cancel"
+    }
+}

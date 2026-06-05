@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { FaCheckCircle } from "react-icons/fa";  // ← ADD THIS IMPORT
+import { FaCheckCircle } from "react-icons/fa";
+import { useLanguage } from "../context/LanguageContext";
 
 interface SuccessModalProps {
     isOpen: boolean;
@@ -10,6 +11,8 @@ interface SuccessModalProps {
 }
 
 export default function SuccessModal({ isOpen, onClose }: SuccessModalProps) {
+    const { t } = useLanguage();
+
     // Close modal when pressing Escape key
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -63,12 +66,12 @@ export default function SuccessModal({ isOpen, onClose }: SuccessModalProps) {
 
                     {/* Title */}
                     <h2 className="text-center text-black text-xl font-bold mb-2">
-                        Thanks for your feedback!
+                        {t("successModal.title")}
                     </h2>
 
                     {/* Subtitle */}
                     <p className="text-center text-gray-400 text-sm">
-                        Your message has been submitted successfully for review
+                        {t("successModal.subtitle")}
                     </p>
                 </div>
             </div>

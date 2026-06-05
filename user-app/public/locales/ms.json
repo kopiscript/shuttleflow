@@ -1,0 +1,115 @@
+{
+    "home": {
+        "title": "Jejaki Bas Anda",
+        "subtitle": "Pilih laluan untuk menjejaki bas secara langsung pada peta dan melihat anggaran masa ketibaan.",
+        "selectRoute": "Pilih laluan",
+        "selectRouteHint": "Pilih laluan untuk melihat ETA",
+        "etaUnavailable": "ETA tidak tersedia",
+        "disclaimer": "Penafian: ETA mungkin berbeza disebabkan trafik",
+        "loadingRoutes": "Memuatkan laluan...",
+        "noRoutes": "Tiada laluan tersedia"
+    },
+    "about": {
+        "title": "Tentang Kami",
+        "subtitle": "ShuttleFlow ialah sistem penjejakan bas kampus pintar yang direka untuk memberikan keterlihatan bas masa nyata, ramalan ETA yang tepat, dan pengurusan pengangkutan kampus yang lancar untuk pelajar.",
+        "vision": {
+            "title": "Visi Kami",
+            "description": "Meningkatkan mobiliti kampus dengan menyampaikan pengalaman penjejakan bas yang boleh dipercayai, masa nyata dan mesra pengguna yang meningkatkan kemudahan, keselamatan dan kecekapan pengangkutan untuk komuniti universiti."
+        },
+        "mission": {
+            "title": "Misi Kami",
+            "description": "Menjadi platform pengangkutan kampus pintar dan berskala yang mengubah cara pelajar dan kakitangan mengalami perjalanan harian melalui penyelesaian mobiliti dipacu teknologi."
+        },
+        "features": {
+            "title": "Ciri-ciri Utama",
+            "subtitle": "Segala yang anda perlukan untuk perjalanan kampus yang lebih pintar",
+            "realTimeTracking": {
+                "title": "Penjejakan GPS Masa Nyata",
+                "description": "Jejaki lokasi bas anda secara langsung pada peta interaktif dengan penentududukan yang tepat."
+            },
+            "etaPredictions": {
+                "title": "Ramalan ETA",
+                "description": "Dapatkan masa ketibaan berdasarkan keadaan trafik masa nyata dan data sejarah."
+            },
+            "delayNotifications": {
+                "title": "Notifikasi Kelewatan",
+                "description": "Terima makluman tentang kelewatan, kerosakan, atau perubahan jadual."
+            },
+            "crossPlatform": {
+                "title": "Akses Web Merentas Platform",
+                "description": "Akses dari mana-mana peranti - telefon, tablet, atau komputer riba - tanpa pemasangan aplikasi."
+            }
+        },
+        "team": {
+            "title": "Kenali Pasukan",
+            "subtitle": "Individu berdedikasi untuk menambah baik mobiliti kampus",
+            "roles": {
+                "projectLead": "Ketua Projek & Pereka UI/UX",
+                "frontendDatabase": "Pembangun Frontend & Pangkalan Data",
+                "backendSupport": "Pembangun Frontend & Sokongan Backend",
+                "iotDeveloper": "Pembangun IoT"
+            }
+        }
+    },
+    "settings": {
+        "title": "Tetapan",
+        "subtitle": "Urus pilihan anda",
+        "systemNotification": "Notifikasi Sistem",
+        "emailNotification": "Notifikasi Emel",
+        "languages": "Bahasa",
+        "theme": "Tema"
+    },
+    "support": {
+        "title": "Apa yang Kami Bantu?",
+        "subtitle": "Laporkan isu atau kongsikan maklum balas anda tentang perjalanan anda.",
+        "email": "Alamat emel",
+        "reportType": "Pilih jenis laporan",
+        "description": "Huraikan isu...",
+        "submit": "Hantar",
+        "submitError": "Gagal menghantar. Sila cuba lagi.",
+        "uploadFailed": "Gagal memuat naik fail:",
+        "networkError": "Ralat rangkaian. Sila periksa sambungan anda.",
+        "reportTypes": {
+            "feedback": "Maklum Balas Umum",
+            "busDelay": "Kelewatan Bas",
+            "driverIssue": "Isu Pemandu",
+            "routeProblem": "Masalah Laluan",
+            "other": "Lain-lain.."
+        },
+        "fileUpload": {
+            "title": "Muat Naik Fail",
+            "maxFiles": "Anda boleh memuat naik berbilang imej",
+            "addFiles": "Tambah Fail",
+            "photoLibrary": "Pustaka Foto",
+            "takePhoto": "Ambil Foto atau Video",
+            "chooseFiles": "Pilih Fail",
+            "remove": "Padam fail",
+            "supportedTypes": "Hanya sokong fail .jpg dan .png"
+        }
+    },
+    "notifications": {
+        "title": "Notifikasi",
+        "subtitle": "Kekal dikemas kini dengan makluman dan pengumuman bas",
+        "markAllRead": "Tanda semua sebagai BACA",
+        "noNotifications": "Tiada notifikasi",
+        "allCaughtUp": "Anda telah melihat semua!",
+        "markAsRead": "Tanda sebagai baca",
+        "error": "Gagal memuatkan notifikasi"
+    },
+    "successModal": {
+        "title": "Terima kasih atas maklum balas anda!",
+        "subtitle": "Mesej anda telah berjaya dihantar untuk semakan"
+    },
+    "sidebar": {
+        "home": "Utama",
+        "about": "Tentang",
+        "support": "Sokongan",
+        "settings": "Tetapan"
+    },
+    "common": {
+        "loading": "Memuatkan notifikasi...",
+        "retry": "Cuba lagi",
+        "submit": "Hantar",
+        "cancel": "Batal"
+    }
+}

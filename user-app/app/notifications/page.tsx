@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaCircleInfo, FaClock, FaTriangleExclamation, FaBullhorn } from "react-icons/fa6";
+import { useLanguage } from "../../context/LanguageContext";
 
 type Notification = {
   id: number;
@@ -16,6 +17,7 @@ type Notification = {
 
 export default function NotificationPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +57,12 @@ export default function NotificationPage() {
         setError(data.error);
       }
     } catch (err) {
-      setError("Failed to load notifications");
+      setError(t("notifications.error"));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [readIds]);
+  }, [readIds, t]);
 
   // Fetch when component mounts AND when readIds changes
   useEffect(() => {
@@ -138,7 +140,7 @@ export default function NotificationPage() {
       <div className="relative flex flex-col h-screen bg-[#EEEBE4] items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#99121A] mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-['Inter']">Loading notifications...</p>
+          <p className="mt-4 text-gray-600 font-['Inter']">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -172,7 +174,7 @@ export default function NotificationPage() {
               onClick={markAllAsRead}
               className="bg-[#99121A] text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-[#7a0e14] transition shadow-md whitespace-nowrap font-['Inter']"
             >
-              Mark all as READ
+              {t("notifications.markAllRead")}
             </button>
           ) : (
             <div className="w-20" />
@@ -181,12 +183,12 @@ export default function NotificationPage() {
 
         {/* Title with Bai Jamjuree font */}
         <h1 className="text-center text-[#171821] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
-          Notifications
+          {t("notifications.title")}
         </h1>
 
         {/* Subtitle*/}
         <p className="text-center text-[#6E6E6E] text-base font-medium mt-2 px-4 font-['Bai_Jamjuree']">
-          Stay updated with shuttle alerts and announcements
+          {t("notifications.subtitle")}
         </p>
       </div>
 
@@ -197,15 +199,17 @@ export default function NotificationPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
                 <p className="text-red-600 text-sm font-['Inter']">{error}</p>
-                <button onClick={fetchNotifications} className="mt-2 text-red-600 text-sm underline font-['Inter']">Try again</button>
+                <button onClick={fetchNotifications} className="mt-2 text-red-600 text-sm underline font-['Inter']">
+                  {t("common.retry")}
+                </button>
               </div>
             )}
 
             {!error && notifications.length === 0 && (
               <div className="bg-white rounded-2xl p-8 text-center">
                 <div className="text-5xl mb-3">🔔</div>
-                <p className="text-gray-500 font-medium font-['Inter']">No notifications</p>
-                <p className="text-gray-400 text-sm mt-1 font-['Inter']">You're all caught up!</p>
+                <p className="text-gray-500 font-medium font-['Inter']">{t("notifications.noNotifications")}</p>
+                <p className="text-gray-400 text-sm mt-1 font-['Inter']">{t("notifications.allCaughtUp")}</p>
               </div>
             )}
 
@@ -217,7 +221,7 @@ export default function NotificationPage() {
                     <div className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center mt-0.5">
                       {getNotificationIcon(notification.type)}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mb-2">
                         {/* Title colour change after reading */}
@@ -229,26 +233,26 @@ export default function NotificationPage() {
                           {formatDateTime(notification.createdAt)}
                         </span>
                       </div>
-                      
+
                       {/* Message with Inter font */}
                       <p className="text-[#6E6E6E] text-sm sm:text-base leading-relaxed font-['Inter']">
                         {notification.message}
                       </p>
                     </div>
-                    
+
                     {/* Mark as read button */}
                     {!notification.isRead && (
                       <button
                         onClick={() => markAsRead(notification.id)}
                         className="flex-shrink-0 w-8 h-8 rounded-full bg-[#99121A] text-white hover:bg-[#7a0e14] transition shadow-sm flex items-center justify-center"
-                        title="Mark as read"
+                        title={t("notifications.markAsRead")}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </button>
                     )}
-                    
+
                     {/* Read icon */}
                     {notification.isRead && (
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-[#6E6E6E] flex items-center justify-center">
@@ -259,7 +263,7 @@ export default function NotificationPage() {
                     )}
                   </div>
                 </div>
-                
+
                 {index < notifications.length - 1 && (
                   <div className="border-t border-[#6E6E6E] opacity-30" />
                 )}

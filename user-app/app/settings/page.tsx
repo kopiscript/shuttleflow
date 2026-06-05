@@ -4,8 +4,11 @@
 import { useState, useEffect } from "react";
 import PageShell from "../../components/PageShell";
 import { FaSun, FaMoon } from "react-icons/fa";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function SettingsPage() {
+    const { t, language: currentLanguage, setLanguage: setAppLanguage } = useLanguage();
+
     // State for toggles - initialize with null first
     const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
     const [emailNotifications, setEmailNotifications] = useState<boolean | null>(null);
@@ -15,6 +18,16 @@ export default function SettingsPage() {
     // Options
     const languages = ["English", "中文", "Bahasa Malaysia"];
     const isDarkMode = theme === "Dark";
+
+    // Map display language to internal code
+    const getLanguageCode = (displayLang: string): 'en' | 'zh' | 'ms' => {
+        switch (displayLang) {
+            case "English": return 'en';
+            case "中文": return 'zh';
+            case "Bahasa Malaysia": return 'ms';
+            default: return 'en';
+        }
+    };
 
     // Load settings from localStorage when page loads
     useEffect(() => {
@@ -64,6 +77,12 @@ export default function SettingsPage() {
         }
     }, [systemNotifications, emailNotifications, language, theme]);
 
+    // Handle language change - updates both local state and global language context
+    const handleLanguageChange = (newLanguage: string) => {
+        setLanguage(newLanguage);
+        setAppLanguage(getLanguageCode(newLanguage));
+    };
+
     // Don't render until settings are loaded
     if (systemNotifications === null || emailNotifications === null || language === null || theme === null) {
         return (
@@ -71,17 +90,17 @@ export default function SettingsPage() {
                 header={
                     <>
                         <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
-                            Settings
+                            {t("settings.title")}
                         </h1>
                         <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
-                            Manage your preferences
+                            {t("settings.subtitle")}
                         </p>
                     </>
                 }
             >
                 <div className="px-6 pb-8">
                     <div className="font-['Inter'] max-w-md mx-auto">
-                        <div className="text-center text-white">Loading settings...</div>
+                        <div className="text-center text-white">{t("common.loading")}</div>
                     </div>
                 </div>
             </PageShell>
@@ -93,10 +112,10 @@ export default function SettingsPage() {
             header={
                 <>
                     <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
-                        Settings
+                        {t("settings.title")}
                     </h1>
                     <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
-                        Manage your preferences
+                        {t("settings.subtitle")}
                     </p>
                 </>
             }
@@ -107,7 +126,7 @@ export default function SettingsPage() {
                     {/* System Notification Toggle */}
                     <div className="mb-7">
                         <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">System Notification</span>
+                            <span className="text-gray-800 font-bold text-base">{t("settings.systemNotification")}</span>
                             <button
                                 type="button"
                                 onClick={() => setSystemNotifications(!systemNotifications)}
@@ -125,7 +144,7 @@ export default function SettingsPage() {
                     {/* Email Notification Toggle */}
                     <div className="mb-7">
                         <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">Email Notification</span>
+                            <span className="text-gray-800 font-bold text-base">{t("settings.emailNotification")}</span>
                             <button
                                 type="button"
                                 onClick={() => setEmailNotifications(!emailNotifications)}
@@ -143,11 +162,11 @@ export default function SettingsPage() {
                     {/* Languages Selection */}
                     <div className="mb-7">
                         <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">Languages</span>
+                            <span className="text-gray-800 font-bold text-base">{t("settings.languages")}</span>
                             <div className="relative">
                                 <select
                                     value={language}
-                                    onChange={(e) => setLanguage(e.target.value)}
+                                    onChange={(e) => handleLanguageChange(e.target.value)}
                                     className="appearance-none bg-gray-50/80 border border-gray-200 rounded-lg px-4 py-2.5 pr-8 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] shadow-inner"
                                 >
                                     {languages.map((lang) => (
@@ -169,7 +188,7 @@ export default function SettingsPage() {
                     {/* Theme Toggle - Font Awesome Sun/Moon Icons */}
                     <div className="mb-7">
                         <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">Theme</span>
+                            <span className="text-gray-800 font-bold text-base">{t("settings.theme")}</span>
                             <button
                                 type="button"
                                 onClick={() => setTheme(isDarkMode ? "Light" : "Dark")}

@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useLanguage } from "../context/LanguageContext";
 
 interface SidebarMenuProps {
     isOpen: boolean;
@@ -11,6 +12,8 @@ interface SidebarMenuProps {
 }
 
 export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
+    const { t } = useLanguage();
+
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
@@ -35,23 +38,20 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
     if (!isOpen) return null;
 
     const menuItems = [
-        { name: "Home", href: "/" },
-        { name: "About", href: "/about" },
-        { name: "Support", href: "/support" },
-        { name: "Settings", href: "/settings" },
+        { name: t("sidebar.home"), href: "/" },
+        { name: t("sidebar.about"), href: "/about" },
+        { name: t("sidebar.support"), href: "/support" },
+        { name: t("sidebar.settings"), href: "/settings" },
     ];
 
     return (
         <>
-            {/* Backdrop */}
             <div
                 className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
                 onClick={onClose}
             />
 
-            {/* Sidebar Menu - Figma width 288px */}
             <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-[#EEEBE4] shadow-2xl z-50">
-                {/* Close button - top right */}
                 <button
                     onClick={onClose}
                     className="absolute top-5 right-5 text-[#6E6E6E] hover:text-[#99121A] transition-colors"
@@ -61,7 +61,6 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                     </svg>
                 </button>
 
-                {/* Logo - top left */}
                 <div className="absolute top-5 left-5">
                     <Image
                         src="/logo.png"
@@ -72,7 +71,6 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                     />
                 </div>
 
-                {/* Menu Items with divider lines - at left: 42px, top: 171px */}
                 <nav className="absolute left-[42px] top-[171px]">
                     {menuItems.map((item, index) => (
                         <div key={item.name}>
@@ -83,7 +81,6 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                             >
                                 {item.name}
                             </Link>
-                            {/* Divider line after each item except the last */}
                             {index < menuItems.length - 1 && (
                                 <div className="w-[199px] border-t border-[#6E6E6E] my-2" />
                             )}
