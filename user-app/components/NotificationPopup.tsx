@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Pusher from "pusher-js";
 
 type NotificationPopupType = {
   id: string;
@@ -17,9 +18,8 @@ export default function NotificationPopup() {
   useEffect(() => {
     setMounted(true);
 
-    // Listen for new notifications
+    // Your existing localStorage event listener
     const handleNewNotification = (event: CustomEvent<NotificationPopupType>) => {
-      // Check if system notifications are enabled in settings
       const savedSettings = localStorage.getItem('shuttleflow_settings');
       let systemNotificationsEnabled = true;
 
@@ -32,9 +32,8 @@ export default function NotificationPopup() {
         }
       }
 
-      // Don't show popup if disabled
       if (!systemNotificationsEnabled) {
-        console.log("🔕 System notifications disabled - popup suppressed:", event.detail.title);
+        console.log("🔕 System notifications disabled");
         return;
       }
 
@@ -49,9 +48,35 @@ export default function NotificationPopup() {
     };
 
     window.addEventListener('new-notification' as any, handleNewNotification);
-    return () => window.removeEventListener('new-notification' as any, handleNewNotification);
+
+    // 🚀 NEW: Listen for Pusher real-time events
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
+
+    const channel = pusher.subscribe("notifications");
+    channel.bind("new-notification", (data: any) => {
+      console.log("📡 Real-time notification from Pusher:", data);
+      
+      // Trigger the same popup
+      const event = new CustomEvent('new-notification', {
+        detail: {
+          id: data.id.toString(),
+          title: data.title,
+          message: data.message,
+          type: data.type
+        }
+      });
+      window.dispatchEvent(event);
+    });
+
+    return () => {
+      window.removeEventListener('new-notification' as any, handleNewNotification);
+      pusher.unsubscribe("notifications");
+    };
   }, []);
 
+  // ... rest of your component stays the same
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
@@ -71,7 +96,6 @@ export default function NotificationPopup() {
             animationDelay: `${index * 0.1}s`,
           }}
         >
-          {/* Close button */}
           <button
             onClick={() => removeNotification(notif.id)}
             className="absolute top-3 right-3 text-white/70 hover:text-white transition z-10"
@@ -81,7 +105,6 @@ export default function NotificationPopup() {
             </svg>
           </button>
 
-          {/* Icon based on type */}
           <div className="absolute left-3 top-3 text-xl">
             {notif.type === "delay" && "🚌"}
             {notif.type === "alert" && "⚠️"}
@@ -89,7 +112,6 @@ export default function NotificationPopup() {
             {(!notif.type || notif.type === "info") && "🔔"}
           </div>
 
-          {/* Content */}
           <div className="p-3 pl-12 pr-8">
             <h3 className="font-semibold text-[14px] sm:text-[15px] text-white mb-1">
               {notif.title}
@@ -99,13 +121,10 @@ export default function NotificationPopup() {
             </p>
           </div>
 
-          {/* Progress bar */}
           <div className="h-1 bg-white/20 rounded-b-[15px] overflow-hidden">
             <div
               className="h-full bg-white/50"
-              style={{
-                animation: `shrink 5s linear forwards`,
-              }}
+              style={{ animation: `shrink 5s linear forwards` }}
             />
           </div>
         </div>
