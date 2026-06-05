@@ -1,19 +1,16 @@
-// components/FileUpload.tsx
+// support/FileUpload.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useLanguage } from "../../context/LanguageContext";
 
 interface FileUploadProps {
     onFileSelect: (files: File[] | null) => void;
     selectedFiles: File[] | null;
 }
 
-interface FilePreview {
-    file: File;
-    previewUrl: string;
-}
-
 export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadProps) {
+    const { t } = useLanguage();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +31,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.jpg,.jpeg,.png';
-        input.multiple = true; // ✅ Allow multiple file selection
+        input.multiple = true;
 
         if (type === 'camera') {
             input.capture = 'environment';
@@ -51,7 +48,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                     if (file.type === "image/jpeg" || file.type === "image/png") {
                         validFiles.push(file);
                     } else {
-                        alert(`"${file.name}" is not supported. Only .jpg and .png files are allowed.`);
+                        alert(t("support.fileUpload.invalidType"));
                     }
                 }
 
@@ -96,10 +93,10 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                 {/* File Upload label */}
                 <div className="px-4 pt-3 pb-4">
                     <span className="text-black font-bold">
-                        File Upload
+                        {t("support.fileUpload.title")}
                     </span>
                     <p className="text-gray-400 text-xs mt-1">
-                        You can upload multiple images (max 5 files)
+                        {t("support.fileUpload.maxFiles")}
                     </p>
                 </div>
 
@@ -110,7 +107,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         className="px-10 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-2xl transition-colors text-sm"
                     >
-                        Add Files
+                        {t("support.fileUpload.addFiles")}
                     </button>
 
                     {/* Dropdown */}
@@ -122,7 +119,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                                 className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
                             >
                                 <span className="text-base">📸</span>
-                                <span className="text-gray-700">Photo Library</span>
+                                <span className="text-gray-700">{t("support.fileUpload.photoLibrary")}</span>
                             </button>
 
                             <button
@@ -131,7 +128,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                                 className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100"
                             >
                                 <span className="text-base">📷</span>
-                                <span className="text-gray-700">Take Photo or Video</span>
+                                <span className="text-gray-700">{t("support.fileUpload.takePhoto")}</span>
                             </button>
 
                             <button
@@ -140,7 +137,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                                 className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100"
                             >
                                 <span className="text-base">📁</span>
-                                <span className="text-gray-700">Choose Files</span>
+                                <span className="text-gray-700">{t("support.fileUpload.chooseFiles")}</span>
                             </button>
                         </div>
                     )}
@@ -172,6 +169,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                                         type="button"
                                         onClick={() => handleRemoveFile(index)}
                                         className="text-gray-400 hover:text-red-500 transition-colors"
+                                        title={t("support.fileUpload.remove")}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -183,7 +181,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                     )}
 
                     <p className="text-gray-400 text-xs mt-4">
-                        Only support .jpg and .png files
+                        {t("support.fileUpload.supportedTypes")}
                     </p>
                 </div>
             </div>

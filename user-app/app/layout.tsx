@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Bai_Jamjuree, Inter } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import NotificationPopup from "../components/NotificationPopup";
+import { LanguageProvider } from "../context/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,7 +43,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${baiJamjuree.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}<NotificationPopup /></body>
+      <body className="min-h-full flex flex-col">
+        <LanguageProvider>
+          {children}
+          <NotificationPopup />
+        </LanguageProvider>
+      </body>
     </html>
   );
 }
