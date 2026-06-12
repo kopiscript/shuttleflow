@@ -49,7 +49,7 @@ export default function NotificationPopup() {
 
     window.addEventListener('new-notification' as any, handleNewNotification);
 
-    // 🚀 NEW: Listen for Pusher real-time events
+    // Listen for Pusher real-time events
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
@@ -76,7 +76,6 @@ export default function NotificationPopup() {
     };
   }, []);
 
-  // ... rest of your component stays the same
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
@@ -88,9 +87,10 @@ export default function NotificationPopup() {
       {notifications.map((notif, index) => (
         <div
           key={notif.id}
-          className="relative w-full bg-white/10 backdrop-blur-md rounded-[15px] shadow-lg pointer-events-auto mx-auto"
+          className="relative w-full rounded-[15px] shadow-lg pointer-events-auto mx-auto"
           style={{
-            background: "rgba(255, 255, 255, 0.07)",
+            background: "var(--glass-bg)",
+            backdropFilter: "blur(12px)",
             boxShadow: "0px 8px 40px rgba(0, 0, 0, 0.2)",
             animation: `slideDown 0.3s ease-out forwards`,
             animationDelay: `${index * 0.1}s`,
@@ -113,10 +113,10 @@ export default function NotificationPopup() {
           </div>
 
           <div className="p-3 pl-12 pr-8">
-            <h3 className="font-semibold text-[14px] sm:text-[15px] text-white mb-1">
+            <h3 className="font-semibold text-[14px] sm:text-[15px] text-[var(--glass-text)] mb-1">
               {notif.title}
             </h3>
-            <p className="text-[12px] sm:text-[14px] text-white/90">
+            <p className="text-[12px] sm:text-[14px] text-[var(--glass-text)]/80">
               {notif.message}
             </p>
           </div>

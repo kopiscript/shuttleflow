@@ -10,8 +10,8 @@ import { useLanguage } from "../context/LanguageContext";
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-      <span className="text-gray-500">Loading map...</span>
+    <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+      <span className="text-gray-500 dark:text-gray-400">Loading map...</span>
     </div>
   ),
 });
@@ -73,10 +73,10 @@ export default function HomePage() {
       fullHeight={true}
       header={
         <>
-          <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold mt-6">
+          <h1 className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-3xl font-bold mt-6">
             {t("home.title")}
           </h1>
-          <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
+          <p className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-base font-medium mt-2 px-4">
             {t("home.subtitle")}
           </p>
         </>
@@ -84,6 +84,26 @@ export default function HomePage() {
     >
       {/* Map Section - fills remaining space */}
       <div className="relative w-full h-full">
+        {/* Gradient Background Elements */}
+        
+        {/* First gradient: Top Left */}
+        <div 
+          className="absolute w-[569px] h-[414px] top-[-106px] bg-[var(--gradient-1-bg)] blur-[var(--gradient-1-blur)] opacity-[var(--gradient-1-opacity)] pointer-events-none"
+          style={{ 
+            left: "calc(50% - 568.85px/2 - 280px)",
+            transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
+          }}
+        />
+        
+        {/* Second gradient: Right Top to Middle */}
+        <div 
+          className="absolute w-[604px] h-[871px] top-[-322px] bg-[var(--gradient-2-bg)] blur-[var(--gradient-2-blur)] opacity-[var(--gradient-2-opacity)] pointer-events-none"
+          style={{ 
+            left: "calc(50% - 604px/2 + 31.5px)",
+            transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
+          }}
+        />
+
         {/* Map fills entire container */}
         <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
@@ -102,10 +122,10 @@ export default function HomePage() {
 
         {/* Floating ETA Card (bottom of screen) */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
-          <div className="bg-white rounded-2xl shadow-lg p-4">
+          <div className="bg-[var(--card-bg)] rounded-2xl shadow-lg p-4">
             {/* ETA */}
             <div className="flex items-center gap-2">
-              <span className="font-['Inter'] text-gray-800 font-semibold text-sm">
+              <span className="font-['Inter'] text-[var(--eta-text)] font-semibold text-sm">
                 {eta || t("home.selectRouteHint")}
               </span>
             </div>
@@ -114,7 +134,7 @@ export default function HomePage() {
               <svg className="w-4 h-4 text-[#99121A]" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
-              <span className="font-['Inter'] text-gray-500 text-xs">
+              <span className="font-['Inter'] text-[var(--disclaimer-text)] text-xs">
                 {t("home.disclaimer")}
               </span>
             </div>

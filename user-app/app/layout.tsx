@@ -4,6 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import NotificationPopup from "../components/NotificationPopup";
 import { LanguageProvider } from "../context/LanguageContext";
+import { ThemeProvider } from "../context/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,6 @@ const baiJamjuree = Bai_Jamjuree({
   variable: "--font-bai-jamjuree",
 });
 
-// Add Inter font
 const inter = Inter({
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
@@ -42,12 +42,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${baiJamjuree.variable} ${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <LanguageProvider>
-          {children}
-          <NotificationPopup />
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            {children}
+            <NotificationPopup />
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

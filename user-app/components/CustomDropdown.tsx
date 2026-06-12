@@ -45,11 +45,12 @@ export default function CustomDropdown({
 
   return (
     <div className="relative w-full" ref={dropdownRef}>
+      {/* Dropdown Trigger */}
       <div
-        className="bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center justify-between gap-2 cursor-pointer"
+        className="bg-[var(--dropdown-bg)] rounded-2xl shadow-lg px-4 py-3 flex items-center justify-between gap-2 cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className={`font-['Inter'] text-sm ${selectedOption ? 'text-gray-800' : 'text-gray-400'}`}>
+        <span className={`font-['Inter'] text-sm ${selectedOption ? 'text-[var(--dropdown-text)]' : 'text-gray-400'}`}>
           {loading ? t("home.loadingRoutes") : (selectedOption?.routeName || defaultPlaceholder)}
         </span>
         <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,10 +58,11 @@ export default function CustomDropdown({
         </svg>
       </div>
 
+      {/* Dropdown Menu */}
       {isOpen && !loading && (
         <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden z-30">
-          <div className="relative bg-white/50 backdrop-blur-sm rounded-2xl shadow-[0px_8px_40px_rgba(0,0,0,0.2)] overflow-hidden">
-            <div className="absolute top-[48px] left-0 right-0 border-t border-[#E3E3E3]" />
+          <div className="relative bg-[var(--glass-bg)] backdrop-blur-sm rounded-2xl shadow-[0px_8px_40px_rgba(0,0,0,0.2)] overflow-hidden">
+            {/* Divider line removed */}
 
             {options.length === 0 ? (
               <div className="px-5 py-4 text-gray-400 font-['Inter'] text-sm tracking-[-0.23px]">
@@ -70,10 +72,11 @@ export default function CustomDropdown({
               options.map((option) => (
                 <div
                   key={option.id}
-                  className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${value === option.id.toString()
-                      ? 'bg-gray-300/50 text-black font-medium'
-                      : 'text-black/80 hover:bg-gray-100/50'
-                    }`}
+                  className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${
+                    value === option.id.toString()
+                      ? 'bg-gray-300/50 dark:bg-gray-600/50 text-[var(--dropdown-text)] font-medium'
+                      : 'text-[var(--dropdown-text)]/80 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
+                  }`}
                   onClick={() => {
                     onChange(option.id.toString());
                     setIsOpen(false);

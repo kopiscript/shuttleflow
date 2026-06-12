@@ -54,10 +54,10 @@ export default function PageShell({
 
     return (
         <>
-            <div className={`relative flex flex-col bg-[#EEEBE4] overflow-x-auto ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
-                {/* Gradient Background Elements */}
+            <div className={`relative flex flex-col bg-[var(--background)] overflow-x-auto ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
+                {/* Gradient Background Elements - Using CSS Variables */}
                 <div
-                    className="absolute w-[569px] h-[414px] top-[-106px] bg-[#99121A] blur-[100px] opacity-50"
+                    className="absolute w-[569px] h-[414px] top-[-106px] bg-[var(--gradient-1-bg)] blur-[var(--gradient-1-blur)] opacity-[var(--gradient-1-opacity)] pointer-events-none"
                     style={{
                         left: "calc(50% - 568.85px/2 - 280px)",
                         transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
@@ -65,7 +65,7 @@ export default function PageShell({
                 />
 
                 <div
-                    className="absolute w-[604px] h-[871px] top-[-322px] bg-[#CF2B10] opacity-30 blur-[150px]"
+                    className="absolute w-[604px] h-[871px] top-[-322px] bg-[var(--gradient-2-bg)] blur-[var(--gradient-2-blur)] opacity-[var(--gradient-2-opacity)] pointer-events-none"
                     style={{
                         left: "calc(50% - 604px/2 + 31.5px)",
                         transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"

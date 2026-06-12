@@ -51,10 +51,11 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                 onClick={onClose}
             />
 
-            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-[#EEEBE4] shadow-2xl z-50">
+            {/* Sidebar - uses CSS variables for dark mode */}
+            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-[var(--sidebar-bg)] shadow-2xl z-50">
                 <button
                     onClick={onClose}
-                    className="absolute top-5 right-5 text-[#6E6E6E] hover:text-[#99121A] transition-colors"
+                    className="absolute top-5 right-5 text-[var(--sidebar-text)] hover:text-[#99121A] transition-colors"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -77,12 +78,12 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                             <Link
                                 href={item.href}
                                 onClick={onClose}
-                                className="block font-['Bai_Jamjuree'] font-medium text-base text-[#6E6E6E] hover:text-[#99121A] transition-colors mb-3"
+                                className="block font-['Bai_Jamjuree'] font-medium text-base text-[var(--sidebar-text)] hover:text-[#99121A] transition-colors mb-3"
                             >
                                 {item.name}
                             </Link>
                             {index < menuItems.length - 1 && (
-                                <div className="w-[199px] border-t border-[#6E6E6E] my-2" />
+                                <div className="w-[199px] border-t border-[var(--divider-color)] my-2" />
                             )}
                         </div>
                     ))}

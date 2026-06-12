@@ -5,9 +5,11 @@ import { useState, useEffect } from "react";
 import PageShell from "../../components/PageShell";
 import { FaSun, FaMoon } from "react-icons/fa";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function SettingsPage() {
     const { t, language: currentLanguage, setLanguage: setAppLanguage } = useLanguage();
+    const { theme: currentTheme, toggleTheme } = useTheme();
 
     // State for toggles - initialize with null first
     const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
@@ -41,14 +43,12 @@ export default function SettingsPage() {
                 setTheme(settings.theme ?? "Light");
             } catch (error) {
                 console.error("Failed to load settings:", error);
-                // Set defaults if error
                 setSystemNotifications(true);
                 setEmailNotifications(true);
                 setLanguage("English");
                 setTheme("Light");
             }
         } else {
-            // No saved settings, use defaults
             setSystemNotifications(true);
             setEmailNotifications(true);
             setLanguage("English");
@@ -58,7 +58,6 @@ export default function SettingsPage() {
 
     // Save settings to localStorage whenever any setting changes
     useEffect(() => {
-        // Only save if all settings have been initialized (not null)
         if (systemNotifications !== null && emailNotifications !== null && language !== null && theme !== null) {
             const settings = {
                 systemNotifications,
@@ -67,15 +66,15 @@ export default function SettingsPage() {
                 theme,
             };
             localStorage.setItem('shuttleflow_settings', JSON.stringify(settings));
-
-            // Apply theme to document body
-            if (theme === "Dark") {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
         }
     }, [systemNotifications, emailNotifications, language, theme]);
+
+    // Handle theme toggle - sync with context
+    const handleThemeToggle = () => {
+        const newTheme = isDarkMode ? "Light" : "Dark";
+        setTheme(newTheme);
+        toggleTheme(); // This toggles the actual theme in the ThemeContext
+    };
 
     // Handle language change - updates both local state and global language context
     const handleLanguageChange = (newLanguage: string) => {
@@ -89,10 +88,10 @@ export default function SettingsPage() {
             <PageShell
                 header={
                     <>
-                        <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                        <h1 className="text-center text-[var(--foreground)] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                             {t("settings.title")}
                         </h1>
-                        <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
+                        <p className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-base font-medium mt-2 px-4">
                             {t("settings.subtitle")}
                         </p>
                     </>
@@ -100,7 +99,7 @@ export default function SettingsPage() {
             >
                 <div className="px-6 pb-8">
                     <div className="font-['Inter'] max-w-md mx-auto">
-                        <div className="text-center text-white">{t("common.loading")}</div>
+                        <div className="text-center text-[var(--foreground)]">{t("common.loading")}</div>
                     </div>
                 </div>
             </PageShell>
@@ -111,10 +110,10 @@ export default function SettingsPage() {
         <PageShell
             header={
                 <>
-                    <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                    <h1 className="text-center text-[var(--foreground)] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                         {t("settings.title")}
                     </h1>
-                    <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
+                    <p className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-base font-medium mt-2 px-4">
                         {t("settings.subtitle")}
                     </p>
                 </>
@@ -125,12 +124,12 @@ export default function SettingsPage() {
 
                     {/* System Notification Toggle */}
                     <div className="mb-7">
-                        <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">{t("settings.systemNotification")}</span>
+                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.systemNotification")}</span>
                             <button
                                 type="button"
                                 onClick={() => setSystemNotifications(!systemNotifications)}
-                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${systemNotifications ? "bg-[#99121A]" : "bg-gray-300"
+                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${systemNotifications ? "bg-[#99121A]" : "bg-gray-300 dark:bg-gray-600"
                                     }`}
                             >
                                 <span
@@ -143,12 +142,12 @@ export default function SettingsPage() {
 
                     {/* Email Notification Toggle */}
                     <div className="mb-7">
-                        <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">{t("settings.emailNotification")}</span>
+                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.emailNotification")}</span>
                             <button
                                 type="button"
                                 onClick={() => setEmailNotifications(!emailNotifications)}
-                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${emailNotifications ? "bg-[#99121A]" : "bg-gray-300"
+                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${emailNotifications ? "bg-[#99121A]" : "bg-gray-300 dark:bg-gray-600"
                                     }`}
                             >
                                 <span
@@ -161,13 +160,13 @@ export default function SettingsPage() {
 
                     {/* Languages Selection */}
                     <div className="mb-7">
-                        <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">{t("settings.languages")}</span>
+                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.languages")}</span>
                             <div className="relative">
                                 <select
                                     value={language}
                                     onChange={(e) => handleLanguageChange(e.target.value)}
-                                    className="appearance-none bg-gray-50/80 border border-gray-200 rounded-lg px-4 py-2.5 pr-8 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] shadow-inner"
+                                    className="appearance-none bg-gray-50/80 dark:bg-gray-700/80 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-8 text-gray-700 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] shadow-inner"
                                 >
                                     {languages.map((lang) => (
                                         <option key={lang} value={lang}>{lang}</option>
@@ -187,11 +186,11 @@ export default function SettingsPage() {
 
                     {/* Theme Toggle - Font Awesome Sun/Moon Icons */}
                     <div className="mb-7">
-                        <div className="w-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-gray-800 font-bold text-base">{t("settings.theme")}</span>
+                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.theme")}</span>
                             <button
                                 type="button"
-                                onClick={() => setTheme(isDarkMode ? "Light" : "Dark")}
+                                onClick={handleThemeToggle}
                                 className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${isDarkMode ? "bg-gray-600" : "bg-gray-300"
                                     }`}
                             >
