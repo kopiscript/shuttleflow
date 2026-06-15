@@ -1,4 +1,3 @@
-// support/FileUpload.tsx
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -70,7 +69,6 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
         }
     };
 
-    // Format file size to readable format
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -79,7 +77,6 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    // Get file icon based on type
     const getFileIcon = (fileName: string) => {
         if (fileName.match(/\.(jpg|jpeg)$/i)) return '🖼️';
         if (fileName.match(/\.(png)$/i)) return '📷';
@@ -88,87 +85,85 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
 
     return (
         <div className="mb-8 relative" ref={dropdownRef}>
-            {/* White box */}
-            <div className="w-full bg-white border border-gray-200 rounded-xl shadow-md">
+            {/* Container - Light: white, Dark: #A88F92 */}
+            <div className="w-full bg-white border border-gray-200 rounded-xl shadow-md dark:bg-[#A88F92] dark:border-white/20">
                 {/* File Upload label */}
                 <div className="px-4 pt-3 pb-4">
-                    <span className="text-black font-bold">
+                    <span className="text-black font-bold dark:text-white">
                         {t("support.fileUpload.title")}
                     </span>
-                    <p className="text-gray-400 text-xs mt-1">
+                    <p className="text-gray-400 text-xs mt-1 dark:text-white/70">
                         {t("support.fileUpload.maxFiles")}
                     </p>
                 </div>
 
-                {/* Add File button */}
+                {/* Add File button - Color #CF2B10 */}
                 <div className="px-4 pb-4 relative">
                     <button
                         type="button"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="px-10 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-2xl transition-colors text-sm"
+                        className="px-10 py-2 bg-[#CF2B10] hover:bg-[#b0250e] text-white font-medium rounded-2xl transition-colors text-sm"
                     >
                         {t("support.fileUpload.addFiles")}
                     </button>
 
                     {/* Dropdown */}
                     {isDropdownOpen && (
-                        <div className="absolute top-0 left-[100px] min-w-[180px] bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                        <div className="absolute top-0 left-[100px] min-w-[180px] bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden dark:bg-[#2B2B2B] dark:border-white/20">
                             <button
                                 type="button"
                                 onClick={() => handleFileSelection('library')}
-                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm"
+                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm text-gray-700 dark:hover:bg-[#3D3D3D] dark:text-white"
                             >
                                 <span className="text-base">📸</span>
-                                <span className="text-gray-700">{t("support.fileUpload.photoLibrary")}</span>
+                                <span>{t("support.fileUpload.photoLibrary")}</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => handleFileSelection('camera')}
-                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100"
+                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100 text-gray-700 dark:hover:bg-[#3D3D3D] dark:border-white/10 dark:text-white"
                             >
                                 <span className="text-base">📷</span>
-                                <span className="text-gray-700">{t("support.fileUpload.takePhoto")}</span>
+                                <span>{t("support.fileUpload.takePhoto")}</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => handleFileSelection('file')}
-                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100"
+                                className="w-full py-2.5 text-left px-4 hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-t border-gray-100 text-gray-700 dark:hover:bg-[#3D3D3D] dark:border-white/10 dark:text-white"
                             >
                                 <span className="text-base">📁</span>
-                                <span className="text-gray-700">{t("support.fileUpload.chooseFiles")}</span>
+                                <span>{t("support.fileUpload.chooseFiles")}</span>
                             </button>
                         </div>
                     )}
 
-                    {/* File Preview Cards - Shows all selected files */}
+                    {/* File Preview Cards */}
                     {selectedFiles && selectedFiles.length > 0 && (
                         <div className="mt-4 space-y-3">
                             {selectedFiles.map((file, index) => (
-                                <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between">
-                                    {/* Left side: Icon + File info */}
+                                <div key={index} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between dark:bg-white/20 dark:border-white/30">
                                     <div className="flex items-center gap-3">
                                         <div className="text-2xl">
                                             {getFileIcon(file.name)}
                                         </div>
                                         <div>
-                                            <p className="text-black font-medium text-sm">
+                                            <p className="text-black font-medium text-sm dark:text-white">
                                                 {file.name.length > 30
                                                     ? file.name.substring(0, 27) + '...'
                                                     : file.name}
                                             </p>
-                                            <p className="text-gray-400 text-xs">
+                                            <p className="text-gray-400 text-xs dark:text-white/70">
                                                 {formatFileSize(file.size)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {/* Right side: Delete button */}
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveFile(index)}
-                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                        className="text-gray-400 hover:text-red-500 transition-colors dark:text-white/70 dark:hover:text-red-400"
                                         title={t("support.fileUpload.remove")}
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +175,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                         </div>
                     )}
 
-                    <p className="text-gray-400 text-xs mt-4">
+                    <p className="text-gray-400 text-xs mt-4 dark:text-white/50">
                         {t("support.fileUpload.supportedTypes")}
                     </p>
                 </div>

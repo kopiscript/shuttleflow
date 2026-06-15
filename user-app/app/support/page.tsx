@@ -19,25 +19,12 @@ export default function SupportPage() {
     const [showModal, setShowModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // Map report type to display text
-    const getReportTypeLabel = (type: ReportType): string => {
-        const labels: Record<ReportType, string> = {
-            feedback: t("support.reportTypes.feedback"),
-            bus_delay: t("support.reportTypes.busDelay"),
-            driver_issue: t("support.reportTypes.driverIssue"),
-            route_problem: t("support.reportTypes.routeProblem"),
-            other: t("support.reportTypes.other")
-        };
-        return labels[type];
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setErrorMessage(null);
 
         try {
-            // Step 1: Upload all files
             let fileUrls: string[] = [];
             if (selectedFiles && selectedFiles.length > 0) {
                 for (const file of selectedFiles) {
@@ -60,7 +47,6 @@ export default function SupportPage() {
                 }
             }
 
-            // Step 2: Submit support ticket with multiple file URLs
             const response = await fetch('/api/supporttickets', {
                 method: 'POST',
                 headers: {
@@ -106,10 +92,10 @@ export default function SupportPage() {
                         {/* Title Section */}
                         <div className="text-center mb-8 mt-4">
                             <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold">
-                                {t("support.title")}
+                                How Can We Help?
                             </h1>
                             <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
-                                {t("support.subtitle")}
+                                Report an issue or share your feedback about your ride.
                             </p>
                         </div>
 
@@ -121,36 +107,36 @@ export default function SupportPage() {
                                 </div>
                             )}
 
-                            {/* Email Input */}
+                            {/* Email Input - Light: white, Dark: #A88F92 */}
                             <div className="mb-7">
                                 <input
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder={t("support.email")}
+                                    placeholder="Email address"
                                     required
-                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
+                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
                                 />
                             </div>
 
-                            {/* Report Type Dropdown */}
+                            {/* Report Type Dropdown - Light: white, Dark: #A88F92 */}
                             <div className="mb-7">
                                 <div className="relative">
                                     <select
                                         value={reportType}
                                         onChange={(e) => setReportType(e.target.value as ReportType)}
                                         required
-                                        className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all shadow-md"
+                                        className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white"
                                     >
-                                        <option value="" disabled>{t("support.reportType")}</option>
-                                        <option value="feedback">{t("support.reportTypes.feedback")}</option>
-                                        <option value="bus_delay">{t("support.reportTypes.busDelay")}</option>
-                                        <option value="driver_issue">{t("support.reportTypes.driverIssue")}</option>
-                                        <option value="route_problem">{t("support.reportTypes.routeProblem")}</option>
-                                        <option value="other">{t("support.reportTypes.other")}</option>
+                                        <option value="" disabled className="text-gray-400 dark:text-white/70">Select report type</option>
+                                        <option value="feedback">General Feedback</option>
+                                        <option value="bus_delay">Bus Delay</option>
+                                        <option value="driver_issue">Driver Issue</option>
+                                        <option value="route_problem">Route Problem</option>
+                                        <option value="other">Other..</option>
                                     </select>
                                     <svg
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none dark:text-white/50"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -160,15 +146,15 @@ export default function SupportPage() {
                                 </div>
                             </div>
 
-                            {/* Description Textarea */}
+                            {/* Description Textarea - Light: white, Dark: #A88F92 */}
                             <div className="mb-7">
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder={t("support.description")}
+                                    placeholder="Describe the issue..."
                                     rows={4}
                                     required
-                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] transition-all resize-none shadow-md"
+                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all resize-none shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
                                 />
                             </div>
 
@@ -178,12 +164,12 @@ export default function SupportPage() {
                                 selectedFiles={selectedFiles}
                             />
 
-                            {/* Submit Button */}
+                            {/* Submit Button - Color #CF2B10 */}
                             <div className="pt-4">
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full py-3 bg-[#99121A] hover:bg-[#7a0e15] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className="w-full py-3 bg-[#CF2B10] hover:bg-[#b0250e] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? (
                                         <div className="flex items-center justify-center gap-2">
@@ -191,10 +177,10 @@ export default function SupportPage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            {t("common.submitting")}
+                                            Submitting...
                                         </div>
                                     ) : (
-                                        t("support.submit")
+                                        "Submit"
                                     )}
                                 </button>
                             </div>
