@@ -23,14 +23,14 @@ export default function SettingsPage() {
     const [language, setLanguage] = useState<string | null>(null);
 
     // Options
-    const languages = ["English", "中文", "Bahasa Malaysia"];
+    const languages = ["English", "Chinese", "Bahasa Malaysia"];
     const isDarkMode = currentTheme === "dark";
 
     // Map display language to internal code
     const getLanguageCode = (displayLang: string): 'en' | 'zh' | 'ms' => {
         switch (displayLang) {
             case "English": return 'en';
-            case "中文": return 'zh';
+            case "Chinese": return 'zh';
             case "Bahasa Malaysia": return 'ms';
             default: return 'en';
         }

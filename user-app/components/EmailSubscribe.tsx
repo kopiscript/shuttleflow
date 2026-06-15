@@ -1,8 +1,11 @@
+// components/EmailSubscribe.tsx
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function EmailSubscribe() {
+    const { t } = useLanguage();
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [message, setMessage] = useState("");
@@ -23,15 +26,15 @@ export default function EmailSubscribe() {
 
             if (data.success) {
                 setStatus("success");
-                setMessage(data.message || "Check your email to confirm subscription!");
+                setMessage(t("emailSubscribe.successMessage") || "Check your email to confirm subscription!");
                 setEmail("");
             } else {
                 setStatus("error");
-                setMessage(data.error || "Something went wrong");
+                setMessage(data.error || t("emailSubscribe.errorMessage") || "Something went wrong");
             }
         } catch (error) {
             setStatus("error");
-            setMessage("Network error. Please try again.");
+            setMessage(t("emailSubscribe.networkError") || "Network error. Please try again.");
         }
     };
 
@@ -39,10 +42,10 @@ export default function EmailSubscribe() {
         <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4">
             <div className="mb-3">
                 <h3 className="text-(--dropdown-text) font-bold text-base">
-                    📧 Get Email Alerts
+                    📧 {t("emailSubscribe.title")}
                 </h3>
                 <p className="text-(--dropdown-text)/70 text-sm mt-1">
-                    Subscribe to receive bus delay and schedule updates via email.
+                    {t("emailSubscribe.description")}
                 </p>
             </div>
 
@@ -51,7 +54,7 @@ export default function EmailSubscribe() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder={t("emailSubscribe.placeholder")}
                     required
                     disabled={status === "loading"}
                     className="flex-1 px-4 py-2.5 rounded-lg bg-gray-50/80 dark:bg-gray-700/80 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] disabled:opacity-50"
@@ -61,7 +64,7 @@ export default function EmailSubscribe() {
                     disabled={status === "loading"}
                     className="px-6 py-2.5 bg-[#99121A] hover:bg-[#7a0e15] text-white font-semibold rounded-lg transition disabled:opacity-50 text-sm"
                 >
-                    {status === "loading" ? "Sending..." : "Subscribe"}
+                    {status === "loading" ? t("common.sending") : t("emailSubscribe.button")}
                 </button>
             </form>
 

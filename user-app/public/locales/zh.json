@@ -96,6 +96,15 @@
         "markAsRead": "标记为已读",
         "error": "加载通知失败"
     },
+    "emailSubscribe": {
+        "title": "获取邮件提醒",
+        "description": "订阅以接收巴士延误和时刻表更新邮件。",
+        "placeholder": "输入您的邮箱",
+        "button": "订阅",
+        "successMessage": "请检查您的邮箱以确认订阅！",
+        "errorMessage": "出了点问题",
+        "networkError": "网络错误，请重试。"
+    },
     "successModal": {
         "title": "感谢您的反馈！",
         "subtitle": "您的留言已成功提交，等待审核"
@@ -108,6 +117,7 @@
     },
     "common": {
         "loading": "加载通知中...",
+        "sending": "发送中...",
         "retry": "重试",
         "submit": "提交",
         "cancel": "取消"

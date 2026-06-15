@@ -96,6 +96,15 @@
         "markAsRead": "Tanda sebagai baca",
         "error": "Gagal memuatkan notifikasi"
     },
+    "emailSubscribe": {
+        "title": "Dapatkan Makluman E-mel",
+        "description": "Langgan untuk menerima kelewatan bas dan kemas kini jadual melalui e-mel.",
+        "placeholder": "Masukkan e-mel anda",
+        "button": "Langgan",
+        "successMessage": "Sila semak e-mel anda untuk mengesahkan langganan!",
+        "errorMessage": "Ada masalah",
+        "networkError": "Ralat rangkaian. Sila cuba lagi."
+    },
     "successModal": {
         "title": "Terima kasih atas maklum balas anda!",
         "subtitle": "Mesej anda telah berjaya dihantar untuk semakan"
@@ -108,6 +117,7 @@
     },
     "common": {
         "loading": "Memuatkan notifikasi...",
+        "sending": "Menghantar...",
         "retry": "Cuba lagi",
         "submit": "Hantar",
         "cancel": "Batal"
