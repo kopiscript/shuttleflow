@@ -8,18 +8,18 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function SettingsPage() {
-    const { t, language: currentLanguage, setLanguage: setAppLanguage } = useLanguage();
+    const { t, setLanguage: setAppLanguage } = useLanguage();
     const { theme: currentTheme, toggleTheme } = useTheme();
 
     // State for toggles - initialize with null first
     const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
     const [emailNotifications, setEmailNotifications] = useState<boolean | null>(null);
     const [language, setLanguage] = useState<string | null>(null);
-    const [theme, setTheme] = useState<string | null>(null);
+    // REMOVED: theme state - using ThemeContext instead
 
     // Options
     const languages = ["English", "中文", "Bahasa Malaysia"];
-    const isDarkMode = theme === "Dark";
+    const isDarkMode = currentTheme === "dark";
 
     // Map display language to internal code
     const getLanguageCode = (displayLang: string): 'en' | 'zh' | 'ms' => {
@@ -31,7 +31,7 @@ export default function SettingsPage() {
         }
     };
 
-    // Load settings from localStorage when page loads
+    // Load settings from localStorage when page loads (excluding theme)
     useEffect(() => {
         const savedSettings = localStorage.getItem('shuttleflow_settings');
         if (savedSettings) {
@@ -40,50 +40,41 @@ export default function SettingsPage() {
                 setSystemNotifications(settings.systemNotifications ?? true);
                 setEmailNotifications(settings.emailNotifications ?? true);
                 setLanguage(settings.language ?? "English");
-                setTheme(settings.theme ?? "Light");
+                // REMOVED: theme loading (ThemeContext handles this)
             } catch (error) {
                 console.error("Failed to load settings:", error);
                 setSystemNotifications(true);
                 setEmailNotifications(true);
                 setLanguage("English");
-                setTheme("Light");
             }
         } else {
             setSystemNotifications(true);
             setEmailNotifications(true);
             setLanguage("English");
-            setTheme("Light");
         }
     }, []);
 
-    // Save settings to localStorage whenever any setting changes
+    // Save settings to localStorage (excluding theme)
     useEffect(() => {
-        if (systemNotifications !== null && emailNotifications !== null && language !== null && theme !== null) {
+        if (systemNotifications !== null && emailNotifications !== null && language !== null) {
             const settings = {
                 systemNotifications,
                 emailNotifications,
                 language,
-                theme,
+                // REMOVED: theme - ThemeContext handles this separately
             };
             localStorage.setItem('shuttleflow_settings', JSON.stringify(settings));
         }
-    }, [systemNotifications, emailNotifications, language, theme]);
+    }, [systemNotifications, emailNotifications, language]);
 
-    // Handle theme toggle - sync with context
-    const handleThemeToggle = () => {
-        const newTheme = isDarkMode ? "Light" : "Dark";
-        setTheme(newTheme);
-        toggleTheme(); // This toggles the actual theme in the ThemeContext
-    };
-
-    // Handle language change - updates both local state and global language context
+    // Handle language change
     const handleLanguageChange = (newLanguage: string) => {
         setLanguage(newLanguage);
         setAppLanguage(getLanguageCode(newLanguage));
     };
 
     // Don't render until settings are loaded
-    if (systemNotifications === null || emailNotifications === null || language === null || theme === null) {
+    if (systemNotifications === null || emailNotifications === null || language === null) {
         return (
             <PageShell
                 header={
@@ -184,13 +175,13 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    {/* Theme Toggle - Font Awesome Sun/Moon Icons */}
+                    {/* Theme Toggle - Uses ThemeContext directly */}
                     <div className="mb-7">
                         <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
                             <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.theme")}</span>
                             <button
                                 type="button"
-                                onClick={handleThemeToggle}
+                                onClick={toggleTheme}
                                 className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${isDarkMode ? "bg-gray-600" : "bg-gray-300"
                                     }`}
                             >
