@@ -118,13 +118,13 @@ export default function NotificationPage() {
   const getNotificationIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case "delay":
-        return <FaClock className="text-[#DEDFE8] text-xl sm:text-2xl flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaClock className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
       case "alert":
-        return <FaTriangleExclamation className="text-[#DEDFE8] text-xl sm:text-2xl flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaTriangleExclamation className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
       case "announcement":
-        return <FaBullhorn className="text-[#DEDFE8] text-xl sm:text-2xl flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaBullhorn className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
       default:
-        return <FaCircleInfo className="text-[#DEDFE8] text-xl sm:text-2xl flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaCircleInfo className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
     }
   };
 
@@ -148,7 +148,7 @@ export default function NotificationPage() {
 
   return (
     <div className="relative flex flex-col h-screen bg-[#2B261B] overflow-hidden">
-      <div className="relative z-10 px-6 pt-5 flex-shrink-0">
+      <div className="relative z-10 px-6 pt-5 shrink-0">
         <div className="flex items-center justify-between">
           {/* Back Button */}
           <button
@@ -218,7 +218,7 @@ export default function NotificationPage() {
                 <div className="py-5">
                   <div className="flex gap-3 sm:gap-8">
                     {/* Icon container */}
-                    <div className="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center mt-0.5">
+                    <div className="shrink-0 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center mt-0.5">
                       {getNotificationIcon(notification.type)}
                     </div>
 
@@ -244,7 +244,7 @@ export default function NotificationPage() {
                     {!notification.isRead && (
                       <button
                         onClick={() => markAsRead(notification.id)}
-                        className="flex-shrink-0 w-8 h-8 rounded-full bg-[#99121A] text-white hover:bg-[#7a0e14] transition shadow-sm flex items-center justify-center"
+                        className="shrink-0 w-8 h-8 rounded-full bg-[#99121A] text-white hover:bg-[#7a0e14] transition shadow-sm flex items-center justify-center"
                         title={t("notifications.markAsRead")}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,7 +255,7 @@ export default function NotificationPage() {
 
                     {/* Read icon */}
                     {notification.isRead && (
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#4D4532] text-[#DEDFE8] flex items-center justify-center">
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-[#4D4532] text-[#DEDFE8] flex items-center justify-center">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>

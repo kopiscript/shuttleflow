@@ -57,7 +57,7 @@ export default function NotificationPopup() {
     const channel = pusher.subscribe("notifications");
     channel.bind("new-notification", (data: any) => {
       console.log("📡 Real-time notification from Pusher:", data);
-      
+
       // Trigger the same popup
       const event = new CustomEvent('new-notification', {
         detail: {
@@ -83,7 +83,7 @@ export default function NotificationPopup() {
   if (!mounted || notifications.length === 0) return null;
 
   return createPortal(
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-[90vw] sm:max-w-[380px] pointer-events-none">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-3 w-full max-w-[90vw] sm:max-w-95 pointer-events-none">
       {notifications.map((notif, index) => (
         <div
           key={notif.id}
@@ -113,10 +113,10 @@ export default function NotificationPopup() {
           </div>
 
           <div className="p-3 pl-12 pr-8">
-            <h3 className="font-semibold text-[14px] sm:text-[15px] text-[var(--glass-text)] mb-1">
+            <h3 className="font-semibold text-[14px] sm:text-[15px] text-(--glass-text) mb-1">
               {notif.title}
             </h3>
-            <p className="text-[12px] sm:text-[14px] text-[var(--glass-text)]/80">
+            <p className="text-[12px] sm:text-[14px] text-(--glass-text)/80">
               {notif.message}
             </p>
           </div>

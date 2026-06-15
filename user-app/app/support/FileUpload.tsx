@@ -102,14 +102,14 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                     <button
                         type="button"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="px-10 py-2 bg-[#CF2B10] hover:bg-[#b0250e] text-white font-medium rounded-2xl transition-colors text-sm"
+                        className="px-10 py-2 bg-[#99121A] hover:bg-[#7a0e15] text-white font-medium rounded-2xl transition-colors text-sm"
                     >
                         {t("support.fileUpload.addFiles")}
                     </button>
 
                     {/* Dropdown */}
                     {isDropdownOpen && (
-                        <div className="absolute top-0 left-[100px] min-w-[180px] bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden dark:bg-[#2B2B2B] dark:border-white/20">
+                        <div className="absolute top-0 left-25 min-w-45 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden dark:bg-[#2B2B2B] dark:border-white/20">
                             <button
                                 type="button"
                                 onClick={() => handleFileSelection('library')}

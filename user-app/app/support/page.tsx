@@ -169,7 +169,7 @@ export default function SupportPage() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full py-3 bg-[#CF2B10] hover:bg-[#b0250e] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className="w-full py-3 bg-[#99121A] hover:bg-[#7a0e15] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? (
                                         <div className="flex items-center justify-center gap-2">

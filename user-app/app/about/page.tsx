@@ -85,8 +85,8 @@ export default function AboutPage() {
               ShuttleFlow
             </h1>
             <p className="text-white text-base font-medium mt-3 font-['Bai_Jamjuree'] max-w-2xl mx-auto">
-              ShuttleFlow is a smart campus shuttle tracking system designed to provide 
-              real-time bus visibility, accurate ETA predictions, and seamless campus 
+              ShuttleFlow is a smart campus shuttle tracking system designed to provide
+              real-time bus visibility, accurate ETA predictions, and seamless campus
               transportation management for students.
             </p>
           </motion.div>
@@ -110,8 +110,8 @@ export default function AboutPage() {
                   Mission
                 </h2>
                 <p className="text-white/80 text-sm leading-relaxed font-['Inter']">
-                  To enhance campus mobility by delivering a reliable, real-time, and user-friendly 
-                  shuttle tracking experience that improves convenience, safety, and transportation 
+                  To enhance campus mobility by delivering a reliable, real-time, and user-friendly
+                  shuttle tracking experience that improves convenience, safety, and transportation
                   efficiency for the university community.
                 </p>
               </div>
@@ -129,8 +129,8 @@ export default function AboutPage() {
                   Vision
                 </h2>
                 <p className="text-white/80 text-sm leading-relaxed font-['Inter']">
-                  To become a smart and scalable campus transportation platform that transforms 
-                  the way students and staff experience daily commuting through technology-driven 
+                  To become a smart and scalable campus transportation platform that transforms
+                  the way students and staff experience daily commuting through technology-driven
                   mobility solutions.
                 </p>
               </div>
@@ -167,7 +167,7 @@ export default function AboutPage() {
                   className="bg-[#1A1410] border border-white/10 rounded-xl shadow-md p-6"
                 >
                   <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-full ${feature.color} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-12 h-12 rounded-full ${feature.color} flex items-center justify-center shrink-0`}>
                       <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
                     </div>
                     <div className="flex-1">
@@ -206,10 +206,10 @@ export default function AboutPage() {
                   <motion.div
                     key={index}
                     variants={fadeInUp}
-                    className="flex flex-col items-center w-[180px] flex-shrink-0 md:w-auto"
+                    className="flex flex-col items-center w-45 shrink-0 md:w-auto"
                   >
                     {/* Image - No circle frame, original square/rectangle */}
-                    <div className="w-[180px] h-[180px] mb-3">
+                    <div className="w-45 h-45 mb-3">
                       {member.avatar ? (
                         <Image
                           src={member.avatar}
@@ -234,7 +234,7 @@ export default function AboutPage() {
                     </h3>
 
                     {/* Member Role - White text with opacity */}
-                    <p className="text-white/60 text-xs text-center font-['Inter'] mt-1 max-w-[160px]">
+                    <p className="text-white/60 text-xs text-center font-['Inter'] mt-1 max-w-40">
                       {member.role}
                     </p>
                   </motion.div>

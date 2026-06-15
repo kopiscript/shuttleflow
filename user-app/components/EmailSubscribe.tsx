@@ -36,12 +36,12 @@ export default function EmailSubscribe() {
     };
 
     return (
-        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4">
+        <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4">
             <div className="mb-3">
-                <h3 className="text-[var(--dropdown-text)] font-bold text-base">
+                <h3 className="text-(--dropdown-text) font-bold text-base">
                     📧 Get Email Alerts
                 </h3>
-                <p className="text-[var(--dropdown-text)]/70 text-sm mt-1">
+                <p className="text-(--dropdown-text)/70 text-sm mt-1">
                     Subscribe to receive bus delay and schedule updates via email.
                 </p>
             </div>

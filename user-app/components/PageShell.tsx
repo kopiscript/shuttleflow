@@ -53,10 +53,10 @@ export default function PageShell({
 
     return (
         <>
-            <div className={`relative flex flex-col bg-[var(--background)] overflow-x-auto ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
+            <div className={`relative flex flex-col bg-background overflow-x-auto ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
                 {/* Gradient Background Elements - Using CSS Variables */}
                 <div
-                    className="absolute w-[569px] h-[414px] top-[-106px] bg-[var(--gradient-1-bg)] blur-[var(--gradient-1-blur)] opacity-[var(--gradient-1-opacity)] pointer-events-none"
+                    className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
                     style={{
                         left: "calc(50% - 568.85px/2 - 280px)",
                         transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
@@ -64,7 +64,7 @@ export default function PageShell({
                 />
 
                 <div
-                    className="absolute w-[604px] h-[871px] top-[-322px] bg-[var(--gradient-2-bg)] blur-[var(--gradient-2-blur)] opacity-[var(--gradient-2-opacity)] pointer-events-none"
+                    className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
                     style={{
                         left: "calc(50% - 604px/2 + 31.5px)",
                         transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
@@ -72,7 +72,7 @@ export default function PageShell({
                 />
 
                 {/* Header */}
-                <div className="relative z-10 px-6 pt-5 flex-shrink-0">
+                <div className="relative z-10 px-6 pt-5 shrink-0">
                     {/* Top Bar (same for all pages) */}
                     <div className="flex items-center justify-between">
                         {showBackButton ? (
@@ -86,9 +86,9 @@ export default function PageShell({
                                 onClick={() => setIsMenuOpen(true)}
                                 className="w-5 h-5 flex flex-col justify-between"
                             >
-                                <span className="block w-5 h-[2px] bg-white rounded-full" />
-                                <span className="block w-5 h-[2px] bg-white rounded-full" />
-                                <span className="block w-5 h-[2px] bg-white rounded-full" />
+                                <span className="block w-5 h-0.5 bg-white rounded-full" />
+                                <span className="block w-5 h-0.5 bg-white rounded-full" />
+                                <span className="block w-5 h-0.5 bg-white rounded-full" />
                             </button>
                         )}
 

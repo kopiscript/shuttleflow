@@ -47,7 +47,7 @@ export default function SuccessModal({ isOpen, onClose }: SuccessModalProps) {
 
             {/* Modal - bounces from middle */}
             <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 animate-bounce-in">
-                <div className="bg-white rounded-2xl shadow-2xl w-[400px] max-w-[90vw] p-10 relative">
+                <div className="bg-white rounded-2xl shadow-2xl w-100 max-w-[90vw] p-10 relative">
                     {/* Close X button */}
                     <button
                         onClick={onClose}

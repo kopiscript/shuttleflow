@@ -47,13 +47,13 @@ export default function CustomDropdown({
     <div className="relative w-full" ref={dropdownRef}>
       {/* Dropdown Trigger */}
       <div
-        className="bg-[var(--dropdown-bg)] rounded-2xl shadow-lg px-4 py-3 flex items-center justify-between gap-2 cursor-pointer"
+        className="bg-(--dropdown-bg) rounded-2xl shadow-lg px-4 py-3 flex items-center justify-between gap-2 cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className={`font-['Inter'] text-sm ${selectedOption ? 'text-[var(--dropdown-text)]' : 'text-gray-400'}`}>
+        <span className={`font-['Inter'] text-sm ${selectedOption ? 'text-(--dropdown-text)' : 'text-gray-400'}`}>
           {loading ? t("home.loadingRoutes") : (selectedOption?.routeName || defaultPlaceholder)}
         </span>
-        <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </div>
@@ -61,7 +61,7 @@ export default function CustomDropdown({
       {/* Dropdown Menu */}
       {isOpen && !loading && (
         <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden z-30">
-          <div className="relative bg-[var(--glass-bg)] backdrop-blur-sm rounded-2xl shadow-[0px_8px_40px_rgba(0,0,0,0.2)] overflow-hidden">
+          <div className="relative bg-(--glass-bg) backdrop-blur-sm rounded-2xl shadow-[0px_8px_40px_rgba(0,0,0,0.2)] overflow-hidden">
             {/* Divider line removed */}
 
             {options.length === 0 ? (
@@ -72,11 +72,10 @@ export default function CustomDropdown({
               options.map((option) => (
                 <div
                   key={option.id}
-                  className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${
-                    value === option.id.toString()
-                      ? 'bg-gray-300/50 dark:bg-gray-600/50 text-[var(--dropdown-text)] font-medium'
-                      : 'text-[var(--dropdown-text)]/80 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
-                  }`}
+                  className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${value === option.id.toString()
+                      ? 'bg-gray-300/50 dark:bg-gray-600/50 text-(--dropdown-text) font-medium'
+                      : 'text-(--dropdown-text)/80 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
+                    }`}
                   onClick={() => {
                     onChange(option.id.toString());
                     setIsOpen(false);

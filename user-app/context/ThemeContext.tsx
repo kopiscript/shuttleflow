@@ -1,4 +1,3 @@
-// context/ThemeContext.tsx
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
@@ -32,9 +31,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
-  // Prevent hydration mismatch
+  // Return null when not mounted - don't render children until client is ready
   if (!mounted) {
-    return <>{children}</>;
+    return null;
   }
 
   return (

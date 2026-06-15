@@ -51,10 +51,10 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
             />
 
             {/* Sidebar - uses CSS variables for dark mode */}
-            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-[var(--sidebar-bg)] shadow-2xl z-50">
+            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-(--sidebar-bg) shadow-2xl z-50">
                 <button
                     onClick={onClose}
-                    className="absolute top-5 right-5 text-[var(--sidebar-text)] hover:text-[#99121A] transition-colors"
+                    className="absolute top-5 right-5 text-(--sidebar-text) hover:text-[#99121A] transition-colors"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -71,18 +71,18 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                     />
                 </div>
 
-                <nav className="absolute left-[42px] top-[171px]">
+                <nav className="absolute left-10.5 top-42.75">
                     {menuItems.map((item, index) => (
                         <div key={item.name}>
                             <Link
                                 href={item.href}
                                 onClick={onClose}
-                                className="block font-['Bai_Jamjuree'] font-medium text-base text-[var(--sidebar-text)] hover:text-[#99121A] transition-colors mb-3"
+                                className="block font-['Bai_Jamjuree'] font-medium text-base text-(--sidebar-text) hover:text-[#99121A] transition-colors mb-3"
                             >
                                 {item.name}
                             </Link>
                             {index < menuItems.length - 1 && (
-                                <div className="w-[199px] border-t border-[var(--divider-color)] my-2" />
+                                <div className="w-49.75 border-t border-(--divider-color) my-2" />
                             )}
                         </div>
                     ))}

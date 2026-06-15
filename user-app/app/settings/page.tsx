@@ -1,4 +1,3 @@
-// app/settings/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,16 +5,22 @@ import PageShell from "../../components/PageShell";
 import { FaSun, FaMoon } from "react-icons/fa";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
+import EmailSubscribe from "../../components/EmailSubscribe";
 
 export default function SettingsPage() {
+    // Add mounted state to prevent hydration issues
+    const [pageMounted, setPageMounted] = useState(false);
+
+    useEffect(() => {
+        setPageMounted(true);
+    }, []);
+
     const { t, setLanguage: setAppLanguage } = useLanguage();
     const { theme: currentTheme, toggleTheme } = useTheme();
 
     // State for toggles - initialize with null first
     const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
-    const [emailNotifications, setEmailNotifications] = useState<boolean | null>(null);
     const [language, setLanguage] = useState<string | null>(null);
-    // REMOVED: theme state - using ThemeContext instead
 
     // Options
     const languages = ["English", "中文", "Bahasa Malaysia"];
@@ -38,34 +43,28 @@ export default function SettingsPage() {
             try {
                 const settings = JSON.parse(savedSettings);
                 setSystemNotifications(settings.systemNotifications ?? true);
-                setEmailNotifications(settings.emailNotifications ?? true);
                 setLanguage(settings.language ?? "English");
-                // REMOVED: theme loading (ThemeContext handles this)
             } catch (error) {
                 console.error("Failed to load settings:", error);
                 setSystemNotifications(true);
-                setEmailNotifications(true);
                 setLanguage("English");
             }
         } else {
             setSystemNotifications(true);
-            setEmailNotifications(true);
             setLanguage("English");
         }
     }, []);
 
     // Save settings to localStorage (excluding theme)
     useEffect(() => {
-        if (systemNotifications !== null && emailNotifications !== null && language !== null) {
+        if (systemNotifications !== null && language !== null) {
             const settings = {
                 systemNotifications,
-                emailNotifications,
                 language,
-                // REMOVED: theme - ThemeContext handles this separately
             };
             localStorage.setItem('shuttleflow_settings', JSON.stringify(settings));
         }
-    }, [systemNotifications, emailNotifications, language]);
+    }, [systemNotifications, language]);
 
     // Handle language change
     const handleLanguageChange = (newLanguage: string) => {
@@ -73,16 +72,16 @@ export default function SettingsPage() {
         setAppLanguage(getLanguageCode(newLanguage));
     };
 
-    // Don't render until settings are loaded
-    if (systemNotifications === null || emailNotifications === null || language === null) {
+    // Don't render until page is mounted on client
+    if (!pageMounted || systemNotifications === null || language === null) {
         return (
             <PageShell
                 header={
                     <>
-                        <h1 className="text-center text-[var(--foreground)] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                        <h1 className="text-center text-foreground text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                             {t("settings.title")}
                         </h1>
-                        <p className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-base font-medium mt-2 px-4">
+                        <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
                             {t("settings.subtitle")}
                         </p>
                     </>
@@ -90,7 +89,7 @@ export default function SettingsPage() {
             >
                 <div className="px-6 pb-8">
                     <div className="font-['Inter'] max-w-md mx-auto">
-                        <div className="text-center text-[var(--foreground)]">{t("common.loading")}</div>
+                        <div className="text-center text-foreground">{t("common.loading")}</div>
                     </div>
                 </div>
             </PageShell>
@@ -101,10 +100,10 @@ export default function SettingsPage() {
         <PageShell
             header={
                 <>
-                    <h1 className="text-center text-[var(--foreground)] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                    <h1 className="text-center text-foreground text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                         {t("settings.title")}
                     </h1>
-                    <p className="font-['Bai_Jamjuree'] text-center text-[var(--foreground)] text-base font-medium mt-2 px-4">
+                    <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
                         {t("settings.subtitle")}
                     </p>
                 </>
@@ -115,8 +114,8 @@ export default function SettingsPage() {
 
                     {/* System Notification Toggle */}
                     <div className="mb-7">
-                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.systemNotification")}</span>
+                        <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-(--dropdown-text) font-bold text-base">{t("settings.systemNotification")}</span>
                             <button
                                 type="button"
                                 onClick={() => setSystemNotifications(!systemNotifications)}
@@ -131,28 +130,10 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    {/* Email Notification Toggle */}
-                    <div className="mb-7">
-                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.emailNotification")}</span>
-                            <button
-                                type="button"
-                                onClick={() => setEmailNotifications(!emailNotifications)}
-                                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 ${emailNotifications ? "bg-[#99121A]" : "bg-gray-300 dark:bg-gray-600"
-                                    }`}
-                            >
-                                <span
-                                    className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${emailNotifications ? "translate-x-9" : "translate-x-1"
-                                        }`}
-                                />
-                            </button>
-                        </div>
-                    </div>
-
                     {/* Languages Selection */}
                     <div className="mb-7">
-                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.languages")}</span>
+                        <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-(--dropdown-text) font-bold text-base">{t("settings.languages")}</span>
                             <div className="relative">
                                 <select
                                     value={language}
@@ -177,8 +158,8 @@ export default function SettingsPage() {
 
                     {/* Theme Toggle - Uses ThemeContext directly */}
                     <div className="mb-7">
-                        <div className="w-full bg-[var(--glass-bg)] backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
-                            <span className="text-[var(--dropdown-text)] font-bold text-base">{t("settings.theme")}</span>
+                        <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
+                            <span className="text-(--dropdown-text) font-bold text-base">{t("settings.theme")}</span>
                             <button
                                 type="button"
                                 onClick={toggleTheme}
@@ -186,7 +167,7 @@ export default function SettingsPage() {
                                     }`}
                             >
                                 <span
-                                    className={`inline-block h-6 w-6 transform rounded-full transition-transform flex items-center justify-center ${isDarkMode ? "translate-x-9 bg-gray-900" : "translate-x-1 bg-white"
+                                    className={`inline-block h-6 w-6 transform rounded-full transition-transform items-center justify-center ${isDarkMode ? "translate-x-9 bg-gray-900" : "translate-x-1 bg-white"
                                         }`}
                                 >
                                     <div className="flex items-center justify-center w-full h-full">
@@ -199,6 +180,14 @@ export default function SettingsPage() {
                                 </span>
                             </button>
                         </div>
+                    </div>
+
+                    {/* Divider Line */}
+                    <div className="my-8 border-t border-white/50"></div>
+
+                    {/* Email Subscription Section */}
+                    <div className="mt-4">
+                        <EmailSubscribe />
                     </div>
 
                 </div>

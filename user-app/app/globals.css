@@ -4,7 +4,7 @@
 /* Light mode (default) */
 :root {
   --background: #EEEBE4;
-  --foreground: #171821;
+  --foreground: #FFFFFF;
   --card-bg: #FFFFFF;
   --dropdown-bg: #FFFFFF;
   --dropdown-text: #1F2937;
@@ -24,7 +24,7 @@
   --notification-collapsed-text: #87888C;
   --map-z-index: 0;
   --popup-z-index: 20;
-  
+
   /* Gradient colors - Light Mode */
   --gradient-1-bg: #99121A;
   --gradient-2-bg: #99121A;
@@ -57,7 +57,7 @@
   --notification-collapsed-text: #FFFFFF;
   --map-z-index: 0;
   --popup-z-index: 20;
-  
+
   /* Gradient colors - Dark Mode (same as you specified) */
   --gradient-1-bg: #99121A;
   --gradient-2-bg: #110B09;
@@ -110,6 +110,7 @@ main,
     transform: translateY(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -120,6 +121,7 @@ main,
   from {
     width: 100%;
   }
+
   to {
     width: 0%;
   }
@@ -133,6 +135,7 @@ main,
   from {
     transform: translateY(100%);
   }
+
   to {
     transform: translateY(0);
   }
@@ -143,6 +146,7 @@ main,
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -153,6 +157,7 @@ main,
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -162,6 +167,7 @@ main,
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -172,9 +178,11 @@ main,
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.8);
   }
+
   50% {
     transform: translate(-50%, -50%) scale(1.05);
   }
+
   100% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
