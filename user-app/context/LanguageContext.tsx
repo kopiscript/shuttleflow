@@ -18,7 +18,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const [translations, setTranslations] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
 
-    // ✅ ADD THIS: Load saved language from localStorage when app starts
+    // Load saved language from localStorage when app starts
     useEffect(() => {
         const savedSettings = localStorage.getItem('shuttleflow_settings');
         if (savedSettings) {
