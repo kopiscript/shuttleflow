@@ -10,48 +10,45 @@ import {
 } from "react-icons/fa";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useLanguage } from "../../context/LanguageContext";
 
 export default function AboutPage() {
-  const { t } = useLanguage();
-
   // Team members data (names and roles)
   const teamMembers = [
-    { name: "Eva Lew Tze Ling", role: t("about.team.roles.projectLead"), avatar: "/avatars/eva.png" },
-    { name: "Chok Li En", role: t("about.team.roles.frontendDatabase"), avatar: "/avatars/lien.png" },
-    { name: "Tan Yi Chin", role: t("about.team.roles.backendSupport"), avatar: "/avatars/casey.png" },
-    { name: "Tan Zong Seng", role: t("about.team.roles.iotDeveloper"), avatar: "/avatars/johnson.png" },
+    { name: "Eva Lew Tze Ling", role: "Project Lead & UI/UX Designer", avatar: "/avatars/eva.png" },
+    { name: "Chok Li En", role: "Database Developer", avatar: "/avatars/lien.png" },
+    { name: "Tan Yi Chin", role: "Frontend & Backend Support Developer", avatar: "/avatars/casey.png" },
+    { name: "Tan Zong Seng", role: "IoT Developer", avatar: "/avatars/johnson.png" },
   ];
 
   // Features data
   const features = [
     {
       icon: FaMapMarkedAlt,
-      title: t("about.features.realTimeTracking.title"),
-      description: t("about.features.realTimeTracking.description"),
+      title: "Real-time GPS Tracking",
+      description: "Track your shuttle's live location on an interactive map with accurate positioning.",
       color: "bg-blue-500/20",
-      iconColor: "text-blue-600"
+      iconColor: "text-blue-400"
     },
     {
       icon: FaClock,
-      title: t("about.features.etaPredictions.title"),
-      description: t("about.features.etaPredictions.description"),
+      title: "Accurate ETA Predictions",
+      description: "Get precise arrival times based on real-time traffic conditions and historical data.",
       color: "bg-green-500/20",
-      iconColor: "text-green-600"
+      iconColor: "text-green-400"
     },
     {
       icon: FaBell,
-      title: t("about.features.delayNotifications.title"),
-      description: t("about.features.delayNotifications.description"),
+      title: "Instant Delay Notifications",
+      description: "Receive immediate alerts about delays, breakdowns, or schedule changes.",
       color: "bg-red-500/20",
-      iconColor: "text-red-600"
+      iconColor: "text-red-400"
     },
     {
       icon: FaMobileAlt,
-      title: t("about.features.crossPlatform.title"),
-      description: t("about.features.crossPlatform.description"),
+      title: "Cross-platform Web Access",
+      description: "Access from any device - phone, tablet, or laptop - no app installation needed.",
       color: "bg-purple-500/20",
-      iconColor: "text-purple-600"
+      iconColor: "text-purple-400"
     }
   ];
 
@@ -85,50 +82,56 @@ export default function AboutPage() {
             className="text-center mb-8 mt-4"
           >
             <h1 className="text-white text-3xl font-bold font-['Bai_Jamjuree']">
-              {t("about.title")}
+              ShuttleFlow
             </h1>
             <p className="text-white text-base font-medium mt-3 font-['Bai_Jamjuree'] max-w-2xl mx-auto">
-              {t("about.subtitle")}
+              ShuttleFlow is a smart campus shuttle tracking system designed to provide 
+              real-time bus visibility, accurate ETA predictions, and seamless campus 
+              transportation management for students.
             </p>
           </motion.div>
 
-          {/* Vision & Mission */}
+          {/* Mission & Vision */}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={staggerContainer}
             className="flex flex-col md:flex-row gap-6 mb-16"
           >
-            {/* Vision Card */}
+            {/* Mission Card */}
             <motion.div variants={fadeInUp}>
-              <div className="h-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md p-6 text-center">
+              <div className="h-full bg-[#1A1410] border border-white/10 rounded-xl shadow-md p-6 text-center">
                 <div className="flex justify-center mb-4">
-                  <div className="w-20 h-20 rounded-full bg-[#D29C98] flex items-center justify-center">
-                    <FaAward className="w-10 h-10 text-[#2F363F]" />
+                  <div className="w-20 h-20 rounded-full bg-[#2B2B2B] flex items-center justify-center">
+                    <FaLightbulb className="w-10 h-10 text-[#FEB002]" />
                   </div>
                 </div>
-                <h2 className="text-[#171821] text-xl font-bold mb-3 font-['Inter']">
-                  {t("about.vision.title")}
+                <h2 className="text-white text-xl font-bold mb-3 font-['Inter']">
+                  Mission
                 </h2>
-                <p className="text-[#6E6E6E] text-sm leading-relaxed font-['Inter']">
-                  {t("about.vision.description")}
+                <p className="text-white/80 text-sm leading-relaxed font-['Inter']">
+                  To enhance campus mobility by delivering a reliable, real-time, and user-friendly 
+                  shuttle tracking experience that improves convenience, safety, and transportation 
+                  efficiency for the university community.
                 </p>
               </div>
             </motion.div>
 
-            {/* Mission Card */}
+            {/* Vision Card */}
             <motion.div variants={fadeInUp}>
-              <div className="h-full bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md p-6 text-center">
+              <div className="h-full bg-[#1A1410] border border-white/10 rounded-xl shadow-md p-6 text-center">
                 <div className="flex justify-center mb-4">
-                  <div className="w-20 h-20 rounded-full bg-[#D29C98] flex items-center justify-center">
-                    <FaLightbulb className="w-10 h-10 text-[#2F363F]" />
+                  <div className="w-20 h-20 rounded-full bg-[#2B2B2B] flex items-center justify-center">
+                    <FaAward className="w-10 h-10 text-[#FEB002]" />
                   </div>
                 </div>
-                <h2 className="text-[#171821] text-xl font-bold mb-3 font-['Inter']">
-                  {t("about.mission.title")}
+                <h2 className="text-white text-xl font-bold mb-3 font-['Inter']">
+                  Vision
                 </h2>
-                <p className="text-[#6E6E6E] text-sm leading-relaxed font-['Inter']">
-                  {t("about.mission.description")}
+                <p className="text-white/80 text-sm leading-relaxed font-['Inter']">
+                  To become a smart and scalable campus transportation platform that transforms 
+                  the way students and staff experience daily commuting through technology-driven 
+                  mobility solutions.
                 </p>
               </div>
             </motion.div>
@@ -146,13 +149,13 @@ export default function AboutPage() {
               variants={fadeInUp}
               className="text-center text-white text-2xl font-bold font-['Bai_Jamjuree'] mb-3"
             >
-              {t("about.features.title")}
+              Key Features
             </motion.h2>
             <motion.p
               variants={fadeInUp}
-              className="text-center text-white font-medium font-['Bai_Jamjuree'] mb-10 max-w-2xl mx-auto"
+              className="text-center text-white/70 font-medium font-['Bai_Jamjuree'] mb-10 max-w-2xl mx-auto"
             >
-              {t("about.features.subtitle")}
+              Everything you need for a smarter campus commute
             </motion.p>
 
             {/* 2x2 Grid Layout */}
@@ -161,17 +164,17 @@ export default function AboutPage() {
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="bg-white/70 backdrop-blur-md border border-white/30 rounded-xl shadow-md p-6"
+                  className="bg-[#1A1410] border border-white/10 rounded-xl shadow-md p-6"
                 >
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-full ${feature.color} flex items-center justify-center flex-shrink-0`}>
                       <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-[#171821] font-bold text-base font-['Inter'] mb-2">
+                      <h3 className="text-white font-bold text-base font-['Inter'] mb-2">
                         {feature.title}
                       </h3>
-                      <p className="text-[#6E6E6E] text-sm leading-relaxed font-['Inter']">
+                      <p className="text-white/70 text-sm leading-relaxed font-['Inter']">
                         {feature.description}
                       </p>
                     </div>
@@ -181,7 +184,7 @@ export default function AboutPage() {
             </div>
           </motion.div>
 
-          {/* Meet the Team Section */}
+          {/* Meet the Team Section - No circle frame, white text */}
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -191,53 +194,47 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeInUp}
-              className="text-center text-white text-2xl font-bold font-['Bai_Jamjuree'] mb-3"
+              className="text-center text-white text-2xl font-bold font-['Bai_Jamjuree'] mb-6"
             >
-              {t("about.team.title")}
+              Meet the Team
             </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="text-center text-white font-medium font-['Bai_Jamjuree'] mb-10 max-w-2xl mx-auto"
-            >
-              {t("about.team.subtitle")}
-            </motion.p>
 
-            {/* Team Members pics */}
+            {/* Team Members - No circle frame, original sizes */}
             <div className="overflow-x-auto md:overflow-visible pb-4">
-              <div className="flex md:grid md:grid-cols-4 gap-6 min-w-max md:min-w-0 justify-center">
+              <div className="flex md:grid md:grid-cols-4 gap-8 min-w-max md:min-w-0 justify-center">
                 {teamMembers.map((member, index) => (
                   <motion.div
                     key={index}
                     variants={fadeInUp}
-                    className="flex flex-col items-center w-[140px] flex-shrink-0 md:w-auto"
+                    className="flex flex-col items-center w-[180px] flex-shrink-0 md:w-auto"
                   >
-                    {/* image */}
-                    <div className="w-[200px] sm:w-[220px] md:w-[300px] h-[200px] sm:h-[220px] md:h-[300px]">
+                    {/* Image - No circle frame, original square/rectangle */}
+                    <div className="w-[180px] h-[180px] mb-3">
                       {member.avatar ? (
                         <Image
                           src={member.avatar}
                           alt={member.name}
-                          width={200}
-                          height={200}
+                          width={180}
+                          height={180}
                           className="object-contain w-full h-full"
                           priority
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
-                          <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-full h-full bg-[#333333] rounded-2xl flex items-center justify-center">
+                          <svg className="w-16 h-16 text-[#E1E1E1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                         </div>
                       )}
                     </div>
 
-                    {/* Member Name */}
-                    <h3 className="text-[#171821] font-semibold text-center font-['Inter'] text-sm mt-1">
+                    {/* Member Name - White text */}
+                    <h3 className="text-white font-semibold text-center font-['Inter'] text-sm">
                       {member.name}
                     </h3>
 
-                    {/* Member Role */}
-                    <p className="text-[#6E6E6E] text-xs text-center font-['Inter'] mt-0.5 max-w-[120px]">
+                    {/* Member Role - White text with opacity */}
+                    <p className="text-white/60 text-xs text-center font-['Inter'] mt-1 max-w-[160px]">
                       {member.role}
                     </p>
                   </motion.div>
