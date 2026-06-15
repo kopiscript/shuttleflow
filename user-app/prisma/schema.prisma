@@ -117,3 +117,14 @@ model SupportTicket {
 
   @@map("support_tickets")
 }
+
+model EmailSubscriber {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  verified   Boolean  @default(false)
+  token      String   @unique  // Random token for verification
+  createdAt  DateTime @default(now())
+  verifiedAt DateTime?
+  
+  @@map("email_subscribers")
+}
