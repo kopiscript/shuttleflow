@@ -73,10 +73,10 @@ export default function HomePage() {
       fullHeight={true}
       header={
         <>
-          <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold mt-6">
+          <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold mt-6">
             {t("home.title")}
           </h1>
-          <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
+          <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
             {t("home.subtitle")}
           </p>
         </>
