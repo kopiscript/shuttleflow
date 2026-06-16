@@ -4,7 +4,7 @@
 /* Light mode (default) */
 :root {
   --background: #EEEBE4;
-  --foreground: #171821;
+  --foreground: #FFFFFF;
   --card-bg: #FFFFFF;
   --dropdown-bg: #FFFFFF;
   --dropdown-text: #1F2937;
@@ -88,4 +88,6 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Rest of your CSS remains the same... */
+.text-foreground {
+  color: var(--foreground);
+}

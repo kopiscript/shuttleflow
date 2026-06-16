@@ -91,10 +91,10 @@ export default function SupportPage() {
                     <div className="max-w-md mx-auto">
                         {/* Title Section */}
                         <div className="text-center mb-8 mt-4">
-                            <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold">
+                            <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold">
                                 {t("support.title")}
                             </h1>
-                            <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
+                            <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
                                 {t("support.subtitle")}
                             </p>
                         </div>

@@ -84,10 +84,10 @@ export default function AboutPage() {
             variants={fadeInUp}
             className="text-center mb-8 mt-4"
           >
-            <h1 className="text-white text-3xl font-bold font-['Bai_Jamjuree']">
+            <h1 className="text-foreground text-3xl font-bold font-['Bai_Jamjuree']">
               {t("about.title")}
             </h1>
-            <p className="text-white text-base font-medium mt-3 font-['Bai_Jamjuree'] max-w-2xl mx-auto opacity-80">
+            <p className="text-foreground text-base font-medium mt-3 font-['Bai_Jamjuree'] max-w-2xl mx-auto opacity-80">
               {t("about.subtitle")}
             </p>
           </motion.div>

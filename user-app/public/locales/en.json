@@ -1,7 +1,7 @@
 {
     "home": {
         "title": "Track your Bus",
-        "subtitle": "Choose a route to track the bus live on the map and view its estimated arrival time instantly.",
+        "subtitle": "Choose a route to track the bus live on the map and view its estimated arrival time instantly",
         "selectRoute": "Select route",
         "selectRouteHint": "Select a route to see ETA",
         "etaUnavailable": "ETA unavailable",
@@ -11,33 +11,33 @@
     },
     "about": {
         "title": "About Us",
-        "subtitle": "ShuttleFlow is a smart campus shuttle tracking system designed to provide real-time bus visibility, accurate ETA predictions, and seamless campus transportation management for students.",
+        "subtitle": "ShuttleFlow is a smart campus shuttle tracking system designed to provide real-time bus visibility, accurate ETA predictions, and seamless campus transportation management for students",
         "vision": {
             "title": "Our Vision",
-            "description": "To enhance campus mobility by delivering a reliable, real-time, and user-friendly shuttle tracking experience that improves convenience, safety, and transportation efficiency for the university community."
+            "description": "To enhance campus mobility by delivering a reliable, real-time, and user-friendly shuttle tracking experience that improves convenience, safety, and transportation efficiency for the university community"
         },
         "mission": {
             "title": "Our Mission",
-            "description": "To become a smart and scalable campus transportation platform that transforms the way students and staff experience daily commuting through technology-driven mobility solutions."
+            "description": "To become a smart and scalable campus transportation platform that transforms the way students and staff experience daily commuting through technology-driven mobility solutions"
         },
         "features": {
             "title": "Key Features",
             "subtitle": "Everything you need for a smarter campus commute",
             "realTimeTracking": {
                 "title": "Real-time GPS Tracking",
-                "description": "Track your shuttle's live location on an interactive map with accurate positioning."
+                "description": "Track your shuttle's live location on an interactive map with accurate positioning"
             },
             "etaPredictions": {
                 "title": "ETA Predictions",
-                "description": "Get arrival times based on real-time traffic conditions and historical data."
+                "description": "Get arrival times based on real-time traffic conditions and historical data"
             },
             "delayNotifications": {
                 "title": "Delay Notifications",
-                "description": "Receive alerts about delays, breakdowns, or schedule changes."
+                "description": "Receive alerts about delays, breakdowns, or schedule changes"
             },
             "crossPlatform": {
                 "title": "Cross-platform Web Access",
-                "description": "Access from any device - phone, tablet, or laptop - no app installation needed."
+                "description": "Access from any device - phone, tablet, or laptop - no app installation needed"
             }
         },
         "team": {
@@ -61,14 +61,14 @@
     },
     "support": {
         "title": "How Can We Help?",
-        "subtitle": "Report an issue or share your feedback about your ride.",
+        "subtitle": "Report an issue or share your feedback about your ride",
         "email": "Email address",
         "reportType": "Select report type",
         "description": "Describe the issue...",
         "submit": "Submit",
-        "submitError": "Failed to submit. Please try again.",
+        "submitError": "Failed to submit. Please try again",
         "uploadFailed": "Failed to upload file:",
-        "networkError": "Network error. Please check your connection.",
+        "networkError": "Network error. Please check your connection",
         "reportTypes": {
             "feedback": "General Feedback",
             "busDelay": "Bus Delay",
@@ -98,12 +98,12 @@
     },
     "emailSubscribe": {
         "title": "Get Email Alerts",
-        "description": "Subscribe to receive bus delay and schedule updates via email.",
+        "description": "Subscribe to receive bus delay and schedule updates via email",
         "placeholder": "Enter your email",
         "button": "Subscribe",
         "successMessage": "Check your email to confirm subscription!",
         "errorMessage": "Something went wrong",
-        "networkError": "Network error. Please try again."
+        "networkError": "Network error. Please try again"
     },
     "successModal": {
         "title": "Thanks for your feedback!",
