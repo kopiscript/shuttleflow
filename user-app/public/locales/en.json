@@ -118,6 +118,7 @@
     "common": {
         "loading": "Loading notifications...",
         "sending": "Sending...",
+        "submitting": "Submitting...",
         "retry": "Try again",
         "submit": "Submit",
         "cancel": "Cancel"

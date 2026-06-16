@@ -10,43 +10,46 @@ import {
 } from "react-icons/fa";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function AboutPage() {
-  // Team members data (names and roles)
+  const { t } = useLanguage();
+
+  // Team members data (names are proper names, roles use translations)
   const teamMembers = [
-    { name: "Eva Lew Tze Ling", role: "Project Lead & UI/UX Designer", avatar: "/avatars/eva.png" },
-    { name: "Chok Li En", role: "Database Developer", avatar: "/avatars/lien.png" },
-    { name: "Tan Yi Chin", role: "Frontend & Backend Support Developer", avatar: "/avatars/casey.png" },
-    { name: "Tan Zong Seng", role: "IoT Developer", avatar: "/avatars/johnson.png" },
+    { name: "Eva Lew Tze Ling", role: t("about.team.roles.projectLead"), avatar: "/avatars/eva.png" },
+    { name: "Chok Li En", role: t("about.team.roles.frontendDatabase"), avatar: "/avatars/lien.png" },
+    { name: "Tan Yi Chin", role: t("about.team.roles.backendSupport"), avatar: "/avatars/casey.png" },
+    { name: "Tan Zong Seng", role: t("about.team.roles.iotDeveloper"), avatar: "/avatars/johnson.png" },
   ];
 
-  // Features data
+  // Features data with translations
   const features = [
     {
       icon: FaMapMarkedAlt,
-      title: "Real-time GPS Tracking",
-      description: "Track your shuttle's live location on an interactive map with accurate positioning.",
+      title: t("about.features.realTimeTracking.title"),
+      description: t("about.features.realTimeTracking.description"),
       color: "bg-blue-500/20",
       iconColor: "text-blue-500 dark:text-blue-400"
     },
     {
       icon: FaClock,
-      title: "Accurate ETA Predictions",
-      description: "Get precise arrival times based on real-time traffic conditions and historical data.",
+      title: t("about.features.etaPredictions.title"),
+      description: t("about.features.etaPredictions.description"),
       color: "bg-green-500/20",
       iconColor: "text-green-500 dark:text-green-400"
     },
     {
       icon: FaBell,
-      title: "Instant Delay Notifications",
-      description: "Receive immediate alerts about delays, breakdowns, or schedule changes.",
+      title: t("about.features.delayNotifications.title"),
+      description: t("about.features.delayNotifications.description"),
       color: "bg-red-500/20",
       iconColor: "text-red-500 dark:text-red-400"
     },
     {
       icon: FaMobileAlt,
-      title: "Cross-platform Web Access",
-      description: "Access from any device - phone, tablet, or laptop - no app installation needed.",
+      title: t("about.features.crossPlatform.title"),
+      description: t("about.features.crossPlatform.description"),
       color: "bg-purple-500/20",
       iconColor: "text-purple-500 dark:text-purple-400"
     }
@@ -82,12 +85,10 @@ export default function AboutPage() {
             className="text-center mb-8 mt-4"
           >
             <h1 className="text-white text-3xl font-bold font-['Bai_Jamjuree']">
-              ShuttleFlow
+              {t("about.title")}
             </h1>
             <p className="text-white text-base font-medium mt-3 font-['Bai_Jamjuree'] max-w-2xl mx-auto opacity-80">
-              ShuttleFlow is a smart campus shuttle tracking system designed to provide
-              real-time bus visibility, accurate ETA predictions, and seamless campus
-              transportation management for students.
+              {t("about.subtitle")}
             </p>
           </motion.div>
 
@@ -107,12 +108,10 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <h2 className="text-[var(--glass-text)] dark:text-white text-xl font-bold mb-3 font-['Inter']">
-                  Mission
+                  {t("about.mission.title")}
                 </h2>
                 <p className="text-[var(--glass-text)] dark:text-white/80 text-sm leading-relaxed font-['Inter'] opacity-80">
-                  To enhance campus mobility by delivering a reliable, real-time, and user-friendly
-                  shuttle tracking experience that improves convenience, safety, and transportation
-                  efficiency for the university community.
+                  {t("about.mission.description")}
                 </p>
               </div>
             </motion.div>
@@ -126,12 +125,10 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <h2 className="text-[var(--glass-text)] dark:text-white text-xl font-bold mb-3 font-['Inter']">
-                  Vision
+                  {t("about.vision.title")}
                 </h2>
                 <p className="text-[var(--glass-text)] dark:text-white/80 text-sm leading-relaxed font-['Inter'] opacity-80">
-                  To become a smart and scalable campus transportation platform that transforms
-                  the way students and staff experience daily commuting through technology-driven
-                  mobility solutions.
+                  {t("about.vision.description")}
                 </p>
               </div>
             </motion.div>
@@ -149,13 +146,13 @@ export default function AboutPage() {
               variants={fadeInUp}
               className="text-center text-white text-2xl font-bold font-['Bai_Jamjuree'] mb-3"
             >
-              Key Features
+              {t("about.features.title")}
             </motion.h2>
             <motion.p
               variants={fadeInUp}
               className="text-center text-white font-medium font-['Bai_Jamjuree'] mb-10 max-w-2xl mx-auto opacity-70"
             >
-              Everything you need for a smarter campus commute
+              {t("about.features.subtitle")}
             </motion.p>
 
             {/* 2x2 Grid Layout - Glass Effect */}
@@ -196,7 +193,7 @@ export default function AboutPage() {
               variants={fadeInUp}
               className="text-center text-foreground text-2xl font-bold font-['Bai_Jamjuree'] mb-6"
             >
-              Meet the Team
+              {t("about.team.title")}
             </motion.h2>
 
             {/* Team Members */}

@@ -1,7 +1,7 @@
 {
     "home": {
         "title": "实时追踪巴士",
-        "subtitle": "选择路线实时追踪巴士位置并查看预计到达时间。",
+        "subtitle": "选择路线实时追踪巴士位置并查看预计到达时间",
         "selectRoute": "选择路线",
         "selectRouteHint": "选择路线以查看预计到达时间",
         "etaUnavailable": "无法获取预计到达时间",
@@ -11,33 +11,33 @@
     },
     "about": {
         "title": "关于我们",
-        "subtitle": "ShuttleFlow 是一个智能校园班车追踪系统，旨在提供实时巴士位置、准确的预计到达时间预测，以及无缝的校园交通管理。",
+        "subtitle": "ShuttleFlow 是一个智能校园班车追踪系统，旨在提供实时巴士位置、准确的预计到达时间预测，以及无缝的校园交通管理",
         "vision": {
             "title": "我们的愿景",
-            "description": "通过提供可靠、实时、用户友好的班车追踪体验，提升校园出行便利性、安全性和交通效率。"
+            "description": "通过提供可靠、实时、用户友好的班车追踪体验，提升校园出行便利性、安全性和交通效率"
         },
         "mission": {
             "title": "我们的使命",
-            "description": "成为一个智能且可扩展的校园交通平台，通过技术驱动的移动解决方案，改变学生和教职工的日常通勤体验。"
+            "description": "成为一个智能且可扩展的校园交通平台，通过技术驱动的移动解决方案，改变学生和教职工的日常通勤体验"
         },
         "features": {
             "title": "主要功能",
             "subtitle": "智能校园通勤所需的一切",
             "realTimeTracking": {
                 "title": "实时 GPS 追踪",
-                "description": "在交互式地图上实时追踪班车位置，定位精准。"
+                "description": "在交互式地图上实时追踪班车位置，定位精准"
             },
             "etaPredictions": {
                 "title": "预计到达时间预测",
-                "description": "基于实时交通状况和历史数据获取到达时间。"
+                "description": "基于实时交通状况和历史数据获取到达时间"
             },
             "delayNotifications": {
                 "title": "延误通知",
-                "description": "接收关于延误、故障或路线变更的提醒。"
+                "description": "接收关于延误、故障或路线变更的提醒"
             },
             "crossPlatform": {
                 "title": "跨平台网页访问",
-                "description": "可在任何设备上访问 - 手机、平板或电脑，无需安装应用。"
+                "description": "可在任何设备上访问 - 手机、平板或电脑，无需安装应用"
             }
         },
         "team": {
@@ -61,14 +61,14 @@
     },
     "support": {
         "title": "我们能如何帮助您？",
-        "subtitle": "报告问题或分享您的乘车反馈。",
+        "subtitle": "报告问题或分享您的乘车反馈",
         "email": "电子邮箱地址",
         "reportType": "选择报告类型",
         "description": "描述问题...",
         "submit": "提交",
-        "submitError": "提交失败，请重试。",
+        "submitError": "提交失败，请重试",
         "uploadFailed": "上传文件失败：",
-        "networkError": "网络错误，请检查您的连接。",
+        "networkError": "网络错误，请检查您的连接",
         "reportTypes": {
             "feedback": "一般反馈",
             "busDelay": "巴士延误",
@@ -92,18 +92,18 @@
         "subtitle": "及时了解班车提醒和公告",
         "markAllRead": "全部标记为已读",
         "noNotifications": "暂无通知",
-        "allCaughtUp": "您已查看所有通知！",
+        "allCaughtUp": "您已查看所有通知",
         "markAsRead": "标记为已读",
         "error": "加载通知失败"
     },
     "emailSubscribe": {
         "title": "获取邮件提醒",
-        "description": "订阅以接收巴士延误和时刻表更新邮件。",
+        "description": "订阅以接收巴士延误和时刻表更新邮件",
         "placeholder": "输入您的邮箱",
         "button": "订阅",
         "successMessage": "请检查您的邮箱以确认订阅！",
         "errorMessage": "出了点问题",
-        "networkError": "网络错误，请重试。"
+        "networkError": "网络错误，请重试"
     },
     "successModal": {
         "title": "感谢您的反馈！",
@@ -118,6 +118,7 @@
     "common": {
         "loading": "加载通知中...",
         "sending": "发送中...",
+        "submitting": "提交中...",
         "retry": "重试",
         "submit": "提交",
         "cancel": "取消"

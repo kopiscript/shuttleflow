@@ -92,10 +92,10 @@ export default function SupportPage() {
                         {/* Title Section */}
                         <div className="text-center mb-8 mt-4">
                             <h1 className="font-['Bai_Jamjuree'] text-center text-white text-3xl font-bold">
-                                How Can We Help?
+                                {t("support.title")}
                             </h1>
                             <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
-                                Report an issue or share your feedback about your ride.
+                                {t("support.subtitle")}
                             </p>
                         </div>
 
@@ -113,7 +113,7 @@ export default function SupportPage() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Email address"
+                                    placeholder={t("support.email")}
                                     required
                                     className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
                                 />
@@ -128,12 +128,12 @@ export default function SupportPage() {
                                         required
                                         className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white"
                                     >
-                                        <option value="" disabled className="text-gray-400 dark:text-white/70">Select report type</option>
-                                        <option value="feedback">General Feedback</option>
-                                        <option value="bus_delay">Bus Delay</option>
-                                        <option value="driver_issue">Driver Issue</option>
-                                        <option value="route_problem">Route Problem</option>
-                                        <option value="other">Other..</option>
+                                        <option value="" disabled className="text-gray-400 dark:text-white/70">{t("support.reportType")}</option>
+                                        <option value="feedback">{t("support.reportTypes.feedback")}</option>
+                                        <option value="bus_delay">{t("support.reportTypes.busDelay")}</option>
+                                        <option value="driver_issue">{t("support.reportTypes.driverIssue")}</option>
+                                        <option value="route_problem">{t("support.reportTypes.routeProblem")}</option>
+                                        <option value="other">{t("support.reportTypes.other")}</option>
                                     </select>
                                     <svg
                                         className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none dark:text-white/50"
@@ -151,7 +151,7 @@ export default function SupportPage() {
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Describe the issue..."
+                                    placeholder={t("support.description")}
                                     rows={4}
                                     required
                                     className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all resize-none shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
@@ -177,10 +177,10 @@ export default function SupportPage() {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                            Submitting...
+                                            {t("common.submitting")}
                                         </div>
                                     ) : (
-                                        "Submit"
+                                        t("support.submit")
                                     )}
                                 </button>
                             </div>

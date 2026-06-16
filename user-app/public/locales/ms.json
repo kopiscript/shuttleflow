@@ -118,6 +118,7 @@
     "common": {
         "loading": "Memuatkan notifikasi...",
         "sending": "Menghantar...",
+        "submitting": "Menghantar...",
         "retry": "Cuba lagi",
         "submit": "Hantar",
         "cancel": "Batal"
