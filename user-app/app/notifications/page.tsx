@@ -116,15 +116,16 @@ export default function NotificationPage() {
 
   // Get icon based on notification type
   const getNotificationIcon = (type: string) => {
+    const iconColor = "text-[var(--notification-icon)]";
     switch (type.toLowerCase()) {
       case "delay":
-        return <FaClock className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaClock className={`${iconColor} text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6`} />;
       case "alert":
-        return <FaTriangleExclamation className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaTriangleExclamation className={`${iconColor} text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6`} />;
       case "announcement":
-        return <FaBullhorn className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaBullhorn className={`${iconColor} text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6`} />;
       default:
-        return <FaCircleInfo className="text-[#DEDFE8] text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6" />;
+        return <FaCircleInfo className={`${iconColor} text-xl sm:text-2xl shrink-0 w-5 h-5 sm:w-6 sm:h-6`} />;
     }
   };
 
@@ -137,17 +138,17 @@ export default function NotificationPage() {
 
   if (loading && notifications.length === 0) {
     return (
-      <div className="relative flex flex-col h-screen bg-[#2B261B] items-center justify-center">
+      <div className="relative flex flex-col h-screen bg-[var(--background)] items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#99121A] mx-auto"></div>
-          <p className="mt-4 text-[#DEDFE8] font-['Inter']">{t("common.loading")}</p>
+          <p className="mt-4 text-[var(--notification-time)] font-['Inter']">{t("common.loading")}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex flex-col h-screen bg-[#2B261B] overflow-hidden">
+    <div className="relative flex flex-col h-screen bg-[var(--background)] overflow-hidden">
       <div className="relative z-10 px-6 pt-5 shrink-0">
         <div className="flex items-center justify-between">
           {/* Back Button */}
@@ -155,7 +156,7 @@ export default function NotificationPage() {
             onClick={handleBack}
             className="w-5 h-5 flex items-center justify-center"
           >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[var(--foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
@@ -181,13 +182,13 @@ export default function NotificationPage() {
           )}
         </div>
 
-        {/* Title with Bai Jamjuree font - Dark mode color #DEDFE8 */}
-        <h1 className="text-center text-[#DEDFE8] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+        {/* Title */}
+        <h1 className="text-center text-[var(--notification-title-unread)] text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
           {t("notifications.title")}
         </h1>
 
-        {/* Subtitle - Dark mode color #DEDFE8 with opacity */}
-        <p className="text-center text-[#DEDFE8] text-base font-medium mt-2 px-4 font-['Bai_Jamjuree'] opacity-80">
+        {/* Subtitle */}
+        <p className="text-center text-[var(--notification-time)] text-base font-medium mt-2 px-4 font-['Bai_Jamjuree'] opacity-80">
           {t("notifications.subtitle")}
         </p>
       </div>
@@ -206,10 +207,10 @@ export default function NotificationPage() {
             )}
 
             {!error && notifications.length === 0 && (
-              <div className="bg-[#3D3627] rounded-2xl p-8 text-center">
+              <div className="bg-[var(--notification-empty-bg)] rounded-2xl p-8 text-center">
                 <div className="text-5xl mb-3">🔔</div>
-                <p className="text-[#DEDFE8] font-medium font-['Inter']">{t("notifications.noNotifications")}</p>
-                <p className="text-[#DEDFE8] text-sm mt-1 opacity-60 font-['Inter']">{t("notifications.allCaughtUp")}</p>
+                <p className="text-[var(--notification-title-read)] font-medium font-['Inter']">{t("notifications.noNotifications")}</p>
+                <p className="text-[var(--notification-time)] text-sm mt-1 opacity-60 font-['Inter']">{t("notifications.allCaughtUp")}</p>
               </div>
             )}
 
@@ -224,18 +225,18 @@ export default function NotificationPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mb-2">
-                        {/* Title - Unread: #FFFFFF, Read: #DEDFE8 with opacity */}
-                        <h3 className={`font-['Inter'] font-semibold text-sm sm:text-base ${!notification.isRead ? "text-white" : "text-[#DEDFE8] opacity-70"}`}>
+                        {/* Title - Changes based on read status */}
+                        <h3 className={`font-['Inter'] font-semibold text-sm sm:text-base ${!notification.isRead ? "text-[var(--notification-title-unread)]" : "text-[var(--notification-title-read)] opacity-70"}`}>
                           {notification.title}
                         </h3>
-                        {/* Date - #DEDFE8 with opacity */}
-                        <span className="text-xs text-[#DEDFE8] opacity-50 font-['Inter']">
+                        {/* Date */}
+                        <span className="text-xs text-[var(--notification-time)] opacity-50 font-['Inter']">
                           {formatDateTime(notification.createdAt)}
                         </span>
                       </div>
 
-                      {/* Message - #FFFFFF */}
-                      <p className="text-white text-sm sm:text-base leading-relaxed font-['Inter'] opacity-80">
+                      {/* Message */}
+                      <p className="text-[var(--notification-message)] text-sm sm:text-base leading-relaxed font-['Inter'] opacity-80">
                         {notification.message}
                       </p>
                     </div>
@@ -255,7 +256,7 @@ export default function NotificationPage() {
 
                     {/* Read icon */}
                     {notification.isRead && (
-                      <div className="shrink-0 w-8 h-8 rounded-full bg-[#4D4532] text-[#DEDFE8] flex items-center justify-center">
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-[var(--notification-read-icon-bg)] text-[var(--notification-title-read)] flex items-center justify-center">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -264,9 +265,9 @@ export default function NotificationPage() {
                   </div>
                 </div>
 
-                {/* Separator Line - White with 20% opacity */}
+                {/* Separator Line */}
                 {index < notifications.length - 1 && (
-                  <div className="border-t border-white/20" />
+                  <div className="border-t border-[var(--notification-separator)] opacity-20" />
                 )}
               </div>
             ))}
