@@ -8,19 +8,30 @@ import { useTheme } from "../../context/ThemeContext";
 import EmailSubscribe from "../../components/EmailSubscribe";
 
 export default function SettingsPage() {
-    // Add mounted state to prevent hydration issues
     const [pageMounted, setPageMounted] = useState(false);
 
     useEffect(() => {
         setPageMounted(true);
     }, []);
 
-    const { t, setLanguage: setAppLanguage } = useLanguage();
+    const { t, language: currentLanguageCode, setLanguage: setAppLanguage } = useLanguage();
     const { theme: currentTheme, toggleTheme } = useTheme();
 
     // State for toggles - initialize with null first
     const [systemNotifications, setSystemNotifications] = useState<boolean | null>(null);
-    const [language, setLanguage] = useState<string | null>(null);
+
+    // Map language code to display name for dropdown
+    const getDisplayLanguage = (code: 'en' | 'zh' | 'ms'): string => {
+        switch (code) {
+            case 'en': return "English";
+            case 'zh': return "Chinese";
+            case 'ms': return "Bahasa Malaysia";
+            default: return "English";
+        }
+    };
+
+    // Current display language for dropdown
+    const displayLanguage = getDisplayLanguage(currentLanguageCode);
 
     // Options
     const languages = ["English", "Chinese", "Bahasa Malaysia"];
@@ -36,52 +47,58 @@ export default function SettingsPage() {
         }
     };
 
-    // Load settings from localStorage when page loads (excluding theme)
+    // Load system notification setting from localStorage
     useEffect(() => {
         const savedSettings = localStorage.getItem('shuttleflow_settings');
         if (savedSettings) {
             try {
                 const settings = JSON.parse(savedSettings);
                 setSystemNotifications(settings.systemNotifications ?? true);
-                setLanguage(settings.language ?? "English");
             } catch (error) {
                 console.error("Failed to load settings:", error);
                 setSystemNotifications(true);
-                setLanguage("English");
             }
         } else {
             setSystemNotifications(true);
-            setLanguage("English");
         }
     }, []);
 
-    // Save settings to localStorage (excluding theme)
+    // Save system notification setting to localStorage (ONLY systemNotifications, NOT language)
     useEffect(() => {
-        if (systemNotifications !== null && language !== null) {
-            const settings = {
+        if (systemNotifications !== null) {
+            const savedSettings = localStorage.getItem('shuttleflow_settings');
+            let existingSettings = {};
+            if (savedSettings) {
+                try {
+                    existingSettings = JSON.parse(savedSettings);
+                } catch (error) {
+                    console.error("Failed to parse settings:", error);
+                }
+            }
+            // Preserve existing settings (including language) and update only systemNotifications
+            const updatedSettings = {
+                ...existingSettings,
                 systemNotifications,
-                language,
             };
-            localStorage.setItem('shuttleflow_settings', JSON.stringify(settings));
+            localStorage.setItem('shuttleflow_settings', JSON.stringify(updatedSettings));
         }
-    }, [systemNotifications, language]);
+    }, [systemNotifications]);
 
-    // Handle language change
+    // Handle language change - updates context (context will save to localStorage)
     const handleLanguageChange = (newLanguage: string) => {
-        setLanguage(newLanguage);
         setAppLanguage(getLanguageCode(newLanguage));
     };
 
-    // Don't render until page is mounted on client
-    if (!pageMounted || systemNotifications === null || language === null) {
+    // Don't render until page is mounted
+    if (!pageMounted || systemNotifications === null) {
         return (
             <PageShell
                 header={
                     <>
-                        <h1 className="text-center text-foreground text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                        <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                             {t("settings.title")}
                         </h1>
-                        <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
+                        <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
                             {t("settings.subtitle")}
                         </p>
                     </>
@@ -89,7 +106,7 @@ export default function SettingsPage() {
             >
                 <div className="px-6 pb-8">
                     <div className="font-['Inter'] max-w-md mx-auto">
-                        <div className="text-center text-foreground">{t("common.loading")}</div>
+                        <div className="text-center text-white">Loading...</div>
                     </div>
                 </div>
             </PageShell>
@@ -100,10 +117,10 @@ export default function SettingsPage() {
         <PageShell
             header={
                 <>
-                    <h1 className="text-center text-foreground text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
+                    <h1 className="text-center text-white text-3xl font-bold mt-6 font-['Bai_Jamjuree']">
                         {t("settings.title")}
                     </h1>
-                    <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
+                    <p className="font-['Bai_Jamjuree'] text-center text-white text-base font-medium mt-2 px-4">
                         {t("settings.subtitle")}
                     </p>
                 </>
@@ -136,7 +153,7 @@ export default function SettingsPage() {
                             <span className="text-(--dropdown-text) font-bold text-base">{t("settings.languages")}</span>
                             <div className="relative">
                                 <select
-                                    value={language}
+                                    value={displayLanguage}
                                     onChange={(e) => handleLanguageChange(e.target.value)}
                                     className="appearance-none bg-gray-50/80 dark:bg-gray-700/80 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-8 text-gray-700 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#99121A]/50 focus:border-[#99121A] shadow-inner"
                                 >
@@ -156,7 +173,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    {/* Theme Toggle - Uses ThemeContext directly */}
+                    {/* Theme Toggle */}
                     <div className="mb-7">
                         <div className="w-full bg-(--glass-bg) backdrop-blur-md border border-white/30 rounded-xl shadow-md py-5 px-4 flex items-center justify-between">
                             <span className="text-(--dropdown-text) font-bold text-base">{t("settings.theme")}</span>
@@ -167,7 +184,7 @@ export default function SettingsPage() {
                                     }`}
                             >
                                 <span
-                                    className={`inline-block h-6 w-6 transform rounded-full transition-transform items-center justify-center ${isDarkMode ? "translate-x-9 bg-gray-900" : "translate-x-1 bg-white"
+                                    className={`inline-block h-6 w-6 transform rounded-full transition-transform flex items-center justify-center ${isDarkMode ? "translate-x-9 bg-gray-900" : "translate-x-1 bg-white"
                                         }`}
                                 >
                                     <div className="flex items-center justify-center w-full h-full">

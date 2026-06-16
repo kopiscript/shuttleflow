@@ -1,4 +1,3 @@
-// context/LanguageContext.tsx
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -16,7 +15,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
     const [language, setLanguage] = useState<Language>('en');
     const [translations, setTranslations] = useState<Record<string, string>>({});
-    const [isLoading, setIsLoading] = useState(true);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Load saved language from localStorage when app starts
     useEffect(() => {
@@ -25,21 +24,51 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
             try {
                 const settings = JSON.parse(savedSettings);
                 const savedLanguage = settings.language;
-                // Map display language to code
                 if (savedLanguage === 'English') setLanguage('en');
-                else if (savedLanguage === '中文') setLanguage('zh');
+                else if (savedLanguage === 'Chinese') setLanguage('zh');
                 else if (savedLanguage === 'Bahasa Malaysia') setLanguage('ms');
                 else setLanguage('en');
             } catch (error) {
                 console.error("Failed to load language from settings:", error);
             }
         }
-    }, []); // Runs once on mount
+        setIsInitialized(true);
+    }, []);
+
+    // SAVE language to localStorage whenever it changes
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        // Get existing settings
+        let existingSettings = {};
+        const savedSettings = localStorage.getItem('shuttleflow_settings');
+        if (savedSettings) {
+            try {
+                existingSettings = JSON.parse(savedSettings);
+            } catch (error) {
+                console.error("Failed to parse settings:", error);
+            }
+        }
+
+        // Map language code to display name for storage
+        let displayLanguage = "English";
+        if (language === 'zh') displayLanguage = "Chinese";
+        else if (language === 'ms') displayLanguage = "Bahasa Malaysia";
+        else displayLanguage = "English";
+
+        // Save language to localStorage (preserve other settings)
+        const updatedSettings = {
+            ...existingSettings,
+            language: displayLanguage,
+        };
+        localStorage.setItem('shuttleflow_settings', JSON.stringify(updatedSettings));
+    }, [language, isInitialized]);
 
     // Load translations when language changes
     useEffect(() => {
+        if (!isInitialized) return;
+
         const loadTranslations = async () => {
-            setIsLoading(true);
             try {
                 const response = await fetch(`/locales/${language}.json`);
                 if (response.ok) {
@@ -53,15 +82,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
             } catch (error) {
                 console.error('Failed to load translations:', error);
                 setTranslations({});
-            } finally {
-                setIsLoading(false);
             }
         };
 
         loadTranslations();
-    }, [language]);
+    }, [language, isInitialized]);
 
-    // Helper function to flatten nested JSON
     const flattenObject = (obj: any, prefix = ''): Record<string, string> => {
         const result: Record<string, string> = {};
         for (const key in obj) {
@@ -75,18 +101,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         return result;
     };
 
-    // Translation function - returns the key if translation not found
     const t = (key: string): string => {
         return translations[key] || key;
     };
-
-    if (isLoading) {
-        return (
-            <LanguageContext.Provider value={{ language, setLanguage, t }}>
-                {children}
-            </LanguageContext.Provider>
-        );
-    }
 
     return (
         <LanguageContext.Provider value={{ language, setLanguage, t }}>
