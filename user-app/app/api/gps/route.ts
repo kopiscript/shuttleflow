@@ -37,21 +37,20 @@ export async function POST(request: Request) {
             },
         });
 
-        // --- 4. OPTIMIZATION: KEEP ONLY 50 NEWEST ROWS ---
-        const rowsToKeep = await prisma.location.findMany({
-            orderBy: { recordedAt: 'desc' },
-            take: 50,
-            select: { id: true }
+        // --- 4. OPTIMIZATION: KEEP ONLY 7 DAYS OF DATA ---
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const deletedRows = await prisma.location.deleteMany({
+            where: {
+                recordedAt: {
+                    lt: sevenDaysAgo // Delete anything older than 7 days
+                }
+            }
         });
 
-        const keepIds = rowsToKeep.map(row => row.id);
-
-        if (keepIds.length > 0) {
-            await prisma.location.deleteMany({
-                where: {
-                    id: { notIn: keepIds }
-                }
-            });
+        if (deletedRows.count > 0) {
+            console.log(`Cleaned up ${deletedRows.count} old location records.`);
         }
 
         return NextResponse.json({ success: true, data: newLocation }, { status: 201 });
