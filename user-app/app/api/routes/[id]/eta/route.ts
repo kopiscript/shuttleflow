@@ -36,11 +36,11 @@ export async function GET(
     let speedKmh = 0;
 
     if (busLocation) {
-      const busLat = parseFloat(busLocation.latitude);
-      const busLng = parseFloat(busLocation.longitude);
+      const busLat = parseFloat(busLocation.latitude.toString());
+      const busLng = parseFloat(busLocation.longitude.toString());
       
       // Get real speed
-      const rawSpeed = parseFloat(busLocation.speed || "0");
+      const rawSpeed = parseFloat(busLocation.speed?.toString() || "0");
       // If speed is in m/s, convert to km/h
       speedKmh = rawSpeed * 3.6;
       
