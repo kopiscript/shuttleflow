@@ -36,7 +36,13 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          setRoutes(data.routes);
+          // Sort routes: Route 1 first (Subang to Nilai), then Route 2 (Nilai to Subang)
+          const sortedRoutes = data.routes.sort((a: Route, b: Route) => {
+            if (a.id === 1) return -1;
+            if (b.id === 1) return 1;
+            return a.id - b.id;
+          });
+          setRoutes(sortedRoutes);
         }
         setLoading(false);
       })

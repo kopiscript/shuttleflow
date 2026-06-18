@@ -21,127 +21,288 @@ interface Bus {
   lat: number;
   lng: number;
   routeId: number;
+  routeIds: number[];
   status: string;
 }
 
-// Mock bus data (replace with real API later)
-const mockBuses: Bus[] = [
-  { id: 1, name: "Bus B001", lat: 3.0742, lng: 101.5438, routeId: 2, status: "active" },
-  { id: 2, name: "Bus B002", lat: 2.9289, lng: 101.7778, routeId: 3, status: "active" },
-];
-
-// Helper function to check if dark mode is active
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
-// Get tile layer URL based on theme
 const getTileUrl = (dark: boolean) => {
   return dark
     ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 };
 
-// Get attribution based on theme
 const getAttribution = (dark: boolean) => {
   return dark
     ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | &copy; <a href="https://carto.com/">CARTO</a>'
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 };
 
+// Coordinates
+const INTI_SUBANG = { lat: 3.0742, lng: 101.5913 };
+const INTI_NILAI = { lat: 2.8051, lng: 101.7656 };
+
 export default function Map({ selectedRoute = "" }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const [buses, setBuses] = useState<Bus[]>(mockBuses);
+  const pickupMarkerRef = useRef<L.Marker | null>(null);
+  const destinationMarkerRef = useRef<L.Marker | null>(null);
+  const [buses, setBuses] = useState<Bus[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // Fetch live bus data from API
+  useEffect(() => {
+    const fetchBuses = async () => {
+      try {
+        const response = await fetch("/api/locations");
+        const data = await response.json();
+
+        if (data.success && data.locations) {
+          const transformedBuses: Bus[] = data.locations.map((loc: any) => ({
+            id: loc.busId,
+            name: loc.bus?.busName || `Bus ${loc.busId}`,
+            lat: parseFloat(loc.latitude),
+            lng: parseFloat(loc.longitude),
+            routeIds: loc.bus?.routeIds || [],  // Default to empty array
+            routeId: loc.bus?.routeIds?.[0] || 0,
+            status: loc.bus?.status || "active"
+          }));
+          console.log("🚌 Buses fetched:", transformedBuses);
+          setBuses(transformedBuses);
+        }
+      } catch (error) {
+        console.error("Failed to fetch bus locations:", error);
+      }
+    };
+
+    fetchBuses();
+    const interval = setInterval(fetchBuses, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current) {
+      console.log("⏳ Waiting for map container...");
+      return;
+    }
 
-    const dark = isDarkMode();
-    
-    mapRef.current = L.map(mapContainerRef.current).setView([3.0742, 101.5438], 13);
+    if (mapRef.current) return;
 
-    // Add tile layer
-    tileLayerRef.current = L.tileLayer(getTileUrl(dark), {
-      attribution: getAttribution(dark),
-      maxZoom: 19,
-    }).addTo(mapRef.current);
+    console.log("🔄 Initializing map...");
 
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
-
-  // Watch for theme changes and update map tiles
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    const observer = new MutationObserver(() => {
+    try {
       const dark = isDarkMode();
-      
-      // Remove old tile layer
-      if (tileLayerRef.current) {
-        mapRef.current?.removeLayer(tileLayerRef.current);
-      }
-      
-      // Add new tile layer based on theme
+
+      mapRef.current = L.map(mapContainerRef.current, {
+        center: [3.110135, 101.59775217],
+        zoom: 15,
+      });
+
       tileLayerRef.current = L.tileLayer(getTileUrl(dark), {
         attribution: getAttribution(dark),
         maxZoom: 19,
-      }).addTo(mapRef.current!);
-    });
+      }).addTo(mapRef.current);
 
-    observer.observe(document.documentElement, { 
-      attributes: true, 
-      attributeFilter: ["class"] 
-    });
+      console.log("✅ Map initialized successfully");
+      setMapReady(true);
+    } catch (error) {
+      console.error("❌ Failed to initialize map:", error);
+    }
 
-    return () => observer.disconnect();
+    return () => {
+      if (mapRef.current) {
+        console.log("🗑️ Cleaning up map");
+        mapRef.current.remove();
+        mapRef.current = null;
+        setMapReady(false);
+      }
+    };
   }, []);
 
-  // Update map view when route changes
-  useEffect(() => {
+  // Update pickup marker
+  const updatePickupMarker = (routeId: string) => {
+    if (pickupMarkerRef.current) {
+      pickupMarkerRef.current.remove();
+      pickupMarkerRef.current = null;
+    }
+
+    if (!mapRef.current || !routeId) return;
+
+    let pickupLat: number, pickupLng: number, pickupName: string;
+
+    if (routeId === "1") {
+      pickupLat = INTI_SUBANG.lat;
+      pickupLng = INTI_SUBANG.lng;
+      pickupName = "INTI Subang (Pickup)";
+    } else if (routeId === "2") {
+      pickupLat = INTI_NILAI.lat;
+      pickupLng = INTI_NILAI.lng;
+      pickupName = "INTI Nilai (Pickup)";
+    } else {
+      return;
+    }
+
+    const pickupIcon = L.divIcon({
+      className: 'pickup-marker',
+      html: `<div style="
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        animation: pulse 1.5s ease-in-out infinite;
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    pickupMarkerRef.current = L.marker([pickupLat, pickupLng], {
+      icon: pickupIcon,
+    })
+      .bindPopup(`<b>🚏 Pickup Point</b><br/>${pickupName}`)
+      .addTo(mapRef.current!);
+  };
+
+  // Update destination marker
+  const updateDestinationMarker = (routeId: string) => {
+    if (destinationMarkerRef.current) {
+      destinationMarkerRef.current.remove();
+      destinationMarkerRef.current = null;
+    }
+
+    if (!mapRef.current || !routeId) return;
+
+    let destLat: number, destLng: number, destName: string;
+
+    if (routeId === "1") {
+      destLat = INTI_NILAI.lat;
+      destLng = INTI_NILAI.lng;
+      destName = "INTI Nilai (Destination)";
+    } else if (routeId === "2") {
+      destLat = INTI_SUBANG.lat;
+      destLng = INTI_SUBANG.lng;
+      destName = "INTI Subang (Destination)";
+    } else {
+      return;
+    }
+
+    const destinationIcon = L.divIcon({
+      className: 'destination-marker',
+      html: `<div style="
+        width: 16px;
+        height: 16px;
+        background: #22c55e;
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        animation: pulse 1.5s ease-in-out infinite;
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    destinationMarkerRef.current = L.marker([destLat, destLng], {
+      icon: destinationIcon,
+    })
+      .bindPopup(`<b>📍 Destination</b><br/>${destName}`)
+      .addTo(mapRef.current!);
+  };
+
+  // Fit map to show all markers
+  const fitMapToBounds = () => {
     if (!mapRef.current) return;
 
-    const routeViews: Record<string, [number, number, number]> = {
-      "2": [3.0742, 101.5438, 14],   // Subang to Nilai
-      "3": [2.9289, 101.7778, 12],   // Nilai to Subang
-    };
+    const markerPositions: L.LatLng[] = [];
 
-    const view = routeViews[selectedRoute] || [3.0742, 101.5438, 13];
-    mapRef.current.setView(view, view[2]);
-  }, [selectedRoute]);
+    markersRef.current.forEach(marker => {
+      const pos = marker.getLatLng();
+      if (pos) markerPositions.push(pos);
+    });
 
-  // Update bus markers when selected route changes
+    if (pickupMarkerRef.current) {
+      const pos = pickupMarkerRef.current.getLatLng();
+      if (pos) markerPositions.push(pos);
+    }
+
+    if (destinationMarkerRef.current) {
+      const pos = destinationMarkerRef.current.getLatLng();
+      if (pos) markerPositions.push(pos);
+    }
+
+    if (markerPositions.length >= 2) {
+      const bounds = L.latLngBounds(markerPositions);
+      mapRef.current.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 14,
+      });
+    } else if (markerPositions.length === 1) {
+      mapRef.current.setView(markerPositions[0], 14);
+    }
+  };
+
+  // Update route markers when route changes
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapReady) return;
 
-    // Clear existing markers
+    updatePickupMarker(selectedRoute);
+    updateDestinationMarker(selectedRoute);
+
+    setTimeout(() => {
+      fitMapToBounds();
+    }, 150);
+  }, [selectedRoute, mapReady]);
+
+  // Update bus markers
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) {
+      console.log("⏳ Map not ready, skipping markers");
+      return;
+    }
+
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Filter buses by selected route (if a route is selected)
-    const filteredBuses = selectedRoute 
-      ? buses.filter(bus => bus.routeId === parseInt(selectedRoute))
+    // Filter buses by selected route with safety check
+    const filteredBuses = selectedRoute
+      ? buses.filter(bus => {
+          // Check if routeIds exists and is an array
+          if (!bus.routeIds || !Array.isArray(bus.routeIds)) {
+            console.warn(`⚠️ Bus ${bus.id} has no routeIds:`, bus);
+            return false;
+          }
+          return bus.routeIds.includes(parseInt(selectedRoute));
+        })
       : buses;
 
-    // Add markers for filtered buses
+    console.log(`🎯 Filtered buses for route ${selectedRoute}:`, filteredBuses);
+
     filteredBuses.forEach((bus) => {
+      if (!bus.lat || !bus.lng || isNaN(bus.lat) || isNaN(bus.lng)) {
+        console.warn(`⚠️ Skipping bus ${bus.id}: invalid coordinates`);
+        return;
+      }
+
+      console.log(`📍 Adding marker: ${bus.name} at [${bus.lat}, ${bus.lng}]`);
       const marker = L.marker([bus.lat, bus.lng])
         .bindPopup(`
           <b>${bus.name}</b><br/>
           Status: ${bus.status}<br/>
-          Route ID: ${bus.routeId}
+          Routes: ${bus.routeIds?.join(', ') || 'None'}
         `)
         .addTo(mapRef.current!);
-      
+
       markersRef.current.push(marker);
     });
-  }, [buses, selectedRoute]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" />;
+    setTimeout(() => {
+      fitMapToBounds();
+    }, 150);
+  }, [buses, selectedRoute, mapReady]);
+
+  return <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "400px" }} />;
 }
