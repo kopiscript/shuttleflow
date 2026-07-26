@@ -21,6 +21,8 @@ interface Route {
   routeName: string;
   pickupStop: string;
   dropoffStop: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
 }
 
 export default function HomePage() {
@@ -29,6 +31,7 @@ export default function HomePage() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [eta, setEta] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Fetch routes when page loads
   useEffect(() => {
@@ -36,7 +39,6 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Sort routes: Route 1 first (Subang to Nilai), then Route 2 (Nilai to Subang)
           const sortedRoutes = data.routes.sort((a: Route, b: Route) => {
             if (a.id === 1) return -1;
             if (b.id === 1) return 1;
@@ -52,16 +54,65 @@ export default function HomePage() {
       });
   }, []);
 
-  // Fetch ETA when route is selected
+  // Fetch bus location periodically
+  useEffect(() => {
+    const fetchBusLocation = async () => {
+      try {
+        const response = await fetch("/api/locations");
+        const data = await response.json();
+        if (data.success && data.locations && data.locations.length > 0) {
+          const loc = data.locations[0];
+          setBusLocation({
+            lat: parseFloat(loc.latitude),
+            lng: parseFloat(loc.longitude),
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch bus location:", error);
+      }
+    };
+
+    fetchBusLocation();
+    const interval = setInterval(fetchBusLocation, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch ETA using TomTom API when route is selected
   useEffect(() => {
     if (!selectedRoute) {
       setEta("");
       return;
     }
 
-    fetch(`/api/routes/${selectedRoute}/eta`)
-      .then((res) => res.json())
+    const selectedRouteData = routes.find(r => r.id === parseInt(selectedRoute));
+
+    // Get bus location
+    const startLat = busLocation?.lat || 3.0742;
+    const startLng = busLocation?.lng || 101.5913;
+
+    // Get destination coordinates based on route
+    let endLat = 2.8051;
+    let endLng = 101.7656;
+
+    if (selectedRouteData?.dropoffLat && selectedRouteData?.dropoffLng) {
+      endLat = selectedRouteData.dropoffLat;
+      endLng = selectedRouteData.dropoffLng;
+    } else if (parseInt(selectedRoute) === 2) {
+      endLat = 3.0742;
+      endLng = 101.5913;
+    }
+
+    console.log(`Fetching ETA from ${startLat},${startLng} to ${endLat},${endLng}`);
+
+    fetch(`/api/tomtom-eta?startLat=${startLat}&startLng=${startLng}&endLat=${endLat}&endLng=${endLng}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log("TomTom API response:", data);
         if (data.success) {
           setEta(`ETA: ${data.eta}`);
         } else {
@@ -72,7 +123,7 @@ export default function HomePage() {
         console.error("Failed to fetch ETA:", err);
         setEta(t("home.etaUnavailable"));
       });
-  }, [selectedRoute, t]);
+  }, [selectedRoute, routes, busLocation, t]);
 
   return (
     <PageShell
@@ -88,11 +139,8 @@ export default function HomePage() {
         </>
       }
     >
-      {/* Map Section - fills remaining space */}
       <div className="relative w-full h-full">
         {/* Gradient Background Elements */}
-
-        {/* First gradient: Top Left */}
         <div
           className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
           style={{
@@ -101,7 +149,6 @@ export default function HomePage() {
           }}
         />
 
-        {/* Second gradient: Right Top to Middle */}
         <div
           className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
           style={{
@@ -110,12 +157,10 @@ export default function HomePage() {
           }}
         />
 
-        {/* Map fills entire container */}
         <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
         </div>
 
-        {/* Floating Route Dropdown (top of map) - Custom Dropdown */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <CustomDropdown
             options={routes}
@@ -126,16 +171,13 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Floating ETA Card (bottom of screen) */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
-            {/* ETA */}
             <div className="flex items-center gap-2">
               <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
                 {eta || t("home.selectRouteHint")}
               </span>
             </div>
-            {/* Disclaimer with Star Icon */}
             <div className="flex items-center gap-2 mt-2">
               <svg className="w-4 h-4 text-[#99121A]" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
