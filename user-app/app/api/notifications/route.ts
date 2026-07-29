@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import Pusher from "pusher";
-
-// Initialize Pusher
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID!,
-  key: process.env.PUSHER_KEY!,
-  secret: process.env.PUSHER_SECRET!,
-  cluster: process.env.PUSHER_CLUSTER!,
-  useTLS: true,
-});
+import { pusherServer } from "@/lib/pusher-server";
 
 export async function GET() {
   try {
@@ -42,7 +33,7 @@ export async function POST(request: Request) {
     });
 
     // 🚀 BROADCAST TO ALL CONNECTED CLIENTS
-    await pusher.trigger("notifications", "new-notification", {
+    await pusherServer.trigger("notifications", "new-notification", {
       id: notification.id,
       title: notification.title,
       message: notification.message,
