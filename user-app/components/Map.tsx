@@ -25,6 +25,13 @@ interface Bus {
   status: string;
 }
 
+interface ProximityData {
+  isNear: boolean;
+  distance: number;
+  destination: string;
+  status: string;
+}
+
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) => {
@@ -52,6 +59,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   const [buses, setBuses] = useState<Bus[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  
+  // State for proximity data
+  const [proximityData, setProximityData] = useState<ProximityData | null>(null);
+  const [proximityLoading, setProximityLoading] = useState(false);
 
   // Fetch live bus data from API
   useEffect(() => {
@@ -66,7 +77,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
             name: loc.bus?.busName || `Bus ${loc.busId}`,
             lat: parseFloat(loc.latitude),
             lng: parseFloat(loc.longitude),
-            routeIds: loc.bus?.routeIds || [],  // Default to empty array
+            routeIds: loc.bus?.routeIds || [],
             routeId: loc.bus?.routeIds?.[0] || 0,
             status: loc.bus?.status || "active"
           }));
@@ -82,6 +93,39 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     const interval = setInterval(fetchBuses, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch proximity data when route changes
+  useEffect(() => {
+    if (!selectedRoute) {
+      setProximityData(null);
+      return;
+    }
+
+    const fetchProximity = async () => {
+      try {
+        setProximityLoading(true);
+        const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setProximityData({
+            isNear: data.data.isNearDestination,
+            distance: data.data.distanceToDestination,
+            destination: data.data.destination,
+            status: data.data.status,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch proximity:", error);
+      } finally {
+        setProximityLoading(false);
+      }
+    };
+
+    fetchProximity();
+    const interval = setInterval(fetchProximity, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRoute]);
 
   // Initialize map
   useEffect(() => {
@@ -270,7 +314,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     // Filter buses by selected route with safety check
     const filteredBuses = selectedRoute
       ? buses.filter(bus => {
-          // Check if routeIds exists and is an array
           if (!bus.routeIds || !Array.isArray(bus.routeIds)) {
             console.warn(`⚠️ Bus ${bus.id} has no routeIds:`, bus);
             return false;
@@ -304,5 +347,65 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     }, 150);
   }, [buses, selectedRoute, mapReady]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "400px" }} />;
+  return (
+    <div className="relative w-full h-full">
+      {/* Map Container */}
+      <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "400px" }} />
+      
+      {/* Proximity Status Indicator */}
+      {proximityData && selectedRoute && (
+        <div className="absolute top-4 right-4 z-30 max-w-xs animate-slide-right">
+          <div className={`
+            rounded-xl shadow-lg p-3 transition-all duration-300
+            ${proximityData.isNear 
+              ? 'bg-green-500 text-white' 
+              : 'bg-white dark:bg-gray-800 dark:text-white'
+            }
+          `}>
+            <div className="flex items-center gap-2">
+              <div className={`
+                w-3 h-3 rounded-full animate-pulse
+                ${proximityData.isNear ? 'bg-white' : 'bg-blue-500'}
+              `} />
+              <span className="font-semibold text-sm">
+                {proximityData.isNear ? '🚌 Approaching!' : 'On Route'}
+              </span>
+            </div>
+            <div className="mt-1">
+              <p className={`text-xs ${proximityData.isNear ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}>
+                {proximityData.isNear 
+                  ? `${proximityData.distance}m from ${proximityData.destination}` 
+                  : `${proximityData.distance}m to destination`
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading indicator for proximity */}
+      {proximityLoading && selectedRoute && (
+        <div className="absolute top-4 right-4 z-30">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-2">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      )}
+
+      {/* CSS for pulse animation (only once) */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.7; }
+        }
+        @keyframes slide-right {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-right {
+          animation: slide-right 0.3s ease-out forwards;
+        }
+      `}</style>
+    </div>
+  );
 }
