@@ -1,9 +1,20 @@
 // user-app/app/admin/buses/[id]/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Dynamically import the map component with SSR disabled
+const MapComponent = dynamic(() => import("./MapComponent"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full bg-[#171821] flex items-center justify-center">
+      <span className="text-[#87888C] font-['Inter'] text-sm">Loading map...</span>
+    </div>
+  ),
+});
 
 interface Bus {
   id: number;
@@ -22,6 +33,8 @@ interface Bus {
     deviceName: string;
     status: string;
     lastSeen: string;
+    lastLat?: number;
+    lastLng?: number;
   };
   createdAt: string;
   updatedAt: string;
@@ -46,6 +59,7 @@ export default function BusDetailsPage({ params }: PageProps) {
   const [busId, setBusId] = useState<number | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
 
   // Unwrap params
   useEffect(() => {
@@ -67,6 +81,7 @@ export default function BusDetailsPage({ params }: PageProps) {
         if (data.success) {
           setBus(data.bus);
           setIsActive(data.bus.status === "Active");
+          setMapReady(true);
         }
       } catch (error) {
         console.error("Failed to fetch bus details:", error);
@@ -117,7 +132,6 @@ export default function BusDetailsPage({ params }: PageProps) {
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this bus?")) {
-      // Handle delete
       router.push("/admin/buses");
     }
   };
@@ -143,7 +157,7 @@ export default function BusDetailsPage({ params }: PageProps) {
 
   return (
     <div>
-      {/* Page Header with Back Button, Title, Edit, and Delete */}
+      {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Link href="/admin/buses" className="text-white hover:text-[#96DDFF] transition">
@@ -222,7 +236,6 @@ export default function BusDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-[#2C2D33] my-6" />
 
           {/* Assigned Route */}
@@ -246,7 +259,6 @@ export default function BusDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-[#2C2D33] my-6" />
 
           {/* Assigned Device */}
@@ -272,7 +284,6 @@ export default function BusDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Last updated */}
           <div className="mt-6 text-right">
             <span className="text-[#87888C] font-['Inter'] text-xs">
               Last updated: {formatDate(bus.updatedAt)}
@@ -280,31 +291,31 @@ export default function BusDetailsPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Right Column - Live Tracking & Activity Log */}
+        {/* Right Column */}
         <div className="space-y-6">
-          {/* Live Tracking Card */}
+          {/* Live Tracking Card with Leaflet Map */}
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
             <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Live Tracking</h3>
-            <div className="bg-[#171821] rounded-xl p-4 h-[196px] flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-[#87888C] font-['Inter'] text-sm mb-2">📍 Bus Location</div>
-                <div className="text-white font-['Inter'] text-xs">
-                  Lat: {bus.device?.lastSeen ? "3.0742" : "—"}<br />
-                  Lng: {bus.device?.lastSeen ? "101.5438" : "—"}
-                </div>
-                <div className="mt-4 text-[#87888C] font-['Inter'] text-xs">
-                  Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
-                </div>
-              </div>
+            <div className="bg-[#171821] rounded-xl overflow-hidden" style={{ height: "250px" }}>
+              {mapReady && bus && (
+                <MapComponent bus={bus} />
+              )}
             </div>
-            <div className="mt-4 text-center">
-              <button className="px-6 py-2.5 border border-white text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-white/10 transition">
-                View on Full Map
-              </button>
+            <div className="mt-4 flex justify-between items-center">
+              <div className="text-[#87888C] font-['Inter'] text-xs">
+                {bus.device?.status === "Online" ? (
+                  <span className="text-[#3EB900]">● Online</span>
+                ) : bus.device?.lastLat && bus.device?.lastLng ? (
+                  <span className="text-[#EA1701]">● Offline (last known location shown)</span>
+                ) : (
+                  <span className="text-[#EA1701]">● No location data</span>
+                )}
+                {" "}· Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
+              </div>
             </div>
           </div>
 
-          {/* Activity Log Card - Now showing REAL data from database */}
+          {/* Activity Log Card */}
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
             <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Activity Log</h3>
             {logsLoading ? (

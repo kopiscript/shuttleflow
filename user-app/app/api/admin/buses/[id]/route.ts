@@ -1,4 +1,4 @@
-// user-app/app/api/admin/buses/[id]/route.ts
+// app/api/admin/buses/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -7,7 +7,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ✅ Await params before accessing
     const { id } = await params;
     const busId = parseInt(id);
 
@@ -29,6 +28,10 @@ export async function GET(
           where: { endedAt: null },
           include: { device: true },
         },
+        locations: {
+          orderBy: { recordedAt: "desc" },
+          take: 1,
+        },
       },
     });
 
@@ -48,7 +51,17 @@ export async function GET(
       createdAt: bus.createdAt,
       updatedAt: bus.updatedAt,
       route: bus.routeAssignments[0]?.route || null,
-      device: bus.deviceAssignments[0]?.device || null,
+      device: bus.deviceAssignments[0]?.device
+        ? {
+            ...bus.deviceAssignments[0].device,
+            lastLat: bus.locations[0]?.latitude
+              ? parseFloat(bus.locations[0].latitude)
+              : null,
+            lastLng: bus.locations[0]?.longitude
+              ? parseFloat(bus.locations[0].longitude)
+              : null,
+          }
+        : null,
     };
 
     return NextResponse.json({ success: true, bus: transformedBus });
