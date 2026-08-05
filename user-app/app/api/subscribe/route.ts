@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
         // Send verification email via Resend
         await resend.emails.send({
-            from: 'ShuttleFlow <onboarding@resend.dev>',
+            from: 'ShuttleFlow <noreply@shuttleflow.azmiproductions.com>',
             to: email,
             subject: 'Confirm Your Subscription to ShuttleFlow Alerts',
             html: `

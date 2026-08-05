@@ -23,6 +23,25 @@ async function broadcastNotification(notification: {
   }
 }
 
+// 🚀 NEW: Send email to all verified subscribers
+async function sendEmailsToSubscribers(title: string, message: string, type: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/notifications/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message, type }),
+    });
+
+    const result = await response.json();
+    console.log(`📧 Email notifications sent: ${result.emailsSent || 0} subscribers notified`);
+    return result;
+  } catch (error) {
+    console.error("Failed to send email notifications:", error);
+    // Don't throw - email failure shouldn't break the notification
+  }
+}
+
 export async function sendDelayNotification(busName: string, delayMinutes: number, reason: string) {
   const notification = await prisma.notification.create({
     data: {
@@ -35,6 +54,9 @@ export async function sendDelayNotification(busName: string, delayMinutes: numbe
   console.log(`📢 Delay notification sent for ${busName}`);
 
   await broadcastNotification(notification);
+
+  // 🚀 Send emails to subscribers
+  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
 
   return notification;
 }
@@ -52,6 +74,9 @@ export async function sendAlertNotification(title: string, message: string) {
 
   await broadcastNotification(notification);
 
+  // 🚀 Send emails to subscribers
+  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
+
   return notification;
 }
 
@@ -68,6 +93,9 @@ export async function sendAnnouncement(title: string, message: string) {
 
   await broadcastNotification(notification);
 
+  // 🚀 Send emails to subscribers
+  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
+
   return notification;
 }
 
@@ -83,6 +111,9 @@ export async function sendInfo(title: string, message: string) {
   console.log(`ℹ️ Info notification sent: ${title}`);
 
   await broadcastNotification(notification);
+
+  // 🚀 Send emails to subscribers
+  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
 
   return notification;
 }
@@ -112,6 +143,9 @@ export async function sendProximityAlert(
   await broadcastNotification(notification);
 
   console.log(`🔔 Broadcast sent for: ${title}`);
+
+  // 🚀 Send emails to subscribers
+  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
 
   return notification;
 }
