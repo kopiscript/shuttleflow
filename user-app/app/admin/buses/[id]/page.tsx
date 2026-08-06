@@ -312,6 +312,12 @@ export default function BusDetailsPage({ params }: PageProps) {
                 )}
                 {" "}· Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
               </div>
+              <Link
+                href={`/admin/buses/${bus.id}/map`}
+                className="px-4 py-1.5 border border-[#2C2D33] text-white rounded-lg font-['Inter'] text-xs hover:bg-[#2C2D33] transition"
+              >
+                View Full Map
+              </Link>
             </div>
           </div>
 

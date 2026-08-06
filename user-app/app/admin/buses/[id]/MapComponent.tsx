@@ -34,6 +34,19 @@ export default function MapComponent({ bus }: { bus: Bus }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -72,7 +85,7 @@ export default function MapComponent({ bus }: { bus: Bus }) {
       const lng = bus.device.lastLng!;
       markerRef.current.setLatLng([lat, lng]);
       markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${bus.device?.status || "Unknown"}<br/>Last seen: ${bus.device?.lastSeen ? new Date(bus.device.lastSeen).toLocaleString() : "N/A"}`
+        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${bus.device?.status || "Unknown"}<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
       );
       mapRef.current.setView([lat, lng], 15);
     } else {
@@ -82,5 +95,15 @@ export default function MapComponent({ bus }: { bus: Bus }) {
     }
   }, [bus]);
 
-  return <div ref={mapContainerRef} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      {/* Map Container */}
+      <div ref={mapContainerRef} className="w-full h-full" />
+
+      {/* Last updated - bottom right corner of map */}
+      <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg font-['Inter']">
+        Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
+      </div>
+    </div>
+  );
 }
