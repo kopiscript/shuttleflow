@@ -14,10 +14,10 @@ model Bus {
   status            String                @default("Active")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
+  activityLogs      ActivityLog[]
   deviceAssignments BusDeviceAssignment[]
   routeAssignments  BusRouteAssignment[]
   locations         Location[]
-  activityLogs      ActivityLog[]
 
   @@map("buses")
 }
@@ -85,6 +85,7 @@ model Location {
   recordedAt DateTime @default(now()) @map("recorded_at")
   bus        Bus      @relation(fields: [busId], references: [id])
 
+  @@index([busId, recordedAt(sort: Desc)])
   @@map("locations")
 }
 
@@ -135,10 +136,10 @@ model email_subscribers {
 model ActivityLog {
   id          Int      @id @default(autoincrement())
   busId       Int      @map("bus_id")
-  bus         Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
   eventType   String   @map("event_type")
   description String
   createdAt   DateTime @default(now()) @map("created_at")
+  bus         Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
 
   @@map("activity_logs")
 }
