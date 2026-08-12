@@ -15,6 +15,7 @@ model Bus {
   status            String                @default("Active")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
+  activity_logs     activity_logs[]
   deviceAssignments BusDeviceAssignment[]
   routeAssignments  BusRouteAssignment[]
   locations         Location[]
@@ -85,6 +86,8 @@ model Location {
   recordedAt DateTime @default(now()) @map("recorded_at")
   bus        Bus      @relation(fields: [busId], references: [id])
 
+  @@index([busId, recordedAt(sort: Desc)])
+
   @@map("locations")
 }
 
@@ -99,36 +102,46 @@ model Admin {
 }
 
 model Notification {
-  id        Int      @id @default(autoincrement())
   type      String   @db.VarChar(50)
   title     String   @db.VarChar(200)
   message   String
   createdAt DateTime @default(now()) @map("created_at")
   isRead    Boolean  @default(false)
+  id        Int      @id @default(autoincrement())
 
   @@map("notifications")
 }
 
 model SupportTicket {
   id          Int      @id @default(autoincrement())
-  email       String
-  reportType  String
   description String
-  fileUrl     String?
   status      String   @default("Open")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  email       String
+  fileUrl     String?
+  reportType  String
+  title       String?  @db.VarChar(200)
 
   @@map("support_tickets")
 }
 
 model EmailSubscriber {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  verified   Boolean  @default(false)
-  token      String   @unique  // Random token for verification
-  createdAt  DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  verified   Boolean   @default(false)
+  token      String    @unique
+  createdAt  DateTime  @default(now())
   verifiedAt DateTime?
-  
+
   @@map("email_subscribers")
+}
+
+model activity_logs {
+  id          Int      @id @default(autoincrement())
+  bus_id      Int
+  event_type  String
+  description String
+  created_at  DateTime @default(now())
+  buses       Bus      @relation(fields: [bus_id], references: [id], onDelete: Cascade)
 }
