@@ -60,6 +60,8 @@ export default function BusDetailsPage({ params }: PageProps) {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Unwrap params
   useEffect(() => {
@@ -118,7 +120,7 @@ export default function BusDetailsPage({ params }: PageProps) {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return "No signal";
     const date = new Date(dateString);
     return date.toLocaleString("en-US", {
       year: "numeric",
@@ -130,9 +132,27 @@ export default function BusDetailsPage({ params }: PageProps) {
     });
   };
 
-  const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this bus?")) {
-      router.push("/admin/buses");
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/buses/${busId}`, {
+        method: "DELETE",
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        router.push("/admin/buses");
+      } else {
+        alert("Failed to delete bus: " + data.error);
+        setShowDeleteModal(false);
+      }
+    } catch (error) {
+      console.error("Error deleting bus:", error);
+      alert("An error occurred while deleting the bus.");
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -180,7 +200,7 @@ export default function BusDetailsPage({ params }: PageProps) {
             Edit
           </Link>
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteModal(true)}
             className="px-6 py-2.5 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,25 +217,24 @@ export default function BusDetailsPage({ params }: PageProps) {
         <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
           {/* Basic Information */}
           <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Basic Information</h3>
-
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Bus ID</span>
               <span className="text-white font-['Inter'] text-sm">B{String(bus.id).padStart(3, "0")}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">License Plate</span>
               <span className="text-white font-['Inter'] text-sm">{bus.licensePlate}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Bus Model</span>
               <span className="text-white font-['Inter'] text-sm">{bus.busName}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Capacity</span>
               <span className="text-white font-['Inter'] text-sm">{bus.capacity}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
               <div className="flex items-center gap-3">
                 <span className="text-white font-['Inter'] text-sm">{isActive ? "Active" : "Inactive"}</span>
@@ -236,49 +255,49 @@ export default function BusDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="border-t border-[#2C2D33] my-6" />
+          <div className="border-t border-[#2C2D33] my-6 -mx-6" />
 
           {/* Assigned Route */}
           <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Route</h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Route ID</span>
               <span className="text-white font-['Inter'] text-sm">{bus.route?.id ? `R${String(bus.route.id).padStart(3, "0")}` : "—"}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Route Name</span>
               <span className="text-white font-['Inter'] text-sm">{bus.route?.routeName || "—"}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Pickup Stop</span>
               <span className="text-white font-['Inter'] text-sm">{bus.route?.pickupStop || "—"}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Drop-off Stop</span>
               <span className="text-white font-['Inter'] text-sm">{bus.route?.dropoffStop || "—"}</span>
             </div>
           </div>
 
-          <div className="border-t border-[#2C2D33] my-6" />
+          <div className="border-t border-[#2C2D33] my-6 -mx-6" />
 
           {/* Assigned Device */}
           <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Device</h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Device ID</span>
               <span className="text-white font-['Inter'] text-sm">{bus.device?.id ? `GPS${String(bus.device.id).padStart(3, "0")}` : "—"}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Device Name</span>
               <span className="text-white font-['Inter'] text-sm">{bus.device?.deviceName || "—"}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
               <span className={`font-['Inter'] text-sm ${bus.device?.status === "Online" ? "text-[#3EB900]" : "text-[#EA1701]"}`}>
                 {bus.device?.status || "—"}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
+            <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Last Signal</span>
               <span className="text-white font-['Inter'] text-sm">{bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "—"}</span>
             </div>
@@ -301,20 +320,23 @@ export default function BusDetailsPage({ params }: PageProps) {
                 <MapComponent bus={bus} />
               )}
             </div>
-            <div className="mt-4 flex justify-between items-center">
-              <div className="text-[#87888C] font-['Inter'] text-xs">
-                {bus.device?.status === "Online" ? (
-                  <span className="text-[#3EB900]">● Online</span>
-                ) : bus.device?.lastLat && bus.device?.lastLng ? (
-                  <span className="text-[#EA1701]">● Offline (last known location shown)</span>
-                ) : (
-                  <span className="text-[#EA1701]">● No location data</span>
-                )}
-                {" "}· Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
-              </div>
+
+            {/* Last Updated - below map on the right */}
+            <div className="mt-3 text-right">
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
+              </span>
+            </div>
+
+            {/* View Full Map Button - right aligned, text centered */}
+            <div className="mt-3 flex justify-end">
               <Link
                 href={`/admin/buses/${bus.id}/map`}
-                className="px-4 py-1.5 border border-[#2C2D33] text-white rounded-lg font-['Inter'] text-xs hover:bg-[#2C2D33] transition"
+                className="px-8 py-2.5 border border-white text-white rounded-lg font-semibold font-['Inter'] text-base hover:bg-white/10 transition text-center whitespace-nowrap flex items-center justify-center"
+                style={{ 
+                  width: "157px",
+                  borderWidth: "1px"
+                }}
               >
                 View Full Map
               </Link>
@@ -349,6 +371,69 @@ export default function BusDetailsPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center">
+          <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 max-w-md w-full mx-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white font-['Bai_Jamjuree']">
+                Delete Bus
+              </h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-[#87888C] hover:text-white transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="mb-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-[#CD0000]/20 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-[#CD0000]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-white text-center font-['Inter'] text-base">
+                Are you sure you want to delete <br />
+                <span className="font-bold text-[#CD0000]">
+                  Bus {bus ? `B${String(bus.id).padStart(3, "0")} (${bus.licensePlate})` : ""}
+                </span>
+                ?
+              </p>
+              <p className="text-[#87888C] text-center font-['Inter'] text-sm mt-2">
+                This action cannot be undone. All data associated with this bus will be permanently removed.
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-6 py-2.5 bg-[#2C2D33] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#3C3D44] transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-6 py-2.5 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
