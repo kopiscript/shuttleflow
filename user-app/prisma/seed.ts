@@ -20,7 +20,7 @@ async function main() {
     await prisma.notification.deleteMany()
     await prisma.route.deleteMany()
     await prisma.bus.deleteMany()
-    
+
     console.log('✅ Cleanup complete')
 
     // 2. Create Buses
@@ -33,7 +33,7 @@ async function main() {
             status: "Active",
         }
     })
-    
+
     const bus2 = await prisma.bus.create({
         data: {
             busName: "Shuttle Bus 2",
@@ -59,7 +59,7 @@ async function main() {
             intermediateStops: [],
         }
     })
-    
+
     const route2 = await prisma.route.create({
         data: {
             routeName: "Route B - Nilai to Subang",
@@ -73,7 +73,37 @@ async function main() {
             intermediateStops: [],
         }
     })
-    console.log(`✅ Created ${2} routes`)
+
+    const route3 = await prisma.route.create({
+        data: {
+            routeName: "Route C - Caltex KJ to Subang",
+            pickupStop: "Caltex Kelana Jaya",
+            dropoffStop: "INTI Subang",
+            pickupLat: 3.1097,
+            pickupLng: 101.5965,
+            dropoffLat: 3.0742,
+            dropoffLng: 101.5913,
+            status: "Active",
+            intermediateStops: [],
+        }
+    })
+
+    const route4 = await prisma.route.create({
+        data: {
+            routeName: "Route D - Subang to Caltex KJ",
+            pickupStop: "INTI Subang",
+            dropoffStop: "Caltex Kelana Jaya",
+            pickupLat: 3.0742,
+            pickupLng: 101.5913,
+            dropoffLat: 3.1097,
+            dropoffLng: 101.5965,
+            status: "Active",
+            intermediateStops: [],
+        }
+    })
+
+
+    console.log(`✅ Created ${4} routes`)
 
     // 4. Assign buses to routes
     console.log('🔗 Assigning buses to routes...')
@@ -83,11 +113,26 @@ async function main() {
             routeId: route1.id,
         }
     })
-    
+
     await prisma.busRouteAssignment.create({
         data: {
             busId: bus1.id,
             routeId: route2.id,
+        }
+    })
+    console.log('✅ Bus 1 assigned to both routes')
+
+    await prisma.busRouteAssignment.create({
+        data: {
+            busId: bus1.id,
+            routeId: route3.id,
+        }
+    })
+
+    await prisma.busRouteAssignment.create({
+        data: {
+            busId: bus1.id,
+            routeId: route4.id,
         }
     })
     console.log('✅ Bus 1 assigned to both routes')

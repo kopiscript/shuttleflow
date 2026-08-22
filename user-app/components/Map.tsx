@@ -49,6 +49,7 @@ const getAttribution = (dark: boolean) => {
 // Coordinates
 const INTI_SUBANG = { lat: 3.0742, lng: 101.5913 };
 const INTI_NILAI = { lat: 2.8051, lng: 101.7656 };
+const CALTEX_KJ = { lat: 3.1097, lng: 101.5965 };
 
 export default function Map({ selectedRoute = "" }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
@@ -59,7 +60,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   const [buses, setBuses] = useState<Bus[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  
+
   // State for proximity data
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
   const [proximityLoading, setProximityLoading] = useState(false);
@@ -106,7 +107,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
         setProximityLoading(true);
         const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
         const data = await response.json();
-        
+
         if (data.success) {
           setProximityData({
             isNear: data.data.isNearDestination,
@@ -186,6 +187,14 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       pickupLat = INTI_NILAI.lat;
       pickupLng = INTI_NILAI.lng;
       pickupName = "INTI Nilai (Pickup)";
+    } else if (routeId === "3") {
+      pickupLat = CALTEX_KJ.lat;
+      pickupLng = CALTEX_KJ.lng;
+      pickupName = "Caltex Kelana Jaya (Pickup)";
+    } else if (routeId === "4") {
+      pickupLat = INTI_SUBANG.lat;
+      pickupLng = INTI_SUBANG.lng;
+      pickupName = "INTI Subang (Pickup)";
     } else {
       return;
     }
@@ -231,6 +240,14 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       destLat = INTI_SUBANG.lat;
       destLng = INTI_SUBANG.lng;
       destName = "INTI Subang (Destination)";
+    } else if (routeId === "3") {
+      destLat = INTI_SUBANG.lat;
+      destLng = INTI_SUBANG.lng;
+      destName = "INTI Subang (Destination)";
+    } else if (routeId === "4") {
+      destLat = CALTEX_KJ.lat;
+      destLng = CALTEX_KJ.lng;
+      destName = "Caltex Kelana Jaya (Destination)";
     } else {
       return;
     }
@@ -314,12 +331,12 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     // Filter buses by selected route with safety check
     const filteredBuses = selectedRoute
       ? buses.filter(bus => {
-          if (!bus.routeIds || !Array.isArray(bus.routeIds)) {
-            console.warn(`⚠️ Bus ${bus.id} has no routeIds:`, bus);
-            return false;
-          }
-          return bus.routeIds.includes(parseInt(selectedRoute));
-        })
+        if (!bus.routeIds || !Array.isArray(bus.routeIds)) {
+          console.warn(`⚠️ Bus ${bus.id} has no routeIds:`, bus);
+          return false;
+        }
+        return bus.routeIds.includes(parseInt(selectedRoute));
+      })
       : buses;
 
     console.log(`🎯 Filtered buses for route ${selectedRoute}:`, filteredBuses);
@@ -351,14 +368,14 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     <div className="relative w-full h-full">
       {/* Map Container */}
       <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "400px" }} />
-      
+
       {/* Proximity Status Indicator */}
       {proximityData && selectedRoute && (
         <div className="absolute top-4 right-4 z-30 max-w-xs animate-slide-right">
           <div className={`
             rounded-xl shadow-lg p-3 transition-all duration-300
-            ${proximityData.isNear 
-              ? 'bg-green-500 text-white' 
+            ${proximityData.isNear
+              ? 'bg-green-500 text-white'
               : 'bg-white dark:bg-gray-800 dark:text-white'
             }
           `}>
@@ -373,8 +390,8 @@ export default function Map({ selectedRoute = "" }: MapProps) {
             </div>
             <div className="mt-1">
               <p className={`text-xs ${proximityData.isNear ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}>
-                {proximityData.isNear 
-                  ? `${proximityData.distance}m from ${proximityData.destination}` 
+                {proximityData.isNear
+                  ? `${proximityData.distance}m from ${proximityData.destination}`
                   : `${proximityData.distance}m to destination`
                 }
               </p>

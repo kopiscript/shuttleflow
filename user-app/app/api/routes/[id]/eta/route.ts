@@ -38,26 +38,21 @@ export async function GET(
     if (busLocation) {
       const busLat = parseFloat(busLocation.latitude.toString());
       const busLng = parseFloat(busLocation.longitude.toString());
-      
+
       // Get real speed
       const rawSpeed = parseFloat(busLocation.speed?.toString() || "0");
       // If speed is in m/s, convert to km/h
       speedKmh = rawSpeed * 3.6;
-      
+
       // If speed is too low, use a reasonable default
       if (speedKmh < 5) {
         speedKmh = 50; // Average speed for this route
       }
 
       // Determine destination based on route
-      if (routeId === 1) {
-        // Subang to Nilai: destination is Nilai
-        destination = "INTI Nilai";
-        distanceKm = calculateDistance(busLat, busLng, INTI_NILAI.lat, INTI_NILAI.lng);
-      } else if (routeId === 2) {
-        // Nilai to Subang: destination is Subang
-        destination = "INTI Subang";
-        distanceKm = calculateDistance(busLat, busLng, INTI_SUBANG.lat, INTI_SUBANG.lng);
+      if (route.dropoffLat && route.dropoffLng) {
+        destination = route.dropoffStop;
+        distanceKm = calculateDistance(busLat, busLng, route.dropoffLat, route.dropoffLng);
       } else {
         destination = "Unknown";
         distanceKm = 0;
@@ -65,7 +60,7 @@ export async function GET(
 
       // Calculate ETA
       const etaMinutes = Math.round((distanceKm / speedKmh) * 60);
-      
+
       // Format ETA
       if (distanceKm === 0) {
         eta = "Calculating...";
