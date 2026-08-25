@@ -374,7 +374,7 @@ export default function BusDetailsPage({ params }: PageProps) {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center">
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 max-w-md w-full mx-4">
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-4">

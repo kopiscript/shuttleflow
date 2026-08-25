@@ -1,17 +1,20 @@
 // user-app/app/admin/buses/[id]/MapComponent.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import dynamic from "next/dynamic";
 
-// Fix Leaflet marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
+// 🔥 IMPORTANT: Dynamic import with SSR disabled to fix "window is not defined" error
+const LeafletMap = dynamic(
+  () => import("./LeafletMap"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center w-full h-full bg-[#171821] rounded-lg">
+        <span className="text-[#87888C] font-['Inter'] text-sm">Loading map...</span>
+      </div>
+    )
+  }
+);
 
 interface Bus {
   id: number;
@@ -30,80 +33,9 @@ interface Bus {
 }
 
 export default function MapComponent({ bus }: { bus: Bus }) {
-  const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    // Default coordinates (INTI Subang)
-    const defaultLat = 3.0742;
-    const defaultLng = 101.5913;
-
-    mapRef.current = L.map(mapContainerRef.current).setView([defaultLat, defaultLng], 15);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-    }).addTo(mapRef.current);
-
-    // Add a marker
-    markerRef.current = L.marker([defaultLat, defaultLng])
-      .bindPopup("Bus Location")
-      .addTo(mapRef.current);
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
-
-  // Update marker when bus data changes
-  useEffect(() => {
-    if (!bus || !mapRef.current || !markerRef.current) return;
-
-    const hasLocation = bus.device?.lastLat && bus.device?.lastLng;
-
-    if (hasLocation) {
-      const lat = bus.device.lastLat!;
-      const lng = bus.device.lastLng!;
-      markerRef.current.setLatLng([lat, lng]);
-      markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${bus.device?.status || "Unknown"}<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
-      );
-      mapRef.current.setView([lat, lng], 15);
-    } else {
-      markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: No location data`
-      );
-    }
-  }, [bus]);
-
   return (
-    <div className="relative w-full h-full">
-      {/* Map Container */}
-      <div ref={mapContainerRef} className="w-full h-full" />
-
-      {/* Last updated - bottom right corner of map */}
-      <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg font-['Inter']">
-        Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
-      </div>
+    <div className="relative w-full h-[500px] rounded-lg overflow-hidden border border-[#2C2D33]">
+      <LeafletMap bus={bus} />
     </div>
   );
 }
