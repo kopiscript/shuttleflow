@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     try {
         // --- 1. SECURITY CHECK ---
         const authHeader = request.headers.get('authorization');
-        const expectedKey = process.env.GPS_API_KEY;
+        const expectedKey = process.env.ESP32_API_KEY;
 
         // Reject if the API key is missing or incorrect
         if (!expectedKey || authHeader !== `Bearer ${expectedKey}`) {
