@@ -412,8 +412,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       `)
       .addTo(mapRef.current!);
 
-    // ❌ ROUTE LINE REMOVED - Buses follow roads, not straight lines
-
     // Reset auto-fit flag when route changes
     shouldAutoFitRef.current = true;
     
@@ -546,7 +544,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     };
   }, [mapReady]);
 
-  // ✅ FIXED: Handle theme changes - removed setAttribution
+  // Handle theme changes
   useEffect(() => {
     const handleThemeChange = () => {
       if (!mapRef.current || !tileLayerRef.current) return;
@@ -554,7 +552,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
       // Attribution is already set when tile layer is created
-      // No need to update it dynamically
     };
 
     const observer = new MutationObserver(handleThemeChange);
