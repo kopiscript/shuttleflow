@@ -44,6 +44,54 @@ interface RouteData {
   dropoffLng: number;
 }
 
+// 🚌 Create bus icon with location pin shape
+const createBusIcon = (status: string = 'active') => {
+  const color = status === 'active' ? '#99121A' : '#6B7280';
+  const isActive = status === 'active';
+  
+  return L.divIcon({
+    className: 'bus-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 40px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <!-- Location pin shape (teardrop) -->
+        <svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Shadow -->
+          <ellipse cx="20" cy="48" rx="14" ry="3" fill="rgba(0,0,0,0.15)"/>
+          <!-- Pin body -->
+          <path d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z" 
+            fill="${color}" 
+            stroke="white" 
+            stroke-width="2.5"/>
+          <!-- Inner circle background -->
+          <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
+          <!-- Bus icon inside pin -->
+          <svg x="11" y="7" width="18" height="18" viewBox="0 0 24 24" fill="${color}">
+            <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+          </svg>
+          ${isActive ? `
+            <!-- Green pulse dot for active bus -->
+            <circle cx="32" cy="38" r="7" fill="#22c55e" stroke="white" stroke-width="2"/>
+            <circle cx="32" cy="38" r="7" fill="none" stroke="#22c55e" stroke-width="2" opacity="0.5">
+              <animate attributeName="r" from="7" to="14" dur="1.5s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+          ` : ''}
+        </svg>
+      </div>
+    `,
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -45],
+  });
+};
+
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) => {
@@ -409,7 +457,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     }
   };
 
-  // Update bus markers
+  // 🚌 Update bus markers with bus icon
   useEffect(() => {
     if (!mapRef.current || !mapReady) {
       console.log("⏳ Map not ready, skipping bus markers");
@@ -439,9 +487,13 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       }
 
       console.log(`📍 Adding bus marker: ${bus.name} at [${bus.lat}, ${bus.lng}]`);
-      const marker = L.marker([bus.lat, bus.lng])
+
+      // 🚌 Create bus icon based on status
+      const busIcon = createBusIcon(bus.status);
+
+      const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
         .bindPopup(`
-          <b>${bus.name}</b><br/>
+          <b>🚌 ${bus.name}</b><br/>
           Status: ${bus.status}<br/>
           Routes: ${bus.routeIds?.join(', ') || 'None'}
         `)
@@ -494,14 +546,15 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     };
   }, [mapReady]);
 
-  // Handle theme changes
+  // ✅ FIXED: Handle theme changes - removed setAttribution
   useEffect(() => {
     const handleThemeChange = () => {
       if (!mapRef.current || !tileLayerRef.current) return;
       
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
-      tileLayerRef.current.setAttribution(getAttribution(dark));
+      // Attribution is already set when tile layer is created
+      // No need to update it dynamically
     };
 
     const observer = new MutationObserver(handleThemeChange);
