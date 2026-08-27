@@ -120,12 +120,12 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       try {
         setIsLoading(true);
         console.log(`📡 Fetching route data for ID: ${selectedRoute}`);
-        
+
         const response = await fetch(`/api/routes/${selectedRoute}`);
         const data = await response.json();
-        
+
         console.log("📡 Route API response:", data);
-        
+
         if (data.success) {
           console.log("✅ Route data received:", data.route);
           setRouteData(data.route);
@@ -227,10 +227,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
   // Update route markers when route data changes (NO POLYLINE)
   useEffect(() => {
-    console.log("🔄 Route data effect triggered:", { 
-      mapReady, 
-      hasRouteData: !!routeData, 
-      routeData 
+    console.log("🔄 Route data effect triggered:", {
+      mapReady,
+      hasRouteData: !!routeData,
+      routeData
     });
 
     if (!mapRef.current) {
@@ -270,8 +270,8 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     }
 
     // Validate coordinates
-    if (!routeData.pickupLat || !routeData.pickupLng || 
-        !routeData.dropoffLat || !routeData.dropoffLng) {
+    if (!routeData.pickupLat || !routeData.pickupLng ||
+      !routeData.dropoffLat || !routeData.dropoffLng) {
       console.error("❌ Invalid coordinates in route data:", routeData);
       return;
     }
@@ -368,7 +368,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
     // Reset auto-fit flag when route changes
     shouldAutoFitRef.current = true;
-    
+
     // Fit map to show both markers
     setTimeout(() => {
       fitMapToBounds();
@@ -456,7 +456,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       if (fitTimeoutRef.current) {
         clearTimeout(fitTimeoutRef.current);
       }
-      
+
       // Debounce: wait 3 seconds after last bus update before fitting
       fitTimeoutRef.current = setTimeout(() => {
         fitMapToBounds();
@@ -471,7 +471,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     const handleUserInteraction = () => {
       // User dragged or zoomed the map - disable auto-fit
       shouldAutoFitRef.current = false;
-      
+
       // Re-enable auto-fit after 30 seconds of inactivity
       if (fitTimeoutRef.current) {
         clearTimeout(fitTimeoutRef.current);
@@ -498,10 +498,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   useEffect(() => {
     const handleThemeChange = () => {
       if (!mapRef.current || !tileLayerRef.current) return;
-      
+
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
-      tileLayerRef.current.setAttribution(getAttribution(dark));
+      //tileLayerRef.current.setAttribution(getAttribution(dark)); test if can fix vercel deployment issue
     };
 
     const observer = new MutationObserver(handleThemeChange);
@@ -516,13 +516,13 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   return (
     <div className="relative w-full h-full">
       {/* Map Container */}
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-full" 
-        style={{ 
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{
           minHeight: "400px",
           height: "100%"
-        }} 
+        }}
       />
 
       {/* Loading indicator */}
