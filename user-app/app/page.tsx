@@ -168,6 +168,7 @@ export default function HomePage() {
   return (
     <PageShell
       fullHeight={true}
+      noScroll={true}
       header={
         <>
           <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold mt-6">
@@ -179,7 +180,7 @@ export default function HomePage() {
         </>
       }
     >
-      <div className="relative w-full h-full">
+      <div className="relative w-full h-full overflow-hidden">
         {/* Gradient Background Elements */}
         <div
           className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
@@ -197,10 +198,12 @@ export default function HomePage() {
           }}
         />
 
+        {/* Map container - takes full height */}
         <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
         </div>
 
+        {/* Dropdown - absolute positioned on top */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <CustomDropdown
             options={routes}
@@ -211,6 +214,7 @@ export default function HomePage() {
           />
         </div>
 
+        {/* Bottom card - absolute positioned on bottom */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
             {/* ETA */}

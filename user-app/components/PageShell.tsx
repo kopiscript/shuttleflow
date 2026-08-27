@@ -10,13 +10,15 @@ interface PageShellProps {
     showBackButton?: boolean;
     header?: ReactNode;  // Custom header content (title, subtitle, etc.)
     fullHeight?: boolean; // For pages that need full screen height (like map)
+    noScroll?: boolean; // For pages that should not scroll
 }
 
 export default function PageShell({
     children,
     showBackButton = false,
     header,
-    fullHeight = false
+    fullHeight = false,
+    noScroll = false
 }: PageShellProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -53,7 +55,7 @@ export default function PageShell({
 
     return (
         <>
-            <div className={`relative flex flex-col bg-background overflow-x-auto ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
+            <div className={`relative flex flex-col bg-background overflow-x-auto ${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
                 {/* Gradient Background Elements - Using CSS Variables */}
                 <div
                     className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
@@ -138,7 +140,7 @@ export default function PageShell({
                 </div>
 
                 {/* Children Content */}
-                <div className="relative z-10 flex-1 overflow-hidden">
+                <div className={`relative z-10 flex-1 overflow-hidden ${noScroll ? 'overflow-hidden' : ''}`}>
                     {children}
                 </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix for default marker icons in Next.js
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -32,6 +33,17 @@ interface ProximityData {
   status: string;
 }
 
+interface RouteData {
+  id: number;
+  routeName: string;
+  pickupStop: string;
+  dropoffStop: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
+}
+
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) => {
@@ -46,11 +58,6 @@ const getAttribution = (dark: boolean) => {
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 };
 
-// Coordinates
-const INTI_SUBANG = { lat: 3.0742, lng: 101.5913 };
-const INTI_NILAI = { lat: 2.8051, lng: 101.7656 };
-const CALTEX_KJ = { lat: 3.1097, lng: 101.5965 };
-
 export default function Map({ selectedRoute = "" }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +67,8 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   const [buses, setBuses] = useState<Bus[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // State for proximity data
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
@@ -95,6 +104,40 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch route data when selected route changes
+  useEffect(() => {
+    if (!selectedRoute) {
+      setRouteData(null);
+      setProximityData(null);
+      return;
+    }
+
+    const fetchRouteData = async () => {
+      try {
+        setIsLoading(true);
+        console.log(`📡 Fetching route data for ID: ${selectedRoute}`);
+        
+        const response = await fetch(`/api/routes/${selectedRoute}`);
+        const data = await response.json();
+        
+        console.log("📡 Route API response:", data);
+        
+        if (data.success) {
+          console.log("✅ Route data received:", data.route);
+          setRouteData(data.route);
+        } else {
+          console.error("❌ Failed to fetch route:", data.error);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching route:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRouteData();
+  }, [selectedRoute]);
+
   // Fetch proximity data when route changes
   useEffect(() => {
     if (!selectedRoute) {
@@ -110,10 +153,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
         if (data.success) {
           setProximityData({
-            isNear: data.data.isNearDestination,
-            distance: data.data.distanceToDestination,
-            destination: data.data.destination,
-            status: data.data.status,
+            isNear: data.data.isNearDestination || false,
+            distance: data.data.distanceToDestination || 0,
+            destination: data.data.destination || "Destination",
+            status: data.data.status || "en_route",
           });
         }
       } catch (error) {
@@ -124,7 +167,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     };
 
     fetchProximity();
-    const interval = setInterval(fetchProximity, 5000);
+    const interval = setInterval(fetchProximity, 10000);
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
@@ -135,7 +178,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       return;
     }
 
-    if (mapRef.current) return;
+    if (mapRef.current) {
+      console.log("⚠️ Map already initialized");
+      return;
+    }
 
     console.log("🔄 Initializing map...");
 
@@ -144,7 +190,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
       mapRef.current = L.map(mapContainerRef.current, {
         center: [3.110135, 101.59775217],
-        zoom: 15,
+        zoom: 12,
       });
 
       tileLayerRef.current = L.tileLayer(getTileUrl(dark), {
@@ -154,6 +200,13 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
       console.log("✅ Map initialized successfully");
       setMapReady(true);
+
+      // Force a resize after a moment
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 100);
     } catch (error) {
       console.error("❌ Failed to initialize map:", error);
     }
@@ -168,111 +221,153 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     };
   }, []);
 
-  // Update pickup marker
-  const updatePickupMarker = (routeId: string) => {
+  // Update route markers when route data changes (NO POLYLINE)
+  useEffect(() => {
+    console.log("🔄 Route data effect triggered:", { 
+      mapReady, 
+      hasRouteData: !!routeData, 
+      routeData 
+    });
+
+    if (!mapRef.current) {
+      console.log("⏳ Map reference not ready");
+      return;
+    }
+
+    if (!mapReady) {
+      console.log("⏳ Map not ready");
+      return;
+    }
+
+    if (!routeData) {
+      console.log("⏳ No route data available");
+      // Clear markers if no route data
+      if (pickupMarkerRef.current) {
+        pickupMarkerRef.current.remove();
+        pickupMarkerRef.current = null;
+      }
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.remove();
+        destinationMarkerRef.current = null;
+      }
+      return;
+    }
+
+    console.log("📍 Adding route markers with data:", routeData);
+
+    // Remove old markers
     if (pickupMarkerRef.current) {
       pickupMarkerRef.current.remove();
       pickupMarkerRef.current = null;
     }
-
-    if (!mapRef.current || !routeId) return;
-
-    let pickupLat: number, pickupLng: number, pickupName: string;
-
-    if (routeId === "1") {
-      pickupLat = INTI_SUBANG.lat;
-      pickupLng = INTI_SUBANG.lng;
-      pickupName = "INTI Subang (Pickup)";
-    } else if (routeId === "2") {
-      pickupLat = INTI_NILAI.lat;
-      pickupLng = INTI_NILAI.lng;
-      pickupName = "INTI Nilai (Pickup)";
-    } else if (routeId === "3") {
-      pickupLat = CALTEX_KJ.lat;
-      pickupLng = CALTEX_KJ.lng;
-      pickupName = "Caltex Kelana Jaya (Pickup)";
-    } else if (routeId === "4") {
-      pickupLat = INTI_SUBANG.lat;
-      pickupLng = INTI_SUBANG.lng;
-      pickupName = "INTI Subang (Pickup)";
-    } else {
-      return;
-    }
-
-    const pickupIcon = L.divIcon({
-      className: 'pickup-marker',
-      html: `<div style="
-        width: 16px;
-        height: 16px;
-        background: #3b82f6;
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-        animation: pulse 1.5s ease-in-out infinite;
-      "></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-    });
-
-    pickupMarkerRef.current = L.marker([pickupLat, pickupLng], {
-      icon: pickupIcon,
-    })
-      .bindPopup(`<b>🚏 Pickup Point</b><br/>${pickupName}`)
-      .addTo(mapRef.current!);
-  };
-
-  // Update destination marker
-  const updateDestinationMarker = (routeId: string) => {
     if (destinationMarkerRef.current) {
       destinationMarkerRef.current.remove();
       destinationMarkerRef.current = null;
     }
 
-    if (!mapRef.current || !routeId) return;
-
-    let destLat: number, destLng: number, destName: string;
-
-    if (routeId === "1") {
-      destLat = INTI_NILAI.lat;
-      destLng = INTI_NILAI.lng;
-      destName = "INTI Nilai (Destination)";
-    } else if (routeId === "2") {
-      destLat = INTI_SUBANG.lat;
-      destLng = INTI_SUBANG.lng;
-      destName = "INTI Subang (Destination)";
-    } else if (routeId === "3") {
-      destLat = INTI_SUBANG.lat;
-      destLng = INTI_SUBANG.lng;
-      destName = "INTI Subang (Destination)";
-    } else if (routeId === "4") {
-      destLat = CALTEX_KJ.lat;
-      destLng = CALTEX_KJ.lng;
-      destName = "Caltex Kelana Jaya (Destination)";
-    } else {
+    // Validate coordinates
+    if (!routeData.pickupLat || !routeData.pickupLng || 
+        !routeData.dropoffLat || !routeData.dropoffLng) {
+      console.error("❌ Invalid coordinates in route data:", routeData);
       return;
     }
 
-    const destinationIcon = L.divIcon({
-      className: 'destination-marker',
-      html: `<div style="
-        width: 16px;
-        height: 16px;
-        background: #22c55e;
-        border: 3px solid white;
-        border-radius: 50%;
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-        animation: pulse 1.5s ease-in-out infinite;
-      "></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
+    // Create pulsing pickup marker (Blue)
+    const pickupIcon = L.divIcon({
+      className: 'pickup-marker',
+      html: `
+        <div style="position: relative; width: 20px; height: 20px;">
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.3);
+            animation: pulseBlue 1.5s ease-in-out infinite;
+          "></div>
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 3px solid white;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+          "></div>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
     });
 
-    destinationMarkerRef.current = L.marker([destLat, destLng], {
+    console.log(`📍 Adding pickup marker at [${routeData.pickupLat}, ${routeData.pickupLng}]`);
+    pickupMarkerRef.current = L.marker([routeData.pickupLat, routeData.pickupLng], {
+      icon: pickupIcon,
+    })
+      .bindPopup(`
+        <b>🚏 Pickup Point</b><br/>
+        ${routeData.pickupStop}
+      `)
+      .addTo(mapRef.current!);
+
+    // Create pulsing destination marker (Green)
+    const destinationIcon = L.divIcon({
+      className: 'destination-marker',
+      html: `
+        <div style="position: relative; width: 20px; height: 20px;">
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(34, 197, 94, 0.3);
+            animation: pulseGreen 1.5s ease-in-out infinite;
+          "></div>
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+            border: 3px solid white;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+          "></div>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+    });
+
+    console.log(`📍 Adding destination marker at [${routeData.dropoffLat}, ${routeData.dropoffLng}]`);
+    destinationMarkerRef.current = L.marker([routeData.dropoffLat, routeData.dropoffLng], {
       icon: destinationIcon,
     })
-      .bindPopup(`<b>📍 Destination</b><br/>${destName}`)
+      .bindPopup(`
+        <b>📍 Destination</b><br/>
+        ${routeData.dropoffStop}
+      `)
       .addTo(mapRef.current!);
-  };
+
+    // ❌ ROUTE LINE REMOVED - Buses follow roads, not straight lines
+
+    // Fit map to show both markers
+    setTimeout(() => {
+      fitMapToBounds();
+    }, 200);
+
+  }, [routeData, mapReady]);
 
   // Fit map to show all markers
   const fitMapToBounds = () => {
@@ -298,30 +393,18 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     if (markerPositions.length >= 2) {
       const bounds = L.latLngBounds(markerPositions);
       mapRef.current.fitBounds(bounds, {
-        padding: [50, 50],
-        maxZoom: 14,
+        padding: [80, 80],
+        maxZoom: 11,
       });
     } else if (markerPositions.length === 1) {
-      mapRef.current.setView(markerPositions[0], 14);
+      mapRef.current.setView(markerPositions[0], 13);
     }
   };
-
-  // Update route markers when route changes
-  useEffect(() => {
-    if (!mapRef.current || !mapReady) return;
-
-    updatePickupMarker(selectedRoute);
-    updateDestinationMarker(selectedRoute);
-
-    setTimeout(() => {
-      fitMapToBounds();
-    }, 150);
-  }, [selectedRoute, mapReady]);
 
   // Update bus markers
   useEffect(() => {
     if (!mapRef.current || !mapReady) {
-      console.log("⏳ Map not ready, skipping markers");
+      console.log("⏳ Map not ready, skipping bus markers");
       return;
     }
 
@@ -347,7 +430,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
         return;
       }
 
-      console.log(`📍 Adding marker: ${bus.name} at [${bus.lat}, ${bus.lng}]`);
+      console.log(`📍 Adding bus marker: ${bus.name} at [${bus.lat}, ${bus.lng}]`);
       const marker = L.marker([bus.lat, bus.lng])
         .bindPopup(`
           <b>${bus.name}</b><br/>
@@ -361,13 +444,52 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
     setTimeout(() => {
       fitMapToBounds();
-    }, 150);
+    }, 200);
   }, [buses, selectedRoute, mapReady]);
+
+  // Handle theme changes
+  useEffect(() => {
+    const handleThemeChange = () => {
+      if (!mapRef.current || !tileLayerRef.current) return;
+      
+      const dark = isDarkMode();
+      tileLayerRef.current.setUrl(getTileUrl(dark));
+      tileLayerRef.current.setAttribution(getAttribution(dark));
+    };
+
+    // Listen for theme changes
+    const observer = new MutationObserver(handleThemeChange);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="relative w-full h-full">
       {/* Map Container */}
-      <div ref={mapContainerRef} className="w-full h-full" style={{ minHeight: "400px" }} />
+      <div 
+        ref={mapContainerRef} 
+        className="w-full h-full" 
+        style={{ 
+          minHeight: "400px",
+          height: "100%"
+        }} 
+      />
+
+      {/* Loading indicator */}
+      {isLoading && selectedRoute && (
+        <div className="absolute top-4 left-4 z-30">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-3">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">Loading route...</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Proximity Status Indicator */}
       {proximityData && selectedRoute && (
@@ -409,20 +531,16 @@ export default function Map({ selectedRoute = "" }: MapProps) {
         </div>
       )}
 
-      {/* CSS for pulse animation (only once) */}
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.7; }
-        }
-        @keyframes slide-right {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .animate-slide-right {
-          animation: slide-right 0.3s ease-out forwards;
-        }
-      `}</style>
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute bottom-4 left-4 z-30 bg-black/80 text-white p-2 rounded text-xs max-w-xs">
+          <div>Route ID: {selectedRoute || 'None'}</div>
+          <div>Route Data: {routeData ? '✅' : '❌'}</div>
+          <div>Map Ready: {mapReady ? '✅' : '❌'}</div>
+          <div>Pickup: {routeData?.pickupLat?.toFixed(4) || 'N/A'}, {routeData?.pickupLng?.toFixed(4) || 'N/A'}</div>
+          <div>Dropoff: {routeData?.dropoffLat?.toFixed(4) || 'N/A'}, {routeData?.dropoffLng?.toFixed(4) || 'N/A'}</div>
+        </div>
+      )}
     </div>
   );
 }
