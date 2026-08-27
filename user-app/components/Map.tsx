@@ -44,17 +44,65 @@ interface RouteData {
   dropoffLng: number;
 }
 
+// 🚌 Create bus icon with location pin shape
+const createBusIcon = (status: string = 'active') => {
+  const color = status === 'active' ? '#99121A' : '#6B7280';
+  const isActive = status === 'active';
+  
+  return L.divIcon({
+    className: 'bus-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 40px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">
+        <!-- Location pin shape (teardrop) -->
+        <svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Shadow -->
+          <ellipse cx="20" cy="48" rx="14" ry="3" fill="rgba(0,0,0,0.15)"/>
+          <!-- Pin body -->
+          <path d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z" 
+            fill="${color}" 
+            stroke="white" 
+            stroke-width="2.5"/>
+          <!-- Inner circle background -->
+          <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
+          <!-- Bus icon inside pin -->
+          <svg x="11" y="7" width="18" height="18" viewBox="0 0 24 24" fill="${color}">
+            <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+          </svg>
+          ${isActive ? `
+            <!-- Green pulse dot for active bus -->
+            <circle cx="32" cy="38" r="7" fill="#22c55e" stroke="white" stroke-width="2"/>
+            <circle cx="32" cy="38" r="7" fill="none" stroke="#22c55e" stroke-width="2" opacity="0.5">
+              <animate attributeName="r" from="7" to="14" dur="1.5s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite"/>
+            </circle>
+          ` : ''}
+        </svg>
+      </div>
+    `,
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -45],
+  });
+};
+
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) => {
   return dark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 };
 
 const getAttribution = (dark: boolean) => {
   return dark
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | &copy; <a href="https://carto.com/">CARTO</a>'
+    ? '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 };
 
@@ -73,6 +121,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   // State for proximity data
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
   const [proximityLoading, setProximityLoading] = useState(false);
+
+  // Ref to track if map should auto-fit
+  const shouldAutoFitRef = useRef(true);
+  const fitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch live bus data from API
   useEffect(() => {
@@ -360,8 +412,9 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       `)
       .addTo(mapRef.current!);
 
-    // ❌ ROUTE LINE REMOVED - Buses follow roads, not straight lines
-
+    // Reset auto-fit flag when route changes
+    shouldAutoFitRef.current = true;
+    
     // Fit map to show both markers
     setTimeout(() => {
       fitMapToBounds();
@@ -369,9 +422,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
   }, [routeData, mapReady]);
 
-  // Fit map to show all markers
+  // Fit map to show all markers (with debounce)
   const fitMapToBounds = () => {
     if (!mapRef.current) return;
+    if (!shouldAutoFitRef.current) return;
 
     const markerPositions: L.LatLng[] = [];
 
@@ -401,7 +455,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     }
   };
 
-  // Update bus markers
+  // 🚌 Update bus markers with bus icon
   useEffect(() => {
     if (!mapRef.current || !mapReady) {
       console.log("⏳ Map not ready, skipping bus markers");
@@ -431,9 +485,13 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       }
 
       console.log(`📍 Adding bus marker: ${bus.name} at [${bus.lat}, ${bus.lng}]`);
-      const marker = L.marker([bus.lat, bus.lng])
+
+      // 🚌 Create bus icon based on status
+      const busIcon = createBusIcon(bus.status);
+
+      const marker = L.marker([bus.lat, bus.lng], { icon: busIcon })
         .bindPopup(`
-          <b>${bus.name}</b><br/>
+          <b>🚌 ${bus.name}</b><br/>
           Status: ${bus.status}<br/>
           Routes: ${bus.routeIds?.join(', ') || 'None'}
         `)
@@ -442,10 +500,49 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       markersRef.current.push(marker);
     });
 
-    setTimeout(() => {
-      fitMapToBounds();
-    }, 200);
+    // Only auto-fit if it's the first load or user hasn't interacted
+    if (shouldAutoFitRef.current) {
+      // Clear any existing timeout
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+      
+      // Debounce: wait 3 seconds after last bus update before fitting
+      fitTimeoutRef.current = setTimeout(() => {
+        fitMapToBounds();
+      }, 3000);
+    }
   }, [buses, selectedRoute, mapReady]);
+
+  // Handle map interaction - disable auto-fit when user interacts
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const handleUserInteraction = () => {
+      // User dragged or zoomed the map - disable auto-fit
+      shouldAutoFitRef.current = false;
+      
+      // Re-enable auto-fit after 30 seconds of inactivity
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+      fitTimeoutRef.current = setTimeout(() => {
+        shouldAutoFitRef.current = true;
+      }, 30000); // 30 seconds
+    };
+
+    const map = mapRef.current;
+    map.on('dragstart', handleUserInteraction);
+    map.on('zoomstart', handleUserInteraction);
+
+    return () => {
+      map.off('dragstart', handleUserInteraction);
+      map.off('zoomstart', handleUserInteraction);
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+    };
+  }, [mapReady]);
 
   // Handle theme changes
   useEffect(() => {
@@ -454,10 +551,9 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
-      tileLayerRef.current.setAttribution(getAttribution(dark));
+      // Attribution is already set when tile layer is created
     };
 
-    // Listen for theme changes
     const observer = new MutationObserver(handleThemeChange);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -539,6 +635,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
           <div>Map Ready: {mapReady ? '✅' : '❌'}</div>
           <div>Pickup: {routeData?.pickupLat?.toFixed(4) || 'N/A'}, {routeData?.pickupLng?.toFixed(4) || 'N/A'}</div>
           <div>Dropoff: {routeData?.dropoffLat?.toFixed(4) || 'N/A'}, {routeData?.dropoffLng?.toFixed(4) || 'N/A'}</div>
+          <div>Auto-Fit: {shouldAutoFitRef.current ? '✅' : '❌'}</div>
         </div>
       )}
     </div>
