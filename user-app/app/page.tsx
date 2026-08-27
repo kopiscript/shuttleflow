@@ -1,12 +1,11 @@
+
 // app/page.tsx
 "use client";
-
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import PageShell from "../components/PageShell";
 import CustomDropdown from "../components/CustomDropdown";
 import { useLanguage } from "../context/LanguageContext";
-
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
   loading: () => (
@@ -15,7 +14,6 @@ const Map = dynamic(() => import("../components/Map"), {
     </div>
   ),
 });
-
 interface Route {
   id: number;
   routeName: string;
@@ -24,7 +22,17 @@ interface Route {
   dropoffLat?: number;
   dropoffLng?: number;
 }
-
+// ETA data interface
+interface ETAData {
+  minutes: number;
+  minutesDisplay: string;
+  arrivalTime: string;
+  fullDisplay: string;
+  distance: string;
+  pickupStop: string;
+  destination: string;
+  speed: string | null;
+}
 // Proximity data interface
 interface ProximityData {
   isNear: boolean;
@@ -32,18 +40,15 @@ interface ProximityData {
   destination: string;
   status: string;
 }
-
 export default function HomePage() {
   const { t } = useLanguage();
   const [selectedRoute, setSelectedRoute] = useState("");
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [eta, setEta] = useState("");
+  const [etaData, setEtaData] = useState<ETAData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
   // Add proximity state
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
-
   // Fetch routes when page loads
   useEffect(() => {
     fetch("/api/routes")
@@ -64,7 +69,6 @@ export default function HomePage() {
         setLoading(false);
       });
   }, []);
-
   // Fetch bus location periodically
   useEffect(() => {
     const fetchBusLocation = async () => {
@@ -82,19 +86,16 @@ export default function HomePage() {
         console.error("Failed to fetch bus location:", error);
       }
     };
-
     fetchBusLocation();
     const interval = setInterval(fetchBusLocation, 5000);
     return () => clearInterval(interval);
   }, []);
-
   // Fetch proximity data when route is selected
   useEffect(() => {
     if (!selectedRoute) {
       setProximityData(null);
       return;
     }
-
     const fetchProximity = async () => {
       try {
         const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
@@ -111,60 +112,34 @@ export default function HomePage() {
         console.error("Failed to fetch proximity:", error);
       }
     };
-
     fetchProximity();
     const interval = setInterval(fetchProximity, 5000);
     return () => clearInterval(interval);
   }, [selectedRoute]);
-
-  // Fetch ETA using TomTom API when route is selected
+  // Fetch ETA when route is selected
   useEffect(() => {
     if (!selectedRoute) {
-      setEta("");
+      setEtaData(null);
       return;
     }
-
-    const selectedRouteData = routes.find(r => r.id === parseInt(selectedRoute));
-
-    // Get bus location
-    const startLat = busLocation?.lat || 3.0742;
-    const startLng = busLocation?.lng || 101.5913;
-
-    // Get destination coordinates based on route
-    let endLat = 2.8051;
-    let endLng = 101.7656;
-
-    if (selectedRouteData?.dropoffLat && selectedRouteData?.dropoffLng) {
-      endLat = selectedRouteData.dropoffLat;
-      endLng = selectedRouteData.dropoffLng;
-    } else if (parseInt(selectedRoute) === 2) {
-      endLat = 3.0742;
-      endLng = 101.5913;
-    }
-
-    console.log(`Fetching ETA from ${startLat},${startLng} to ${endLat},${endLng}`);
-
-    fetch(`/api/tomtom-eta?startLat=${startLat}&startLng=${startLng}&endLat=${endLat}&endLng=${endLng}`)
+    fetch(`/api/routes/${selectedRoute}/eta`)
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        console.log("TomTom API response:", data);
+        console.log("ETA API response:", data);
         if (data.success) {
-          setEta(`ETA: ${data.eta}`);
+          setEtaData(data.eta);
         } else {
-          setEta(t("home.etaUnavailable"));
+          setEtaData(null);
         }
       })
       .catch((err) => {
         console.error("Failed to fetch ETA:", err);
-        setEta(t("home.etaUnavailable"));
+        setEtaData(null);
       });
-  }, [selectedRoute, routes, busLocation, t]);
-
+  }, [selectedRoute]);
   return (
     <PageShell
       fullHeight={true}
@@ -189,7 +164,6 @@ export default function HomePage() {
             transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
           }}
         />
-
         <div
           className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
           style={{
@@ -197,12 +171,10 @@ export default function HomePage() {
             transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
           }}
         />
-
         {/* Map container - takes full height */}
         <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
         </div>
-
         {/* Dropdown - absolute positioned on top */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <CustomDropdown
@@ -213,32 +185,47 @@ export default function HomePage() {
             placeholder={t("home.selectRoute")}
           />
         </div>
-
+        // In app/page.tsx - Update the ETA card section
         {/* Bottom card - absolute positioned on bottom */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
-            {/* ETA */}
+            {/* ETA Display - Like Grab style */}
             <div className="flex items-center gap-2">
-              <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
-                {eta || t("home.selectRouteHint")}
-              </span>
+              {etaData ? (
+                <div className="flex flex-col">
+                  {/* Main ETA: "5 min away" like Grab */}
+                  <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
+                    {etaData.minutesDisplay}
+                    <span className="text-xs font-normal opacity-70 ml-2">
+                      • Arrive at {etaData.arrivalTime}
+                    </span>
+                  </span>
+                  {/* Distance to pickup */}
+                  {etaData.distance && (
+                    <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
+                      {etaData.distance} from {etaData.pickupStop}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
+                  {t("home.selectRouteHint")}
+                </span>
+              )}
             </div>
-
-            {/* Proximity Status */}
+            {/* Proximity Status (if bus is near destination) */}
             {proximityData && (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className={`text-xs font-medium ${
-                  proximityData.isNear 
-                    ? 'text-green-600 dark:text-green-400' 
+                <span className={`text-xs font-medium ${proximityData.isNear
+                    ? 'text-green-600 dark:text-green-400'
                     : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {proximityData.isNear 
-                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}` 
+                  }`}>
+                  {proximityData.isNear
+                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}`
                     : `${proximityData.distance}m to destination`}
                 </span>
               </div>
             )}
-
             {/* Disclaimer */}
             <div className="flex items-center gap-2 mt-2">
               <svg className="w-4 h-4 text-[#99121A]" fill="currentColor" viewBox="0 0 20 20">
