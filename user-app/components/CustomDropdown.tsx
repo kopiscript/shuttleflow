@@ -58,38 +58,40 @@ export default function CustomDropdown({
         </svg>
       </div>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu - Scrollable with max height */}
       {isOpen && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden z-30">
+        <div className="absolute top-full left-0 right-0 mt-2 overflow-hidden z-50">
           <div className="relative bg-(--glass-bg) backdrop-blur-sm rounded-2xl shadow-[0px_8px_40px_rgba(0,0,0,0.2)] overflow-hidden">
-            {/* Divider line removed */}
-
-            {options.length === 0 ? (
-              <div className="px-5 py-4 text-gray-400 font-['Inter'] text-sm tracking-[-0.23px]">
-                {t("home.noRoutes")}
-              </div>
-            ) : (
-              options.map((option) => (
-                <div
-                  key={option.id}
-                  className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${value === option.id.toString()
-                      ? 'bg-gray-300/50 dark:bg-gray-600/50 text-(--dropdown-text) font-medium'
-                      : 'text-(--dropdown-text)/80 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
-                    }`}
-                  onClick={() => {
-                    onChange(option.id.toString());
-                    setIsOpen(false);
-                  }}
-                >
-                  <div className="font-medium">{option.routeName}</div>
-                  {option.pickupStop && option.dropoffStop && (
-                    <div className="text-xs opacity-70 mt-1 tracking-[-0.23px]">
-                      {option.pickupStop} → {option.dropoffStop}
-                    </div>
-                  )}
+            {/* Scrollable container with max height */}
+            <div className="max-h-40 overflow-y-auto overscroll-contain">
+              {options.length === 0 ? (
+                <div className="px-5 py-4 text-gray-400 font-['Inter'] text-sm tracking-[-0.23px]">
+                  {t("home.noRoutes")}
                 </div>
-              ))
-            )}
+              ) : (
+                options.map((option) => (
+                  <div
+                    key={option.id}
+                    className={`px-5 py-4 cursor-pointer transition-colors font-['Inter'] text-sm tracking-[-0.23px] ${
+                      value === option.id.toString()
+                        ? 'bg-gray-300/50 dark:bg-gray-600/50 text-(--dropdown-text) font-medium'
+                        : 'text-(--dropdown-text)/80 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
+                    }`}
+                    onClick={() => {
+                      onChange(option.id.toString());
+                      setIsOpen(false);
+                    }}
+                  >
+                    <div className="font-medium">{option.routeName}</div>
+                    {option.pickupStop && option.dropoffStop && (
+                      <div className="text-xs opacity-70 mt-1 tracking-[-0.23px]">
+                        {option.pickupStop} → {option.dropoffStop}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
