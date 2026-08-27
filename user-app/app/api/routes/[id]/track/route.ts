@@ -6,10 +6,11 @@ import { calculateDistance } from "@/lib/distance";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const routeId = parseInt(params.id);
+    const { id } = await params;
+    const routeId = parseInt(id);
     const { searchParams } = new URL(request.url);
     const busId = parseInt(searchParams.get("busId") || "1");
 
@@ -57,7 +58,7 @@ export async function GET(
         routeName: route.routeName,
         destination: destination,
         busLocation: { lat: busLat, lng: busLng },
-        destinationLocation: route.dropoffLat && route.dropoffLng 
+        destinationLocation: route.dropoffLat && route.dropoffLng
           ? { lat: route.dropoffLat, lng: route.dropoffLng }
           : null,
         distanceToDestination: distance ? Math.round(distance) : null,
