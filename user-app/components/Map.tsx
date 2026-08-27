@@ -48,13 +48,13 @@ const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) => {
   return dark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 };
 
 const getAttribution = (dark: boolean) => {
   return dark
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | &copy; <a href="https://carto.com/">CARTO</a>'
+    ? '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 };
 
@@ -73,6 +73,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   // State for proximity data
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
   const [proximityLoading, setProximityLoading] = useState(false);
+
+  // Ref to track if map should auto-fit
+  const shouldAutoFitRef = useRef(true);
+  const fitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch live bus data from API
   useEffect(() => {
@@ -362,6 +366,9 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
     // ❌ ROUTE LINE REMOVED - Buses follow roads, not straight lines
 
+    // Reset auto-fit flag when route changes
+    shouldAutoFitRef.current = true;
+    
     // Fit map to show both markers
     setTimeout(() => {
       fitMapToBounds();
@@ -369,9 +376,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
   }, [routeData, mapReady]);
 
-  // Fit map to show all markers
+  // Fit map to show all markers (with debounce)
   const fitMapToBounds = () => {
     if (!mapRef.current) return;
+    if (!shouldAutoFitRef.current) return;
 
     const markerPositions: L.LatLng[] = [];
 
@@ -442,10 +450,49 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       markersRef.current.push(marker);
     });
 
-    setTimeout(() => {
-      fitMapToBounds();
-    }, 200);
+    // Only auto-fit if it's the first load or user hasn't interacted
+    if (shouldAutoFitRef.current) {
+      // Clear any existing timeout
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+      
+      // Debounce: wait 3 seconds after last bus update before fitting
+      fitTimeoutRef.current = setTimeout(() => {
+        fitMapToBounds();
+      }, 3000);
+    }
   }, [buses, selectedRoute, mapReady]);
+
+  // Handle map interaction - disable auto-fit when user interacts
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const handleUserInteraction = () => {
+      // User dragged or zoomed the map - disable auto-fit
+      shouldAutoFitRef.current = false;
+      
+      // Re-enable auto-fit after 30 seconds of inactivity
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+      fitTimeoutRef.current = setTimeout(() => {
+        shouldAutoFitRef.current = true;
+      }, 30000); // 30 seconds
+    };
+
+    const map = mapRef.current;
+    map.on('dragstart', handleUserInteraction);
+    map.on('zoomstart', handleUserInteraction);
+
+    return () => {
+      map.off('dragstart', handleUserInteraction);
+      map.off('zoomstart', handleUserInteraction);
+      if (fitTimeoutRef.current) {
+        clearTimeout(fitTimeoutRef.current);
+      }
+    };
+  }, [mapReady]);
 
   // Handle theme changes
   useEffect(() => {
@@ -457,7 +504,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       tileLayerRef.current.setAttribution(getAttribution(dark));
     };
 
-    // Listen for theme changes
     const observer = new MutationObserver(handleThemeChange);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -539,6 +585,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
           <div>Map Ready: {mapReady ? '✅' : '❌'}</div>
           <div>Pickup: {routeData?.pickupLat?.toFixed(4) || 'N/A'}, {routeData?.pickupLng?.toFixed(4) || 'N/A'}</div>
           <div>Dropoff: {routeData?.dropoffLat?.toFixed(4) || 'N/A'}, {routeData?.dropoffLng?.toFixed(4) || 'N/A'}</div>
+          <div>Auto-Fit: {shouldAutoFitRef.current ? '✅' : '❌'}</div>
         </div>
       )}
     </div>
