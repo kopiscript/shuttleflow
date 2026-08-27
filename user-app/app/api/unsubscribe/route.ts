@@ -1,6 +1,7 @@
 // app/api/unsubscribe/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBaseUrl } from '@/lib/url';
 
 // ✅ ADD THIS: Handle GET requests from email links
 export async function GET(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
                     <div class="container">
                         <h1>❌ Unsubscribe Failed</h1>
                         <p class="error">Email address is required.</p>
-                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings" style="color: #99121A;">Go back to Settings</a>
+                        <a href="${getBaseUrl()}/settings" style="color: #99121A;">Go back to Settings</a>
                     </div>
                 </body>
                 </html>
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
                     <div class="container">
                         <h1>ℹ️ Not Subscribed</h1>
                         <p>This email is not in our subscriber list.</p>
-                        <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings" style="color: #99121A;">Go back to Settings</a>
+                        <a href="${getBaseUrl()}/settings" style="color: #99121A;">Go back to Settings</a>
                     </div>
                 </body>
                 </html>
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
                     <h1>✅ Unsubscribed Successfully</h1>
                     <p>You have been removed from our email list.</p>
                     <p>You will no longer receive email notifications from ShuttleFlow.</p>
-                    <button onclick="window.location.href='${process.env.NEXT_PUBLIC_APP_URL}/settings'">Go to Settings</button>
+                    <button onclick="window.location.href='${getBaseUrl()}/settings'">Go to Settings</button>
                 </div>
             </body>
             </html>
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
                 <div class="container">
                     <h1>❌ Unsubscribe Failed</h1>
                     <p>Something went wrong. Please try again later.</p>
-                    <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings" style="color: #99121A;">Go back to Settings</a>
+                    <a href="${getBaseUrl()}/settings" style="color: #99121A;">Go back to Settings</a>
                 </div>
             </body>
             </html>

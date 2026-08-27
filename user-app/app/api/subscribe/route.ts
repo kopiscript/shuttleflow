@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
+import { getBaseUrl } from '@/lib/url';
 import crypto from 'crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
         // Generate verification token
         const token = crypto.randomBytes(32).toString('hex');
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const verifyUrl = `${baseUrl}/api/verify-subscription?token=${token}`;
 
         // Upsert subscriber (create or update)

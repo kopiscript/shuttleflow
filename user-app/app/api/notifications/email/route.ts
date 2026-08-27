@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
+import { getBaseUrl } from '@/lib/url';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
                             <p style="color: #666; font-size: 12px;">
                                 You received this because you subscribed to ShuttleFlow alerts.
                                 <br />
-                                <a href="${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?email=${subscriber.email}" style="color: #99121A;">
+                                <a href="${getBaseUrl()}/api/unsubscribe?email=${subscriber.email}" style="color: #99121A;">
                                     Unsubscribe
                                 </a>
                             </p>

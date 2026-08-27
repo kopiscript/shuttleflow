@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLanguage } from "../context/LanguageContext";
@@ -12,7 +12,9 @@ interface SidebarMenuProps {
 
 export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
     const { t } = useLanguage();
+    const sidebarRef = useRef<HTMLDivElement>(null);
 
+    // Close sidebar when pressing Escape key
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
@@ -23,6 +25,7 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
+    // Prevent body scroll when sidebar is open
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -33,6 +36,24 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
             document.body.style.overflow = 'unset';
         };
     }, [isOpen]);
+
+    // Handle touch events to prevent lag
+    useEffect(() => {
+        const handleTouchStart = (e: TouchEvent) => {
+            // If tapping outside the sidebar, close it
+            if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
+                onClose();
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        }
+
+        return () => {
+            document.removeEventListener('touchstart', handleTouchStart);
+        };
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
@@ -45,16 +66,25 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
     return (
         <>
+            {/* Backdrop - lighter blur for better performance */}
             <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
                 onClick={onClose}
+                style={{ backdropFilter: 'blur(2px)' }}
             />
 
-            {/* Sidebar - uses CSS variables for dark mode */}
-            <div className="fixed top-0 left-0 bottom-0 w-[288px] bg-(--sidebar-bg) shadow-2xl z-50">
+            {/* Sidebar with transform for smooth animation */}
+            <div
+                ref={sidebarRef}
+                className={`fixed top-0 left-0 bottom-0 w-[288px] bg-(--sidebar-bg) shadow-2xl z-50 transition-transform duration-300 ease-out will-change-transform ${isOpen ? 'translate-x-0' : '-translate-x-full'
+                    }`}
+                style={{ touchAction: 'manipulation' }}
+            >
                 <button
                     onClick={onClose}
-                    className="absolute top-5 right-5 text-(--sidebar-text) hover:text-[#99121A] transition-colors"
+                    className="absolute top-5 right-5 text-(--sidebar-text) hover:text-[#99121A] transition-colors p-2"
+                    style={{ touchAction: 'manipulation' }}
+                    aria-label="Close menu"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -68,6 +98,7 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                         width={120}
                         height={28}
                         className="object-contain"
+                        priority
                     />
                 </div>
 
@@ -77,7 +108,8 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                             <Link
                                 href={item.href}
                                 onClick={onClose}
-                                className="block font-['Bai_Jamjuree'] font-medium text-base text-(--sidebar-text) hover:text-[#99121A] transition-colors mb-3"
+                                className="block font-['Bai_Jamjuree'] font-medium text-base text-(--sidebar-text) hover:text-[#99121A] transition-colors mb-3 p-2"
+                                style={{ touchAction: 'manipulation' }}
                             >
                                 {item.name}
                             </Link>
