@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Bai_Jamjuree, Inter } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -31,6 +31,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ShuttleFlow",
   description: "Track your bus in real-time",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ShuttleFlow",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -44,8 +54,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${baiJamjuree.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body 
-        className="min-h-full flex flex-col" 
+      <body
+        className="min-h-full flex flex-col"
         suppressHydrationWarning  // ← ADD THIS LINE
       >
         <ThemeProvider>
