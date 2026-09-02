@@ -65,7 +65,7 @@ export async function GET(
     // ✅ 1. TRY TOMTOM API FIRST
     const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
     let tomtomSuccess = false;
-    
+
     if (TOMTOM_API_KEY) {
       try {
         const url = `https://api.tomtom.com/routing/1/calculateRoute/${busLat},${busLng}:${route.pickupLat},${route.pickupLng}/json` +
@@ -102,21 +102,21 @@ export async function GET(
     if (!tomtomSuccess) {
       // Calculate distance using Haversine
       distanceKm = calculateDistance(busLat, busLng, route.pickupLat, route.pickupLng);
-      
+
       // ✅ Try to get real GPS speed from database
       const rawSpeed = parseFloat(busLocation.speed?.toString() || "0");
-      
+
       if (rawSpeed > 0) {
         // GPS speed available - use it!
         // Convert from m/s to km/h if needed (GPS usually gives km/h, but check)
         speedKmh = rawSpeed;
-        
+
         // If speed is very low (< 10), it might be in m/s
         // Convert m/s to km/h (multiply by 3.6)
         if (rawSpeed < 10 && rawSpeed > 0) {
           speedKmh = rawSpeed * 3.6;
         }
-        
+
         // If speed is still too low (< 5 km/h), the bus is probably stopped
         // Use a reasonable default based on distance
         if (speedKmh < 5) {
@@ -140,7 +140,7 @@ export async function GET(
       // Calculate ETA
       etaMinutes = Math.round((distanceKm / speedKmh) * 60);
       source = `Haversine (GPS speed: ${speedKmh.toFixed(1)} km/h)`;
-      
+
       console.log(`📍 Haversine ETA: ${etaMinutes} min, ${distanceKm.toFixed(1)} km`);
     }
 
@@ -150,6 +150,7 @@ export async function GET(
     const arrivalTimeStr = arrivalTime.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
+      timeZone: 'Asia/Kuala_Lumpur',
     });
 
     // Format minutes left
@@ -195,8 +196,8 @@ export async function GET(
   } catch (error) {
     console.error("ETA API Error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: "Failed to calculate ETA",
         details: error instanceof Error ? error.message : "Unknown error"
       },
