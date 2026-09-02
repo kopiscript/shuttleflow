@@ -1,11 +1,12 @@
-
 // app/page.tsx
 "use client";
+
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import PageShell from "../components/PageShell";
 import CustomDropdown from "../components/CustomDropdown";
 import { useLanguage } from "../context/LanguageContext";
+
 const Map = dynamic(() => import("../components/Map"), {
   ssr: false,
   loading: () => (
@@ -14,6 +15,7 @@ const Map = dynamic(() => import("../components/Map"), {
     </div>
   ),
 });
+
 interface Route {
   id: number;
   routeName: string;
@@ -21,7 +23,10 @@ interface Route {
   dropoffStop: string;
   dropoffLat?: number;
   dropoffLng?: number;
+  pickupLat?: number;
+  pickupLng?: number;
 }
+
 // ETA data interface
 interface ETAData {
   minutes: number;
@@ -30,9 +35,9 @@ interface ETAData {
   fullDisplay: string;
   distance: string;
   pickupStop: string;
-  destination: string;
   speed: string | null;
 }
+
 // Proximity data interface
 interface ProximityData {
   isNear: boolean;
@@ -40,6 +45,7 @@ interface ProximityData {
   destination: string;
   status: string;
 }
+
 export default function HomePage() {
   const { t } = useLanguage();
   const [selectedRoute, setSelectedRoute] = useState("");
@@ -47,8 +53,10 @@ export default function HomePage() {
   const [etaData, setEtaData] = useState<ETAData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | null>(null);
-  // Add proximity state
+  
+  // Proximity state
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
+
   // Fetch routes when page loads
   useEffect(() => {
     fetch("/api/routes")
@@ -69,6 +77,7 @@ export default function HomePage() {
         setLoading(false);
       });
   }, []);
+
   // Fetch bus location periodically
   useEffect(() => {
     const fetchBusLocation = async () => {
@@ -86,16 +95,19 @@ export default function HomePage() {
         console.error("Failed to fetch bus location:", error);
       }
     };
+
     fetchBusLocation();
     const interval = setInterval(fetchBusLocation, 5000);
     return () => clearInterval(interval);
   }, []);
+
   // Fetch proximity data when route is selected
   useEffect(() => {
     if (!selectedRoute) {
       setProximityData(null);
       return;
     }
+
     const fetchProximity = async () => {
       try {
         const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
@@ -112,34 +124,45 @@ export default function HomePage() {
         console.error("Failed to fetch proximity:", error);
       }
     };
+
     fetchProximity();
     const interval = setInterval(fetchProximity, 5000);
     return () => clearInterval(interval);
   }, [selectedRoute]);
-  // Fetch ETA when route is selected
+
+  // ✅ FIXED: Fetch ETA with auto-refresh every 10 seconds
   useEffect(() => {
     if (!selectedRoute) {
       setEtaData(null);
       return;
     }
-    fetch(`/api/routes/${selectedRoute}/eta`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("ETA API response:", data);
+
+    const fetchEta = async () => {
+      try {
+        const response = await fetch(`/api/routes/${selectedRoute}/eta`);
+        const data = await response.json();
         if (data.success) {
+          console.log("✅ ETA updated:", data.eta);
           setEtaData(data.eta);
         } else {
           setEtaData(null);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Failed to fetch ETA:", err);
         setEtaData(null);
-      });
+      }
+    };
+
+    // Fetch immediately
+    fetchEta();
+
+    // 🔄 Auto-refresh every 10 seconds
+    const interval = setInterval(fetchEta, 10000);
+
+    // Cleanup
+    return () => clearInterval(interval);
   }, [selectedRoute]);
+
   return (
     <PageShell
       fullHeight={true}
@@ -164,6 +187,7 @@ export default function HomePage() {
             transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
           }}
         />
+
         <div
           className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
           style={{
@@ -171,11 +195,13 @@ export default function HomePage() {
             transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
           }}
         />
-        {/* Map container - takes full height */}
+
+        {/* Map container */}
         <div className="absolute inset-0 z-0">
           <Map selectedRoute={selectedRoute} />
         </div>
-        {/* Dropdown - absolute positioned on top */}
+
+        {/* Dropdown */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <CustomDropdown
             options={routes}
@@ -185,25 +211,23 @@ export default function HomePage() {
             placeholder={t("home.selectRoute")}
           />
         </div>
-        // In app/page.tsx - Update the ETA card section
-        {/* Bottom card - absolute positioned on bottom */}
+
+        {/* ETA Card - Auto-refreshes every 10 seconds */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
-            {/* ETA Display - Like Grab style */}
+            {/* ETA Display */}
             <div className="flex items-center gap-2">
               {etaData ? (
-                <div className="flex flex-col">
-                  {/* Main ETA: "5 min away" like Grab */}
+                <div className="flex flex-col w-full">
                   <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
-                    {etaData.minutesDisplay}
+                    🚌 {etaData.minutesDisplay}
                     <span className="text-xs font-normal opacity-70 ml-2">
                       • Arrive at {etaData.arrivalTime}
                     </span>
                   </span>
-                  {/* Distance to pickup */}
                   {etaData.distance && (
                     <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
-                      {etaData.distance} from {etaData.pickupStop}
+                      📍 {etaData.distance} from {etaData.pickupStop}
                     </span>
                   )}
                 </div>
@@ -213,19 +237,22 @@ export default function HomePage() {
                 </span>
               )}
             </div>
-            {/* Proximity Status (if bus is near destination) */}
+
+            {/* Proximity Status */}
             {proximityData && (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className={`text-xs font-medium ${proximityData.isNear
-                    ? 'text-green-600 dark:text-green-400'
+                <span className={`text-xs font-medium ${
+                  proximityData.isNear 
+                    ? 'text-green-600 dark:text-green-400' 
                     : 'text-gray-500 dark:text-gray-400'
-                  }`}>
-                  {proximityData.isNear
-                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}`
+                }`}>
+                  {proximityData.isNear 
+                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}` 
                     : `${proximityData.distance}m to destination`}
                 </span>
               </div>
             )}
+
             {/* Disclaimer */}
             <div className="flex items-center gap-2 mt-2">
               <svg className="w-4 h-4 text-[#99121A]" fill="currentColor" viewBox="0 0 20 20">
