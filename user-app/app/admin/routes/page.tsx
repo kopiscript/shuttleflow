@@ -24,7 +24,7 @@ export default function RouteManagement() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Fetch routes
   useEffect(() => {
@@ -90,12 +90,29 @@ export default function RouteManagement() {
     }
   };
 
-  // Filter routes by search term
-  const filteredRoutes = routes.filter((route) =>
-    route.routeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.pickupStop?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    route.dropoffStop?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter routes by multiple search fields including formatted ID
+const filteredRoutes = routes.filter((route) => {
+  const searchTermLower = searchTerm.toLowerCase().trim();
+  if (!searchTermLower) return true;
+
+  // Format route ID as R001, R002
+  const formattedId = `R${String(route.id).padStart(3, "0")}`;
+
+  // Create array of all searchable fields
+  const searchFields = [
+    route.id.toString(),
+    formattedId.toLowerCase(),
+    route.routeName?.toLowerCase() || '',
+    route.pickupStop?.toLowerCase() || '',
+    route.dropoffStop?.toLowerCase() || '',
+    route.status?.toLowerCase() || '',
+    ...(route.intermediateStops?.map(stop => stop.toLowerCase()) || []), // Intermediate Stops
+  ];
+
+  return searchFields.some(field => 
+    field.includes(searchTermLower)
   );
+});
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
@@ -130,6 +147,16 @@ export default function RouteManagement() {
     return pages;
   };
 
+  // Get status badge color
+  const getStatusBadge = (status: string) => {
+    if (status === "Active") {
+      return "bg-[#E1FFDA] text-[#3EB900]";
+    } else if (status === "Inactive") {
+      return "bg-[#FFC0B9] text-[#EA1701]";
+    }
+    return "bg-[#2C2D33] text-[#87888C]";
+  };
+
   return (
     <div>
       {/* Page Header */}
@@ -147,7 +174,7 @@ export default function RouteManagement() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search here..."
+            placeholder="Search by ID, Name, Pickup Stop, Dropoff Stop, Status..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
@@ -160,6 +187,13 @@ export default function RouteManagement() {
           <span>+</span> Add Route
         </Link>
       </div>
+
+      {/* Search Results Count */}
+      {!loading && !error && searchTerm && (
+        <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
+          Found {filteredRoutes.length} result{filteredRoutes.length !== 1 ? 's' : ''} for "{searchTerm}"
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
@@ -177,7 +211,7 @@ export default function RouteManagement() {
 
       {/* Table */}
       <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
           <table className="w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
@@ -242,11 +276,7 @@ export default function RouteManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${
-                          route.status === "Active"
-                            ? "bg-[#E1FFDA] text-[#3EB900]"
-                            : "bg-[#FFC0B9] text-[#EA1701]"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(route.status)}`}
                       >
                         {route.status}
                       </span>

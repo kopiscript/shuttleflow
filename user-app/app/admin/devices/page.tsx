@@ -23,7 +23,7 @@ export default function DeviceManagement() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const itemsPerPage = 5;
 
     // Fetch devices
     useEffect(() => {
@@ -84,11 +84,28 @@ export default function DeviceManagement() {
         }
     };
 
-    // Filter devices by search term
-    const filteredDevices = devices.filter((device) =>
-        device.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        device.busName?.toLowerCase().includes(searchTerm.toLowerCase())
+    // Filter devices by multiple search fields including formatted ID
+    const filteredDevices = devices.filter((device) => {
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    if (!searchTermLower) return true;
+
+    // Format device ID as D001, D002
+    const formattedId = `D${String(device.id).padStart(3, "0")}`;
+
+    // Create array of all searchable fields
+    const searchFields = [
+        device.id.toString(),
+        formattedId.toLowerCase(),
+        device.deviceName?.toLowerCase() || '',
+        device.busName?.toLowerCase() || '',
+        device.busId?.toString() || '',
+        device.status?.toLowerCase() || '',
+    ];
+
+    return searchFields.some(field => 
+        field.includes(searchTermLower)
     );
+    });
 
     // Pagination logic
     const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
@@ -123,6 +140,16 @@ export default function DeviceManagement() {
         return pages;
     };
 
+    // Get status badge color
+    const getStatusBadge = (status: string) => {
+        if (status === "Online") {
+            return "bg-[#E1FFDA] text-[#3EB900]";
+        } else if (status === "Offline") {
+            return "bg-[#FFC0B9] text-[#EA1701]";
+        }
+        return "bg-[#2C2D33] text-[#87888C]";
+    };
+
     return (
         <div>
             {/* Page Header */}
@@ -140,7 +167,7 @@ export default function DeviceManagement() {
                 <div className="flex-1">
                     <input
                         type="text"
-                        placeholder="Search here..."
+                        placeholder="Search by ID, Name, Assigned Bus, Status..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
@@ -153,6 +180,13 @@ export default function DeviceManagement() {
                     <span>+</span> Add Device
                 </Link>
             </div>
+
+            {/* Search Results Count */}
+            {!loading && !error && searchTerm && (
+                <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
+                    Found {filteredDevices.length} result{filteredDevices.length !== 1 ? 's' : ''} for "{searchTerm}"
+                </div>
+            )}
 
             {/* Error Message */}
             {error && (
@@ -170,7 +204,7 @@ export default function DeviceManagement() {
 
             {/* Table */}
             <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
                     <table className="w-full">
                         <thead>
                             <tr className="bg-[#2B2B36]">
@@ -228,10 +262,7 @@ export default function DeviceManagement() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span
-                                                className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${device.status === "Online"
-                                                        ? "bg-[#E1FFDA] text-[#3EB900]"
-                                                        : "bg-[#FFC0B9] text-[#EA1701]"
-                                                    }`}
+                                                className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(device.status)}`}
                                             >
                                                 {device.status}
                                             </span>

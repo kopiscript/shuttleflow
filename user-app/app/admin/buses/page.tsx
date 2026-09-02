@@ -29,7 +29,7 @@ export default function BusManagement() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Fetch buses
   useEffect(() => {
@@ -69,12 +69,31 @@ export default function BusManagement() {
     }
   };
 
-  // Filter buses by search term
-  const filteredBuses = buses.filter((bus) =>
-    bus.busName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bus.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bus.route?.routeName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter buses by multiple search fields including formatted ID
+  const filteredBuses = buses.filter((bus) => {
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    if (!searchTermLower) return true;
+
+    // Format bus ID as B001, B002, etc.
+    const formattedId = `B${String(bus.id).padStart(3, "0")}`;
+
+    // Create array of all searchable fields
+    const searchFields = [
+      bus.id.toString(),
+      formattedId.toLowerCase(),
+      bus.busName?.toLowerCase() || '',
+      bus.licensePlate?.toLowerCase() || '',
+      bus.route?.routeName?.toLowerCase() || '',
+      bus.route?.id?.toString() || '',
+      bus.device?.deviceName?.toLowerCase() || '',
+      bus.device?.id?.toString() || '',
+      bus.status?.toLowerCase() || '',
+    ];
+
+    return searchFields.some(field => 
+      field.includes(searchTermLower)
+    );
+  });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredBuses.length / itemsPerPage);
@@ -111,6 +130,20 @@ export default function BusManagement() {
     return pages;
   };
 
+  // Get status badge color
+  const getStatusBadge = (status: string) => {
+    if (status === "Online") {
+      return "bg-[#E1FFDA] text-[#3EB900]";
+    } else if (status === "Offline") {
+      return "bg-[#FFC0B9] text-[#EA1701]";
+    } else if (status === "Active") {
+      return "bg-[#D6E4FF] text-[#1A4B9B]";
+    } else if (status === "Inactive") {
+      return "bg-[#E5E5EA] text-[#6E6E7E]";
+    }
+    return "bg-[#2C2D33] text-[#87888C]";
+  };
+
   return (
     <div>
       {/* Page Header */}
@@ -128,7 +161,7 @@ export default function BusManagement() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search here..."
+            placeholder="Search by ID, Name, License Plate, Route, Device..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
@@ -142,9 +175,16 @@ export default function BusManagement() {
         </Link>
       </div>
 
+      {/* Search Results Count */}
+      {!loading && searchTerm && (
+        <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
+          Found {filteredBuses.length} result{filteredBuses.length !== 1 ? 's' : ''} for "{searchTerm}"
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
           <table className="w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
@@ -203,13 +243,7 @@ export default function BusManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${
-                          bus.device?.status === "Online"
-                            ? "bg-[#E1FFDA] text-[#3EB900]"
-                            : bus.device?.status === "Offline"
-                            ? "bg-[#FFC0B9] text-[#EA1701]"
-                            : "bg-[#2C2D33] text-[#87888C]"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}
                       >
                         {bus.device?.status || "No Device"}
                       </span>
@@ -229,7 +263,7 @@ export default function BusManagement() {
           </table>
         </div>
 
-        {/* Figma-styled Pagination */}
+        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-end px-6 py-4 border-t border-[#2C2D33]">
             <div className="flex items-center gap-2">
