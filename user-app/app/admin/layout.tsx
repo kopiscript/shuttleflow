@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <header className="h-[74px] bg-[#1D1E27] border-b border-[#2C2D33] flex items-center justify-between px-6 flex-shrink-0">
         {/* Logo - Left */}
         <div className="flex items-center">
-          <Image src="/logo2.png" alt="Logo" width={174} height={44} className="object-contain" />
+          <Image src="/logo2.png" alt="Logo" width={174} height={44} className="object-contain" loading="eager" priority />
         </div>
 
         {/* Profile - Right */}
