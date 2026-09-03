@@ -12,6 +12,7 @@ interface Device {
   lastSeen: string | null;
   busId: number | null;
   busName?: string;
+  busLicensePlate?: string;  // ✅ Add this
   createdAt: string;
   updatedAt: string;
   signalStrength?: string;
@@ -117,6 +118,13 @@ export default function DeviceDetailsPage({ params }: PageProps) {
     );
   }
 
+  // Format bus display: Bus ID (License Plate)
+  const getBusDisplay = () => {
+    if (!device.busId) return "Unassigned";
+    const busId = `B${String(device.busId).padStart(3, "0")}`;
+    return device.busLicensePlate ? `${busId} (${device.busLicensePlate})` : busId;
+  };
+
   return (
     <div>
       {/* Page Header */}
@@ -188,9 +196,11 @@ export default function DeviceDetailsPage({ params }: PageProps) {
             <p className="text-[#87888C] font-['Inter'] text-sm mb-4">
               To change which bus this device is assigned to, go to the Bus Detail page and update the device there.
             </p>
-            {device.busName ? (
+            {device.busId ? (
               <div className="bg-[#171821] rounded-xl p-4 border border-[#2C2D33] flex justify-between items-center">
-                <span className="text-white font-['Inter'] text-sm">{device.busName}</span>
+                <span className="text-white font-['Inter'] text-sm">
+                  {getBusDisplay()}
+                </span>
                 <Link
                   href={`/admin/buses/${device.busId}`}
                   className="text-[#96DDFF] hover:underline font-['Inter'] text-sm"

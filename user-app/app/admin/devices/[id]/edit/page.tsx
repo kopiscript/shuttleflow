@@ -16,12 +16,6 @@ interface Device {
   updatedAt: string;
 }
 
-interface Bus {
-  id: number;
-  busName: string;
-  licensePlate: string;
-}
-
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -31,11 +25,8 @@ export default function EditDevicePage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deviceId, setDeviceId] = useState<number | null>(null);
-  const [buses, setBuses] = useState<Bus[]>([]);
-  const [loadingBuses, setLoadingBuses] = useState(true);
   const [formData, setFormData] = useState({
     deviceName: "",
-    busId: "",
     status: "Offline",
   });
 
@@ -55,28 +46,19 @@ export default function EditDevicePage({ params }: PageProps) {
           const device = deviceData.device;
           setFormData({
             deviceName: device.deviceName || "",
-            busId: device.busId?.toString() || "",
             status: device.status || "Offline",
           });
-        }
-
-        // Fetch buses for assignment
-        const busesResponse = await fetch("/api/admin/buses");
-        const busesData = await busesResponse.json();
-        if (busesData.success) {
-          setBuses(busesData.buses || []);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
         setLoading(false);
-        setLoadingBuses(false);
       }
     };
     fetchData();
   }, [params]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -98,7 +80,6 @@ export default function EditDevicePage({ params }: PageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deviceName: formData.deviceName,
-          busId: formData.busId ? parseInt(formData.busId) : null,
           status: formData.status,
         }),
       });
@@ -167,35 +148,6 @@ export default function EditDevicePage({ params }: PageProps) {
                   className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
                   required
                 />
-              </div>
-
-              {/* Assigned Bus */}
-              <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Assigned Bus</label>
-                <div className="relative">
-                  <select
-                    name="busId"
-                    value={formData.busId}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
-                  >
-                    <option value="">Select bus</option>
-                    {loadingBuses ? (
-                      <option disabled>Loading buses...</option>
-                    ) : (
-                      buses.map((bus) => (
-                        <option key={bus.id} value={bus.id}>
-                          {bus.busName} ({bus.licensePlate})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
               </div>
 
               {/* Status Toggle */}

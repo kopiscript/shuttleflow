@@ -12,6 +12,7 @@ interface Device {
     lastSeen: string | null;
     busId: number | null;
     busName?: string;
+    busLicensePlate?: string;  // ✅ Add this
     createdAt: string;
 }
 
@@ -86,25 +87,33 @@ export default function DeviceManagement() {
 
     // Filter devices by multiple search fields including formatted ID
     const filteredDevices = devices.filter((device) => {
-    const searchTermLower = searchTerm.toLowerCase().trim();
-    if (!searchTermLower) return true;
+        const searchTermLower = searchTerm.toLowerCase().trim();
+        if (!searchTermLower) return true;
 
-    // Format device ID as D001, D002
-    const formattedId = `D${String(device.id).padStart(3, "0")}`;
+        // Format device ID as D001, D002
+        const formattedId = `D${String(device.id).padStart(3, "0")}`;
 
-    // Create array of all searchable fields
-    const searchFields = [
-        device.id.toString(),
-        formattedId.toLowerCase(),
-        device.deviceName?.toLowerCase() || '',
-        device.busName?.toLowerCase() || '',
-        device.busId?.toString() || '',
-        device.status?.toLowerCase() || '',
-    ];
+        // Format bus ID as B001, B002 (if busId exists)
+        const formattedBusId = device.busId ? `B${String(device.busId).padStart(3, "0")}` : '';
 
-    return searchFields.some(field => 
-        field.includes(searchTermLower)
-    );
+        // License plate for search
+        const licensePlate = device.busLicensePlate || '';
+
+        // Create array of all searchable fields
+        const searchFields = [
+            device.id.toString(),
+            formattedId.toLowerCase(),
+            device.deviceName?.toLowerCase() || '',
+            device.busName?.toLowerCase() || '',
+            formattedBusId.toLowerCase(),
+            device.busId?.toString() || '',
+            licensePlate.toLowerCase(),
+            device.status?.toLowerCase() || '',
+        ];
+
+        return searchFields.some(field =>
+            field.includes(searchTermLower)
+        );
     });
 
     // Pagination logic
@@ -148,6 +157,13 @@ export default function DeviceManagement() {
             return "bg-[#FFC0B9] text-[#EA1701]";
         }
         return "bg-[#2C2D33] text-[#87888C]";
+    };
+
+    // Get bus display: Bus ID (License Plate)
+    const getBusDisplay = (device: Device) => {
+        if (!device.busId) return "Unassigned";
+        const busId = `B${String(device.busId).padStart(3, "0")}`;
+        return device.busLicensePlate ? `${busId} (${device.busLicensePlate})` : busId;
     };
 
     return (
@@ -267,8 +283,8 @@ export default function DeviceManagement() {
                                                 {device.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm">
-                                            {device.busName || "Unassigned"}
+                                        <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                                            {getBusDisplay(device)}
                                         </td>
                                         <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm">
                                             {device.lastSeen
@@ -298,8 +314,8 @@ export default function DeviceManagement() {
                                 onClick={() => goToPage(currentPage - 1)}
                                 disabled={currentPage === 1}
                                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === 1
-                                        ? "text-[#87888C] cursor-not-allowed"
-                                        : "text-[#87888C] hover:text-white"
+                                    ? "text-[#87888C] cursor-not-allowed"
+                                    : "text-[#87888C] hover:text-white"
                                     }`}
                             >
                                 Previous
@@ -321,8 +337,8 @@ export default function DeviceManagement() {
                                         key={page}
                                         onClick={() => goToPage(page as number)}
                                         className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === page
-                                                ? "bg-[#96DDFF] text-[#171821]"
-                                                : "text-[#87888C] hover:text-white"
+                                            ? "bg-[#96DDFF] text-[#171821]"
+                                            : "text-[#87888C] hover:text-white"
                                             }`}
                                     >
                                         {page}
@@ -334,8 +350,8 @@ export default function DeviceManagement() {
                                 onClick={() => goToPage(currentPage + 1)}
                                 disabled={currentPage === totalPages}
                                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === totalPages
-                                        ? "text-[#87888C] cursor-not-allowed"
-                                        : "text-[#87888C] hover:text-white"
+                                    ? "text-[#87888C] cursor-not-allowed"
+                                    : "text-[#87888C] hover:text-white"
                                     }`}
                             >
                                 Next

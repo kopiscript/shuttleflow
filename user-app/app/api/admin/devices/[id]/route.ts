@@ -54,6 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             lastSeen: device.lastSeen,
             busId: activeAssignment?.busId || null,
             busName: activeAssignment?.bus?.busName || null,
+            busLicensePlate: activeAssignment?.bus?.licensePlate || null,
             createdAt: device.createdAt,
             updatedAt: device.updatedAt,
         };

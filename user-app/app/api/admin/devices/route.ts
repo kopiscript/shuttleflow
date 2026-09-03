@@ -14,6 +14,7 @@ export async function GET() {
               select: {
                 id: true,
                 busName: true,
+                licensePlate: true,
               },
             },
           },
@@ -33,6 +34,7 @@ export async function GET() {
         lastSeen: device.lastSeen,
         busId: activeAssignment?.busId || null,
         busName: activeAssignment?.bus?.busName || null,
+        busLicensePlate: activeAssignment?.bus?.licensePlate || null,
         createdAt: device.createdAt,
       };
     });
