@@ -1,13 +1,27 @@
 // user-app/app/admin/layout.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+
+interface AdminInfo {
+  id: number;
+  username: string;
+  email: string;
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Dropdown state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [admin, setAdmin] = useState<AdminInfo | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { 
@@ -65,6 +79,54 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     },
   ];
 
+  // Fetch admin info from session
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setAdmin(data.admin);
+      })
+      .catch(() => {});
+  }, [pathname]); // Refetch when route changes (e.g., after profile update)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Open logout confirmation modal
+  const handleLogoutClick = () => {
+    setIsDropdownOpen(false);
+    setShowLogoutModal(true);
+  };
+
+  // Confirm logout
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+      router.push("/admin/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutModal(false);
+    }
+  };
+
+  // Get initial for avatar
+  const getInitial = () => {
+    if (!admin?.username) return "A";
+    return admin.username.charAt(0).toUpperCase();
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#171821] overflow-hidden">
       {/* Top Bar - Logo left, Profile right */}
@@ -74,16 +136,65 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Image src="/logo2.png" alt="Logo" width={174} height={44} className="object-contain" loading="eager" priority />
         </div>
 
-        {/* Profile - Right */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#2C2D33] flex items-center justify-center text-white text-sm font-medium">
-              A
+        {/* Profile Dropdown - Right */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 focus:outline-none group"
+          >
+            <div className="w-8 h-8 rounded-full bg-[#96DDFF] flex items-center justify-center text-[#171821] text-sm font-semibold">
+              {getInitial()}
             </div>
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className={`w-4 h-4 text-white transition-transform duration-200 ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
-          </div>
+          </button>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-[#21222D] rounded-2xl border border-[#2C2D33] shadow-[0px_8px_40px_rgba(0,0,0,0.4)] overflow-hidden z-50">
+              {/* Admin Info */}
+              <div className="px-5 py-4 border-b border-[#2C2D33]">
+                <p className="text-white font-medium text-sm truncate">
+                  {admin?.username || "Admin"}
+                </p>
+                <p className="text-[#87888C] text-xs truncate mt-0.5">
+                  {admin?.email || "admin@shuttleflow.com"}
+                </p>
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-2">
+                <Link
+                  href="/admin/profile"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="flex items-center gap-3 px-5 py-2.5 text-[#D2D2D2] text-sm hover:bg-[#2B2B36] hover:text-white transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  View Profile
+                </Link>
+
+                <button
+                  onClick={handleLogoutClick}
+                  className="w-full flex items-center gap-3 px-5 py-2.5 text-[#EA1701] text-sm hover:bg-[#2B2B36] transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -105,7 +216,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       : "text-[#87888C] hover:bg-[#2C2D33] hover:text-white"
                   }`}
                 >
-                  {/* Icon - stroke color changes on active */}
                   <span className={`flex-shrink-0 w-5 h-5 ${isActive ? "text-[#171821]" : "text-[#87888C]"}`}>
                     {item.icon}
                   </span>
@@ -118,12 +228,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Footer */}
           <div className="border-t border-[#2C2D33] p-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#2C2D33] flex items-center justify-center text-white text-sm font-medium">
-                A
+              <div className="w-8 h-8 rounded-full bg-[#96DDFF] flex items-center justify-center text-[#171821] text-sm font-semibold">
+                {getInitial()}
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">Admin</p>
-                <p className="text-xs text-[#87888C]">admin@shuttleflow.com</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-white truncate">
+                  {admin?.username || "Admin"}
+                </p>
+                <p className="text-xs text-[#87888C] truncate">
+                  {admin?.email || "admin@shuttleflow.com"}
+                </p>
               </div>
             </div>
           </div>
@@ -134,6 +248,48 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-md w-full mx-4 p-6 shadow-[0px_8px_40px_rgba(0,0,0,0.5)]">
+            {/* Icon */}
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#FFC0B9]/10 mx-auto mb-4">
+              <svg className="w-6 h-6 text-[#EA1701]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-white font-['Bai_Jamjuree'] text-xl font-bold text-center mb-2">
+              Logout
+            </h3>
+
+            {/* Message */}
+            <p className="text-[#87888C] font-['Inter'] text-sm text-center mb-6">
+              Are you sure you want to log out? You will need to sign in again to access the admin dashboard.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                disabled={loggingOut}
+                className="flex-1 px-4 py-2.5 bg-[#2B2B36] text-white rounded-lg font-['Inter'] text-sm font-medium hover:bg-[#2C2D33] transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                disabled={loggingOut}
+                className="flex-1 px-4 py-2.5 bg-[#EA1701] text-white rounded-lg font-['Inter'] text-sm font-medium hover:bg-[#c91300] transition disabled:opacity-50"
+              >
+                {loggingOut ? "Logging out..." : "Yes, Logout"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
