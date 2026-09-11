@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/ActionMenu";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
@@ -32,6 +33,7 @@ const initialDeleteModal: DeleteModalState = {
 };
 
 export default function RouteManagement() {
+  const router = useRouter();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,8 +88,6 @@ export default function RouteManagement() {
   };
 
   // ---- Delete flow (shared modal) ----
-
-  // Matches ActionMenu's onDelete signature
   const handleDeleteClick = (routeId: number, routeName: string) => {
     setDeleteModal({
       isOpen: true,
@@ -127,6 +127,18 @@ export default function RouteManagement() {
     if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
   };
 
+  // ---- Row navigation ----
+  const handleRowClick = (routeId: number) => {
+    router.push(`/admin/routes/${routeId}`);
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent, routeId: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleRowClick(routeId);
+    }
+  };
+
   // Filter routes by multiple search fields including formatted ID
   const filteredRoutes = routes.filter((route) => {
     const searchTermLower = searchTerm.toLowerCase().trim();
@@ -137,14 +149,14 @@ export default function RouteManagement() {
     const searchFields = [
       route.id.toString(),
       formattedId.toLowerCase(),
-      route.routeName?.toLowerCase() || '',
-      route.pickupStop?.toLowerCase() || '',
-      route.dropoffStop?.toLowerCase() || '',
-      route.status?.toLowerCase() || '',
-      ...(route.intermediateStops?.map(stop => stop.toLowerCase()) || []),
+      route.routeName?.toLowerCase() || "",
+      route.pickupStop?.toLowerCase() || "",
+      route.dropoffStop?.toLowerCase() || "",
+      route.status?.toLowerCase() || "",
+      ...(route.intermediateStops?.map((stop) => stop.toLowerCase()) || []),
     ];
 
-    return searchFields.some(field => field.includes(searchTermLower));
+    return searchFields.some((field) => field.includes(searchTermLower));
   });
 
   // Pagination logic
@@ -223,7 +235,7 @@ export default function RouteManagement() {
       {/* Search Results Count */}
       {!loading && !error && searchTerm && (
         <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
-          Found {filteredRoutes.length} result{filteredRoutes.length !== 1 ? 's' : ''} for "{searchTerm}"
+          Found {filteredRoutes.length} result{filteredRoutes.length !== 1 ? "s" : ""} for "{searchTerm}"
         </div>
       )}
 
@@ -271,14 +283,21 @@ export default function RouteManagement() {
               ) : paginatedRoutes.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
-                    {searchTerm ? "No routes match your search." : "No routes added yet. Click 'Add Route' to create one."}
+                    {searchTerm
+                      ? "No routes match your search."
+                      : "No routes added yet. Click 'Add Route' to create one."}
                   </td>
                 </tr>
               ) : (
                 paginatedRoutes.map((route, index) => (
                   <tr
                     key={route.id}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for route R${String(route.id).padStart(3, "0")}`}
+                    onClick={() => handleRowClick(route.id)}
+                    onKeyDown={(e) => handleRowKeyDown(e, route.id)}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
                       index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                     }`}
                   >
@@ -301,7 +320,11 @@ export default function RouteManagement() {
                         {route.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <ActionMenu
                         id={route.id}
                         type="route"

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/ActionMenu";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
@@ -12,8 +13,15 @@ interface Bus {
   licensePlate: string;
   capacity: number;
   status: string;
-  route?: { id: number; routeName: string };
-  device?: { id: number; deviceName: string; status: string };
+  route?: {
+    id: number;
+    routeName: string;
+  };
+  device?: {
+    id: number;
+    deviceName: string;
+    status: string;
+  };
 }
 
 interface DeleteModalState {
@@ -33,13 +41,17 @@ const initialDeleteModal: DeleteModalState = {
 };
 
 export default function BusManagement() {
+  const router = useRouter();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
+
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Fetch buses
   useEffect(() => {
     fetchBuses();
   }, []);
@@ -48,7 +60,9 @@ export default function BusManagement() {
     try {
       const response = await fetch("/api/admin/buses");
       const data = await response.json();
-      if (data.success) setBuses(data.buses);
+      if (data.success) {
+        setBuses(data.buses);
+      }
     } catch (error) {
       console.error("Failed to fetch buses:", error);
     } finally {
@@ -57,8 +71,6 @@ export default function BusManagement() {
   };
 
   // ---- Delete flow (shared modal) ----
-
-  // Matches ActionMenu's onDelete signature
   const handleDeleteClick = (busId: number, busName: string, licensePlate?: string) => {
     setDeleteModal({
       isOpen: true,
@@ -78,6 +90,7 @@ export default function BusManagement() {
       const response = await fetch(`/api/admin/buses/${deleteModal.busId}`, {
         method: "DELETE",
       });
+
       const data = await response.json();
 
       if (data.success) {
@@ -98,13 +111,25 @@ export default function BusManagement() {
     if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
   };
 
-  // ---- Search / filter ----
+  // ---- Row navigation ----
+  const handleRowClick = (busId: number) => {
+    router.push(`/admin/buses/${busId}`);
+  };
 
+  const handleRowKeyDown = (e: React.KeyboardEvent, busId: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleRowClick(busId);
+    }
+  };
+
+  // Filter buses by multiple search fields including formatted ID
   const filteredBuses = buses.filter((bus) => {
     const searchTermLower = searchTerm.toLowerCase().trim();
     if (!searchTermLower) return true;
 
     const formattedId = `B${String(bus.id).padStart(3, "0")}`;
+
     const searchFields = [
       bus.id.toString(),
       formattedId.toLowerCase(),
@@ -116,17 +141,19 @@ export default function BusManagement() {
       bus.device?.id?.toString() || "",
       bus.status?.toLowerCase() || "",
     ];
+
     return searchFields.some((field) => field.includes(searchTermLower));
   });
 
-  // ---- Pagination ----
-
+  // Pagination logic
   const totalPages = Math.ceil(filteredBuses.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedBuses = filteredBuses.slice(startIndex, startIndex + itemsPerPage);
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   useEffect(() => {
@@ -136,21 +163,31 @@ export default function BusManagement() {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const showPagesAround = 1;
+
     for (let i = 1; i <= totalPages; i++) {
       const isFirst = i === 1;
       const isLast = i === totalPages;
       const isNearCurrent = Math.abs(i - currentPage) <= showPagesAround;
-      if (isFirst || isLast || isNearCurrent) pages.push(i);
-      else if (pages[pages.length - 1] !== "...") pages.push("...");
+
+      if (isFirst || isLast || isNearCurrent) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== "...") {
+        pages.push("...");
+      }
     }
     return pages;
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "Online") return "bg-[#E1FFDA] text-[#3EB900]";
-    if (status === "Offline") return "bg-[#FFC0B9] text-[#EA1701]";
-    if (status === "Active") return "bg-[#D6E4FF] text-[#1A4B9B]";
-    if (status === "Inactive") return "bg-[#E5E5EA] text-[#6E6E7E]";
+    if (status === "Online") {
+      return "bg-[#E1FFDA] text-[#3EB900]";
+    } else if (status === "Offline") {
+      return "bg-[#FFC0B9] text-[#EA1701]";
+    } else if (status === "Active") {
+      return "bg-[#D6E4FF] text-[#1A4B9B]";
+    } else if (status === "Inactive") {
+      return "bg-[#E5E5EA] text-[#6E6E7E]";
+    }
     return "bg-[#2C2D33] text-[#87888C]";
   };
 
@@ -225,14 +262,21 @@ export default function BusManagement() {
                 paginatedBuses.map((bus, index) => (
                   <tr
                     key={bus.id}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for bus B${String(bus.id).padStart(3, "0")}`}
+                    onClick={() => handleRowClick(bus.id)}
+                    onKeyDown={(e) => handleRowKeyDown(e, bus.id)}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
                       index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                     }`}
                   >
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       B{String(bus.id).padStart(3, "0")}
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">{bus.licensePlate}</td>
+                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                      {bus.licensePlate}
+                    </td>
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {bus.route?.routeName || "—"}
                     </td>
@@ -240,11 +284,17 @@ export default function BusManagement() {
                       {bus.device?.deviceName || "—"}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}
+                      >
                         {bus.device?.status || "No Device"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <ActionMenu
                         id={bus.id}
                         type="bus"
@@ -268,7 +318,9 @@ export default function BusManagement() {
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === 1 ? "text-[#87888C] cursor-not-allowed" : "text-[#87888C] hover:text-white"
+                  currentPage === 1
+                    ? "text-[#87888C] cursor-not-allowed"
+                    : "text-[#87888C] hover:text-white"
                 }`}
               >
                 Previous
@@ -277,7 +329,10 @@ export default function BusManagement() {
               {getPageNumbers().map((page, index) => {
                 if (page === "...") {
                   return (
-                    <span key={`ellipsis-${index}`} className="px-2 text-[#87888C] font-['Inter'] text-sm font-bold">
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-2 text-[#87888C] font-['Inter'] text-sm font-bold"
+                    >
                       ...
                     </span>
                   );
@@ -287,7 +342,9 @@ export default function BusManagement() {
                     key={page}
                     onClick={() => goToPage(page as number)}
                     className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                      currentPage === page ? "bg-[#96DDFF] text-[#171821]" : "text-[#87888C] hover:text-white"
+                      currentPage === page
+                        ? "bg-[#96DDFF] text-[#171821]"
+                        : "text-[#87888C] hover:text-white"
                     }`}
                   >
                     {page}
@@ -299,7 +356,9 @@ export default function BusManagement() {
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === totalPages ? "text-[#87888C] cursor-not-allowed" : "text-[#87888C] hover:text-white"
+                  currentPage === totalPages
+                    ? "text-[#87888C] cursor-not-allowed"
+                    : "text-[#87888C] hover:text-white"
                 }`}
               >
                 Next
@@ -315,12 +374,13 @@ export default function BusManagement() {
         onClose={handleCloseModal}
         onConfirm={handleConfirmDelete}
         title="Delete Bus"
-        message="Are you sure you want to delete this bus? This action cannot be undone."
+        message="Are you sure you want to delete"
         itemName={
           deleteModal.busId
-            ? `B${String(deleteModal.busId).padStart(3, "0")} - ${deleteModal.busName} (${deleteModal.licensePlate})`
+            ? `Bus B${String(deleteModal.busId).padStart(3, "0")} (${deleteModal.licensePlate})`
             : undefined
         }
+        description="This action cannot be undone. All data associated with this bus will be permanently removed."
         loading={deleteModal.isDeleting}
       />
     </div>
