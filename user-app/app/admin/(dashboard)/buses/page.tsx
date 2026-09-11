@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ActionMenu from "@/components/ActionMenu";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 interface Bus {
   id: number;
@@ -11,27 +12,34 @@ interface Bus {
   licensePlate: string;
   capacity: number;
   status: string;
-  route?: {
-    id: number;
-    routeName: string;
-  };
-  device?: {
-    id: number;
-    deviceName: string;
-    status: string;
-  };
+  route?: { id: number; routeName: string };
+  device?: { id: number; deviceName: string; status: string };
 }
+
+interface DeleteModalState {
+  isOpen: boolean;
+  busId: number | null;
+  busName: string;
+  licensePlate: string;
+  isDeleting: boolean;
+}
+
+const initialDeleteModal: DeleteModalState = {
+  isOpen: false,
+  busId: null,
+  busName: "",
+  licensePlate: "",
+  isDeleting: false,
+};
 
 export default function BusManagement() {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Pagination state
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Fetch buses
   useEffect(() => {
     fetchBuses();
   }, []);
@@ -40,9 +48,7 @@ export default function BusManagement() {
     try {
       const response = await fetch("/api/admin/buses");
       const data = await response.json();
-      if (data.success) {
-        setBuses(data.buses);
-      }
+      if (data.success) setBuses(data.buses);
     } catch (error) {
       console.error("Failed to fetch buses:", error);
     } finally {
@@ -50,97 +56,101 @@ export default function BusManagement() {
     }
   };
 
-  const handleDelete = async (busId: number) => {
+  // ---- Delete flow (shared modal) ----
+
+  // Matches ActionMenu's onDelete signature
+  const handleDeleteClick = (busId: number, busName: string, licensePlate?: string) => {
+    setDeleteModal({
+      isOpen: true,
+      busId,
+      busName,
+      licensePlate: licensePlate ?? "",
+      isDeleting: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.busId) return;
+
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
     try {
-      const response = await fetch(`/api/admin/buses/${busId}`, {
+      const response = await fetch(`/api/admin/buses/${deleteModal.busId}`, {
         method: "DELETE",
       });
-      
       const data = await response.json();
-      
+
       if (data.success) {
-        setBuses(buses.filter(bus => bus.id !== busId));
+        setBuses((prev) => prev.filter((bus) => bus.id !== deleteModal.busId));
+        setDeleteModal(initialDeleteModal);
       } else {
         alert("Failed to delete bus: " + data.error);
+        setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
       }
     } catch (error) {
       console.error("Error deleting bus:", error);
       alert("An error occurred while deleting the bus.");
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
     }
   };
 
-  // Filter buses by multiple search fields including formatted ID
+  const handleCloseModal = () => {
+    if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
+  };
+
+  // ---- Search / filter ----
+
   const filteredBuses = buses.filter((bus) => {
     const searchTermLower = searchTerm.toLowerCase().trim();
     if (!searchTermLower) return true;
 
-    // Format bus ID as B001, B002, etc.
     const formattedId = `B${String(bus.id).padStart(3, "0")}`;
-
-    // Create array of all searchable fields
     const searchFields = [
       bus.id.toString(),
       formattedId.toLowerCase(),
-      bus.busName?.toLowerCase() || '',
-      bus.licensePlate?.toLowerCase() || '',
-      bus.route?.routeName?.toLowerCase() || '',
-      bus.route?.id?.toString() || '',
-      bus.device?.deviceName?.toLowerCase() || '',
-      bus.device?.id?.toString() || '',
-      bus.status?.toLowerCase() || '',
+      bus.busName?.toLowerCase() || "",
+      bus.licensePlate?.toLowerCase() || "",
+      bus.route?.routeName?.toLowerCase() || "",
+      bus.route?.id?.toString() || "",
+      bus.device?.deviceName?.toLowerCase() || "",
+      bus.device?.id?.toString() || "",
+      bus.status?.toLowerCase() || "",
     ];
-
-    return searchFields.some(field => 
-      field.includes(searchTermLower)
-    );
+    return searchFields.some((field) => field.includes(searchTermLower));
   });
 
-  // Pagination logic
+  // ---- Pagination ----
+
   const totalPages = Math.ceil(filteredBuses.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedBuses = filteredBuses.slice(startIndex, startIndex + itemsPerPage);
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // Generate page numbers with ellipsis
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const showPagesAround = 1;
-
     for (let i = 1; i <= totalPages; i++) {
       const isFirst = i === 1;
       const isLast = i === totalPages;
       const isNearCurrent = Math.abs(i - currentPage) <= showPagesAround;
-
-      if (isFirst || isLast || isNearCurrent) {
-        pages.push(i);
-      } else if (pages[pages.length - 1] !== "...") {
-        pages.push("...");
-      }
+      if (isFirst || isLast || isNearCurrent) pages.push(i);
+      else if (pages[pages.length - 1] !== "...") pages.push("...");
     }
     return pages;
   };
 
-  // Get status badge color
   const getStatusBadge = (status: string) => {
-    if (status === "Online") {
-      return "bg-[#E1FFDA] text-[#3EB900]";
-    } else if (status === "Offline") {
-      return "bg-[#FFC0B9] text-[#EA1701]";
-    } else if (status === "Active") {
-      return "bg-[#D6E4FF] text-[#1A4B9B]";
-    } else if (status === "Inactive") {
-      return "bg-[#E5E5EA] text-[#6E6E7E]";
-    }
+    if (status === "Online") return "bg-[#E1FFDA] text-[#3EB900]";
+    if (status === "Offline") return "bg-[#FFC0B9] text-[#EA1701]";
+    if (status === "Active") return "bg-[#D6E4FF] text-[#1A4B9B]";
+    if (status === "Inactive") return "bg-[#E5E5EA] text-[#6E6E7E]";
     return "bg-[#2C2D33] text-[#87888C]";
   };
 
@@ -178,7 +188,7 @@ export default function BusManagement() {
       {/* Search Results Count */}
       {!loading && searchTerm && (
         <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
-          Found {filteredBuses.length} result{filteredBuses.length !== 1 ? 's' : ''} for "{searchTerm}"
+          Found {filteredBuses.length} result{filteredBuses.length !== 1 ? "s" : ""} for "{searchTerm}"
         </div>
       )}
 
@@ -188,24 +198,12 @@ export default function BusManagement() {
           <table className="w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Bus ID
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  License Plate
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Route
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Device
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Device Status
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Actions
-                </th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus ID</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">License Plate</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Status</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -218,7 +216,9 @@ export default function BusManagement() {
               ) : paginatedBuses.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
-                    {searchTerm ? "No buses match your search." : "No buses added yet. Click 'Add Shuttle' to create one."}
+                    {searchTerm
+                      ? "No buses match your search."
+                      : "No buses added yet. Click 'Add Shuttle' to create one."}
                   </td>
                 </tr>
               ) : (
@@ -232,9 +232,7 @@ export default function BusManagement() {
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       B{String(bus.id).padStart(3, "0")}
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {bus.licensePlate}
-                    </td>
+                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">{bus.licensePlate}</td>
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {bus.route?.routeName || "—"}
                     </td>
@@ -242,18 +240,17 @@ export default function BusManagement() {
                       {bus.device?.deviceName || "—"}
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}>
                         {bus.device?.status || "No Device"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <ActionMenu 
-                        id={bus.id} 
-                        type="bus" 
-                        onDelete={handleDelete}
-                        customDeleteMessage={`Are you sure you want to delete bus B${String(bus.id).padStart(3, "0")} (${bus.licensePlate})?`}
+                      <ActionMenu
+                        id={bus.id}
+                        type="bus"
+                        onDelete={handleDeleteClick}
+                        itemName={bus.busName}
+                        itemIdentifier={bus.licensePlate}
                       />
                     </td>
                   </tr>
@@ -271,9 +268,7 @@ export default function BusManagement() {
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === 1
-                    ? "text-[#87888C] cursor-not-allowed"
-                    : "text-[#87888C] hover:text-white"
+                  currentPage === 1 ? "text-[#87888C] cursor-not-allowed" : "text-[#87888C] hover:text-white"
                 }`}
               >
                 Previous
@@ -282,10 +277,7 @@ export default function BusManagement() {
               {getPageNumbers().map((page, index) => {
                 if (page === "...") {
                   return (
-                    <span
-                      key={`ellipsis-${index}`}
-                      className="px-2 text-[#87888C] font-['Inter'] text-sm font-bold"
-                    >
+                    <span key={`ellipsis-${index}`} className="px-2 text-[#87888C] font-['Inter'] text-sm font-bold">
                       ...
                     </span>
                   );
@@ -295,9 +287,7 @@ export default function BusManagement() {
                     key={page}
                     onClick={() => goToPage(page as number)}
                     className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                      currentPage === page
-                        ? "bg-[#96DDFF] text-[#171821]"
-                        : "text-[#87888C] hover:text-white"
+                      currentPage === page ? "bg-[#96DDFF] text-[#171821]" : "text-[#87888C] hover:text-white"
                     }`}
                   >
                     {page}
@@ -309,9 +299,7 @@ export default function BusManagement() {
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === totalPages
-                    ? "text-[#87888C] cursor-not-allowed"
-                    : "text-[#87888C] hover:text-white"
+                  currentPage === totalPages ? "text-[#87888C] cursor-not-allowed" : "text-[#87888C] hover:text-white"
                 }`}
               >
                 Next
@@ -320,6 +308,21 @@ export default function BusManagement() {
           </div>
         )}
       </div>
+
+      {/* Shared Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Bus"
+        message="Are you sure you want to delete this bus? This action cannot be undone."
+        itemName={
+          deleteModal.busId
+            ? `B${String(deleteModal.busId).padStart(3, "0")} - ${deleteModal.busName} (${deleteModal.licensePlate})`
+            : undefined
+        }
+        loading={deleteModal.isDeleting}
+      />
     </div>
   );
 }

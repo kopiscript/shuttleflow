@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ActionMenu from "@/components/ActionMenu";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 interface Device {
     id: number;
@@ -12,15 +13,30 @@ interface Device {
     lastSeen: string | null;
     busId: number | null;
     busName?: string;
-    busLicensePlate?: string;  // ✅ Add this
+    busLicensePlate?: string;
     createdAt: string;
 }
+
+interface DeleteModalState {
+    isOpen: boolean;
+    deviceId: number | null;
+    deviceName: string;
+    isDeleting: boolean;
+}
+
+const initialDeleteModal: DeleteModalState = {
+    isOpen: false,
+    deviceId: null,
+    deviceName: "",
+    isDeleting: false,
+};
 
 export default function DeviceManagement() {
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -66,23 +82,46 @@ export default function DeviceManagement() {
         }
     };
 
-    const handleDelete = async (deviceId: number) => {
+    // ---- Delete flow (shared modal) ----
+
+    // Matches ActionMenu's onDelete signature
+    const handleDeleteClick = (deviceId: number, deviceName: string) => {
+        setDeleteModal({
+            isOpen: true,
+            deviceId,
+            deviceName,
+            isDeleting: false,
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.deviceId) return;
+
+        setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
         try {
-            const response = await fetch(`/api/admin/devices/${deviceId}`, {
+            const response = await fetch(`/api/admin/devices/${deleteModal.deviceId}`, {
                 method: "DELETE",
             });
 
             const data = await response.json();
 
             if (data.success) {
-                setDevices(devices.filter(device => device.id !== deviceId));
+                setDevices((prev) => prev.filter((device) => device.id !== deleteModal.deviceId));
+                setDeleteModal(initialDeleteModal);
             } else {
                 alert("Failed to delete device: " + data.error);
+                setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
             }
         } catch (error) {
             console.error("Error deleting device:", error);
             alert("An error occurred while deleting the device.");
+            setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
         }
+    };
+
+    const handleCloseModal = () => {
+        if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
     };
 
     // Filter devices by multiple search fields including formatted ID
@@ -90,16 +129,10 @@ export default function DeviceManagement() {
         const searchTermLower = searchTerm.toLowerCase().trim();
         if (!searchTermLower) return true;
 
-        // Format device ID as D001, D002
         const formattedId = `D${String(device.id).padStart(3, "0")}`;
-
-        // Format bus ID as B001, B002 (if busId exists)
         const formattedBusId = device.busId ? `B${String(device.busId).padStart(3, "0")}` : '';
-
-        // License plate for search
         const licensePlate = device.busLicensePlate || '';
 
-        // Create array of all searchable fields
         const searchFields = [
             device.id.toString(),
             formattedId.toLowerCase(),
@@ -111,9 +144,7 @@ export default function DeviceManagement() {
             device.status?.toLowerCase() || '',
         ];
 
-        return searchFields.some(field =>
-            field.includes(searchTermLower)
-        );
+        return searchFields.some(field => field.includes(searchTermLower));
     });
 
     // Pagination logic
@@ -149,7 +180,6 @@ export default function DeviceManagement() {
         return pages;
     };
 
-    // Get status badge color
     const getStatusBadge = (status: string) => {
         if (status === "Online") {
             return "bg-[#E1FFDA] text-[#3EB900]";
@@ -159,7 +189,6 @@ export default function DeviceManagement() {
         return "bg-[#2C2D33] text-[#87888C]";
     };
 
-    // Get bus display: Bus ID (License Plate)
     const getBusDisplay = (device: Device) => {
         if (!device.busId) return "Unassigned";
         const busId = `B${String(device.busId).padStart(3, "0")}`;
@@ -224,24 +253,12 @@ export default function DeviceManagement() {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-[#2B2B36]">
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Device ID
-                                </th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Device Name
-                                </th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Status
-                                </th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Assigned Bus
-                                </th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Last Seen
-                                </th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                                    Actions
-                                </th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device ID</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Name</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Status</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Assigned Bus</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Last Seen</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -295,8 +312,8 @@ export default function DeviceManagement() {
                                             <ActionMenu
                                                 id={device.id}
                                                 type="device"
-                                                onDelete={handleDelete}
-                                                customDeleteMessage={`Are you sure you want to delete device D${String(device.id).padStart(3, "0")} (${device.deviceName})?`}
+                                                onDelete={handleDeleteClick}
+                                                itemName={device.deviceName}
                                             />
                                         </td>
                                     </tr>
@@ -360,6 +377,22 @@ export default function DeviceManagement() {
                     </div>
                 )}
             </div>
+
+            {/* Shared Delete Confirmation Modal */}
+            <DeleteConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={handleCloseModal}
+                onConfirm={handleConfirmDelete}
+                title="Delete Device"
+                message="Are you sure you want to delete"
+                itemName={
+                    deleteModal.deviceId
+                        ? `Device D${String(deleteModal.deviceId).padStart(3, "0")} (${deleteModal.deviceName})`
+                        : undefined
+                }
+                description="This action cannot be undone. All data associated with this device will be permanently removed."
+                loading={deleteModal.isDeleting}
+            />
         </div>
     );
 }
