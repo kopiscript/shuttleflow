@@ -12,7 +12,7 @@ interface Device {
   lastSeen: string | null;
   busId: number | null;
   busName?: string;
-  busLicensePlate?: string;  // ✅ Add this
+  busLicensePlate?: string;
   createdAt: string;
   updatedAt: string;
   signalStrength?: string;
@@ -118,13 +118,6 @@ export default function DeviceDetailsPage({ params }: PageProps) {
     );
   }
 
-  // Format bus display: Bus ID (License Plate)
-  const getBusDisplay = () => {
-    if (!device.busId) return "Unassigned";
-    const busId = `B${String(device.busId).padStart(3, "0")}`;
-    return device.busLicensePlate ? `${busId} (${device.busLicensePlate})` : busId;
-  };
-
   return (
     <div>
       {/* Page Header */}
@@ -190,27 +183,69 @@ export default function DeviceDetailsPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Assigned Bus Info */}
+          {/* Assigned Bus Card */}
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 mt-6">
-            <h3 className="text-white font-bold font-['Inter'] text-base mb-2">Assigned Bus</h3>
+            <h3 className="text-white font-bold font-['Inter'] text-base mb-2">
+              Assigned Bus
+            </h3>
             <p className="text-[#87888C] font-['Inter'] text-sm mb-4">
               To change which bus this device is assigned to, go to the Bus Detail page and update the device there.
             </p>
+
             {device.busId ? (
-              <div className="bg-[#171821] rounded-xl p-4 border border-[#2C2D33] flex justify-between items-center">
-                <span className="text-white font-['Inter'] text-sm">
-                  {getBusDisplay()}
-                </span>
-                <Link
-                  href={`/admin/buses/${device.busId}`}
-                  className="text-[#96DDFF] hover:underline font-['Inter'] text-sm"
-                >
-                  View Bus →
-                </Link>
+              <div className="bg-[#171821] rounded-2xl overflow-hidden border border-[#2C2D33]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#2B2B36]">
+                      <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
+                        Bus ID
+                      </th>
+                      <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
+                        License Plate
+                      </th>
+                      <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
+                        Bus Model
+                      </th>
+                      <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
+                        Device Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      onClick={() => router.push(`/admin/buses/${device.busId}`)}
+                      className="border-t border-[#2C2D33] hover:bg-[#2B2B36] transition bg-[#171821] cursor-pointer"
+                    >
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        B{String(device.busId).padStart(3, "0")}
+                      </td>
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        {device.busLicensePlate || "—"}
+                      </td>
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        {device.busName || "—"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${device.status === "Online"
+                              ? "bg-[#E1FFDA] text-[#3EB900]"
+                              : device.status === "Offline"
+                                ? "bg-[#FFC0B9] text-[#EA1701]"
+                                : "bg-[#2C2D33] text-[#87888C]"
+                            }`}
+                        >
+                          {device.status || "Unknown"}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="bg-[#171821] rounded-xl p-4 border border-[#2C2D33] text-center">
-                <span className="text-[#87888C] font-['Inter'] text-sm">No bus assigned</span>
+              <div className="bg-[#171821] rounded-2xl border border-[#2C2D33] p-8 text-center">
+                <p className="text-[#87888C] font-['Inter'] text-sm">
+                  No bus assigned to this device yet.
+                </p>
               </div>
             )}
           </div>

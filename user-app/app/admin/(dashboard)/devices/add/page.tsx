@@ -11,6 +11,12 @@ interface Bus {
   licensePlate: string;
 }
 
+interface Device {
+  id: number;
+  deviceName: string;
+  busId: number | null;
+}
+
 export default function AddDevicePage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,21 +28,41 @@ export default function AddDevicePage() {
     status: "Offline",
   });
 
-  // Fetch buses for assignment
+  // Fetch buses and devices (to filter out buses that already have a device)
   useEffect(() => {
-    fetchBuses();
+    fetchData();
   }, []);
 
-  const fetchBuses = async () => {
+  const fetchData = async () => {
     try {
       setLoadingBuses(true);
-      const response = await fetch("/api/admin/buses");
-      const data = await response.json();
-      if (data.success) {
-        setBuses(data.buses || []);
+
+      // Fetch buses and devices in parallel
+      const [busesRes, devicesRes] = await Promise.all([
+        fetch("/api/admin/buses"),
+        fetch("/api/admin/devices"),
+      ]);
+
+      const busesData = await busesRes.json();
+      const devicesData = await devicesRes.json();
+
+      if (busesData.success && devicesData.success) {
+        // Collect bus IDs that already have a device assigned
+        const assignedBusIds = new Set<number>(
+          (devicesData.devices as Device[])
+            .filter((d) => d.busId !== null)
+            .map((d) => d.busId as number)
+        );
+
+        // Only keep buses without a device
+        const availableBuses = (busesData.buses as Bus[]).filter(
+          (bus) => !assignedBusIds.has(bus.id)
+        );
+
+        setBuses(availableBuses);
       }
     } catch (error) {
-      console.error("Failed to fetch buses:", error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setLoadingBuses(false);
     }
@@ -143,6 +169,8 @@ export default function AddDevicePage() {
                   <option value="">Unassigned</option>
                   {loadingBuses ? (
                     <option disabled>Loading buses...</option>
+                  ) : buses.length === 0 ? (
+                    <option disabled>No available buses</option>
                   ) : (
                     buses.map((bus) => (
                       <option key={bus.id} value={bus.id}>
