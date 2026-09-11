@@ -58,7 +58,7 @@ export default function RouteDetailsPage({ params }: PageProps) {
       try {
         const response = await fetch(`/api/admin/routes/${routeId}`);
         const data = await response.json();
-        
+
         if (data.success) {
           setRoute(data.route);
           setIsActive(data.route.status === "Active");
@@ -74,10 +74,10 @@ export default function RouteDetailsPage({ params }: PageProps) {
 
   const toggleStatus = async () => {
     if (!route) return;
-    
+
     const newStatus = isActive ? "Inactive" : "Active";
     setIsActive(!isActive);
-    
+
     try {
       const response = await fetch(`/api/admin/routes/${routeId}`, {
         method: "PUT",
@@ -87,7 +87,7 @@ export default function RouteDetailsPage({ params }: PageProps) {
           status: newStatus,
         }),
       });
-      
+
       const data = await response.json();
       if (!data.success) {
         // Revert if failed
@@ -119,9 +119,9 @@ export default function RouteDetailsPage({ params }: PageProps) {
       const response = await fetch(`/api/admin/routes/${routeId}`, {
         method: "DELETE",
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         router.push("/admin/routes");
       } else {
@@ -218,8 +218,8 @@ export default function RouteDetailsPage({ params }: PageProps) {
               <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
                 <span className="text-[#87888C] font-['Inter'] text-sm">Intermediate Stops</span>
                 <span className="text-white font-['Inter'] text-sm">
-                  {route.intermediateStops?.length > 0 
-                    ? route.intermediateStops.join(", ") 
+                  {route.intermediateStops?.length > 0
+                    ? route.intermediateStops.join(", ")
                     : "None"}
                 </span>
               </div>
@@ -232,14 +232,12 @@ export default function RouteDetailsPage({ params }: PageProps) {
                   <button
                     type="button"
                     onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
-                      isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                    }`}
+                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
+                      }`}
                   >
                     <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                        isActive ? "right-[3px]" : "left-[3px]"
-                      }`}
+                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${isActive ? "right-[3px]" : "left-[3px]"
+                        }`}
                     />
                   </button>
                 </div>
@@ -289,17 +287,20 @@ export default function RouteDetailsPage({ params }: PageProps) {
                   {route.assignedBuses.map((bus, index) => (
                     <tr
                       key={bus.id}
-                      className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${
-                        index % 2 === 0 ? "bg-[#171821]" : "bg-[#1D1E27]"
-                      }`}
+                      onClick={() => router.push(`/admin/buses/${bus.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(`/admin/buses/${bus.id}`);
+                        }
+                      }}
+                      role="link"
+                      tabIndex={0}
+                      className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] focus:bg-[#2B2B36] focus:outline-none transition cursor-pointer ${index % 2 === 0 ? "bg-[#171821]" : "bg-[#1D1E27]"
+                        }`}
                     >
-                      <td className="px-6 py-4">
-                        <Link 
-                          href={`/admin/buses/${bus.id}`}
-                          className="text-white hover:text-[#96DDFF] transition font-['Inter'] text-sm"
-                        >
-                          B{String(bus.id).padStart(3, "0")}
-                        </Link>
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        B{String(bus.id).padStart(3, "0")}
                       </td>
                       <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                         {bus.licensePlate}
@@ -309,13 +310,12 @@ export default function RouteDetailsPage({ params }: PageProps) {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${
-                            bus.device?.status === "Online"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${bus.device?.status === "Online"
                               ? "bg-[#E1FFDA] text-[#3EB900]"
                               : bus.device?.status === "Offline"
-                              ? "bg-[#FFC0B9] text-[#EA1701]"
-                              : "bg-[#2C2D33] text-[#87888C]"
-                          }`}
+                                ? "bg-[#FFC0B9] text-[#EA1701]"
+                                : "bg-[#2C2D33] text-[#87888C]"
+                            }`}
                         >
                           {bus.device?.status || "No Device"}
                         </span>
