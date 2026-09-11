@@ -65,6 +65,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Server-side guard: reject if the bus already has an active device
+    if (busId) {
+      const existingAssignment = await prisma.busDeviceAssignment.findFirst({
+        where: { busId, endedAt: null },
+      });
+
+      if (existingAssignment) {
+        return NextResponse.json(
+          { success: false, error: "This bus already has a device assigned" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create the device
     const device = await prisma.device.create({
       data: {
