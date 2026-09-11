@@ -3,7 +3,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/ActionMenu";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 interface Route {
   id: number;
@@ -16,11 +18,27 @@ interface Route {
   updatedAt: string;
 }
 
+interface DeleteModalState {
+  isOpen: boolean;
+  routeId: number | null;
+  routeName: string;
+  isDeleting: boolean;
+}
+
+const initialDeleteModal: DeleteModalState = {
+  isOpen: false,
+  routeId: null,
+  routeName: "",
+  isDeleting: false,
+};
+
 export default function RouteManagement() {
+  const router = useRouter();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,29 +53,27 @@ export default function RouteManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log("Fetching routes from /api/admin/routes...");
       const response = await fetch("/api/admin/routes");
-      
+
       console.log("Response status:", response.status);
       console.log("Response headers:", response.headers);
-      
-      // Check if response is OK
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      // Check if response is JSON
+
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
         console.error("Response is not JSON:", text.substring(0, 200));
         throw new Error("API returned non-JSON response. Check if the API route exists.");
       }
-      
+
       const data = await response.json();
       console.log("Routes data:", data);
-      
+
       if (data.success) {
         setRoutes(data.routes || []);
       } else {
@@ -71,48 +87,77 @@ export default function RouteManagement() {
     }
   };
 
-  const handleDelete = async (routeId: number) => {
+  // ---- Delete flow (shared modal) ----
+  const handleDeleteClick = (routeId: number, routeName: string) => {
+    setDeleteModal({
+      isOpen: true,
+      routeId,
+      routeName,
+      isDeleting: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.routeId) return;
+
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
     try {
-      const response = await fetch(`/api/admin/routes/${routeId}`, {
+      const response = await fetch(`/api/admin/routes/${deleteModal.routeId}`, {
         method: "DELETE",
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setRoutes(routes.filter(route => route.id !== routeId));
+        setRoutes((prev) => prev.filter((route) => route.id !== deleteModal.routeId));
+        setDeleteModal(initialDeleteModal);
       } else {
         alert("Failed to delete route: " + data.error);
+        setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
       }
     } catch (error) {
       console.error("Error deleting route:", error);
       alert("An error occurred while deleting the route.");
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
+  };
+
+  // ---- Row navigation ----
+  const handleRowClick = (routeId: number) => {
+    router.push(`/admin/routes/${routeId}`);
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent, routeId: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleRowClick(routeId);
     }
   };
 
   // Filter routes by multiple search fields including formatted ID
-const filteredRoutes = routes.filter((route) => {
-  const searchTermLower = searchTerm.toLowerCase().trim();
-  if (!searchTermLower) return true;
+  const filteredRoutes = routes.filter((route) => {
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    if (!searchTermLower) return true;
 
-  // Format route ID as R001, R002
-  const formattedId = `R${String(route.id).padStart(3, "0")}`;
+    const formattedId = `R${String(route.id).padStart(3, "0")}`;
 
-  // Create array of all searchable fields
-  const searchFields = [
-    route.id.toString(),
-    formattedId.toLowerCase(),
-    route.routeName?.toLowerCase() || '',
-    route.pickupStop?.toLowerCase() || '',
-    route.dropoffStop?.toLowerCase() || '',
-    route.status?.toLowerCase() || '',
-    ...(route.intermediateStops?.map(stop => stop.toLowerCase()) || []), // Intermediate Stops
-  ];
+    const searchFields = [
+      route.id.toString(),
+      formattedId.toLowerCase(),
+      route.routeName?.toLowerCase() || "",
+      route.pickupStop?.toLowerCase() || "",
+      route.dropoffStop?.toLowerCase() || "",
+      route.status?.toLowerCase() || "",
+      ...(route.intermediateStops?.map((stop) => stop.toLowerCase()) || []),
+    ];
 
-  return searchFields.some(field => 
-    field.includes(searchTermLower)
-  );
-});
+    return searchFields.some((field) => field.includes(searchTermLower));
+  });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRoutes.length / itemsPerPage);
@@ -147,7 +192,6 @@ const filteredRoutes = routes.filter((route) => {
     return pages;
   };
 
-  // Get status badge color
   const getStatusBadge = (status: string) => {
     if (status === "Active") {
       return "bg-[#E1FFDA] text-[#3EB900]";
@@ -191,7 +235,7 @@ const filteredRoutes = routes.filter((route) => {
       {/* Search Results Count */}
       {!loading && !error && searchTerm && (
         <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
-          Found {filteredRoutes.length} result{filteredRoutes.length !== 1 ? 's' : ''} for "{searchTerm}"
+          Found {filteredRoutes.length} result{filteredRoutes.length !== 1 ? "s" : ""} for "{searchTerm}"
         </div>
       )}
 
@@ -200,7 +244,7 @@ const filteredRoutes = routes.filter((route) => {
         <div className="mb-4 p-4 bg-[#CD0000]/20 border border-[#CD0000] rounded-lg text-[#CD0000] font-['Inter'] text-sm">
           <p className="font-semibold">Error loading routes:</p>
           <p>{error}</p>
-          <button 
+          <button
             onClick={fetchRoutes}
             className="mt-2 px-4 py-2 bg-[#96DDFF] text-[#171821] rounded-lg hover:bg-[#7ec4e8] transition"
           >
@@ -215,24 +259,12 @@ const filteredRoutes = routes.filter((route) => {
           <table className="w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Route ID
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Route Name
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Pickup Stop
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Drop-off Stop
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Status
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Actions
-                </th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route ID</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route Name</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Pickup Stop</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Drop-off Stop</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Status</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -251,14 +283,21 @@ const filteredRoutes = routes.filter((route) => {
               ) : paginatedRoutes.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
-                    {searchTerm ? "No routes match your search." : "No routes added yet. Click 'Add Route' to create one."}
+                    {searchTerm
+                      ? "No routes match your search."
+                      : "No routes added yet. Click 'Add Route' to create one."}
                   </td>
                 </tr>
               ) : (
                 paginatedRoutes.map((route, index) => (
                   <tr
                     key={route.id}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for route R${String(route.id).padStart(3, "0")}`}
+                    onClick={() => handleRowClick(route.id)}
+                    onKeyDown={(e) => handleRowKeyDown(e, route.id)}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
                       index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                     }`}
                   >
@@ -281,12 +320,16 @@ const filteredRoutes = routes.filter((route) => {
                         {route.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <ActionMenu 
-                        id={route.id} 
-                        type="route" 
-                        onDelete={handleDelete}
-                        customDeleteMessage={`Are you sure you want to delete route R${String(route.id).padStart(3, "0")} (${route.routeName})?`}
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <ActionMenu
+                        id={route.id}
+                        type="route"
+                        onDelete={handleDeleteClick}
+                        itemName={route.routeName}
                       />
                     </td>
                   </tr>
@@ -296,7 +339,7 @@ const filteredRoutes = routes.filter((route) => {
           </table>
         </div>
 
-        {/* Figma-styled Pagination */}
+        {/* Pagination */}
         {totalPages > 1 && !error && (
           <div className="flex items-center justify-end px-6 py-4 border-t border-[#2C2D33]">
             <div className="flex items-center gap-2">
@@ -353,6 +396,22 @@ const filteredRoutes = routes.filter((route) => {
           </div>
         )}
       </div>
+
+      {/* Shared Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Route"
+        message="Are you sure you want to delete"
+        itemName={
+          deleteModal.routeId
+            ? `Route R${String(deleteModal.routeId).padStart(3, "0")} (${deleteModal.routeName})`
+            : undefined
+        }
+        description="This action cannot be undone. All data associated with this route will be permanently removed."
+        loading={deleteModal.isDeleting}
+      />
     </div>
   );
 }

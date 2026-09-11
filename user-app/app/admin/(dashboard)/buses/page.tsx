@@ -3,7 +3,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/ActionMenu";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 interface Bus {
   id: number;
@@ -22,10 +24,28 @@ interface Bus {
   };
 }
 
+interface DeleteModalState {
+  isOpen: boolean;
+  busId: number | null;
+  busName: string;
+  licensePlate: string;
+  isDeleting: boolean;
+}
+
+const initialDeleteModal: DeleteModalState = {
+  isOpen: false,
+  busId: null,
+  busName: "",
+  licensePlate: "",
+  isDeleting: false,
+};
+
 export default function BusManagement() {
+  const router = useRouter();
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,22 +70,56 @@ export default function BusManagement() {
     }
   };
 
-  const handleDelete = async (busId: number) => {
+  // ---- Delete flow (shared modal) ----
+  const handleDeleteClick = (busId: number, busName: string, licensePlate?: string) => {
+    setDeleteModal({
+      isOpen: true,
+      busId,
+      busName,
+      licensePlate: licensePlate ?? "",
+      isDeleting: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.busId) return;
+
+    setDeleteModal((prev) => ({ ...prev, isDeleting: true }));
+
     try {
-      const response = await fetch(`/api/admin/buses/${busId}`, {
+      const response = await fetch(`/api/admin/buses/${deleteModal.busId}`, {
         method: "DELETE",
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setBuses(buses.filter(bus => bus.id !== busId));
+        setBuses((prev) => prev.filter((bus) => bus.id !== deleteModal.busId));
+        setDeleteModal(initialDeleteModal);
       } else {
         alert("Failed to delete bus: " + data.error);
+        setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
       }
     } catch (error) {
       console.error("Error deleting bus:", error);
       alert("An error occurred while deleting the bus.");
+      setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!deleteModal.isDeleting) setDeleteModal(initialDeleteModal);
+  };
+
+  // ---- Row navigation ----
+  const handleRowClick = (busId: number) => {
+    router.push(`/admin/buses/${busId}`);
+  };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent, busId: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleRowClick(busId);
     }
   };
 
@@ -74,25 +128,21 @@ export default function BusManagement() {
     const searchTermLower = searchTerm.toLowerCase().trim();
     if (!searchTermLower) return true;
 
-    // Format bus ID as B001, B002, etc.
     const formattedId = `B${String(bus.id).padStart(3, "0")}`;
 
-    // Create array of all searchable fields
     const searchFields = [
       bus.id.toString(),
       formattedId.toLowerCase(),
-      bus.busName?.toLowerCase() || '',
-      bus.licensePlate?.toLowerCase() || '',
-      bus.route?.routeName?.toLowerCase() || '',
-      bus.route?.id?.toString() || '',
-      bus.device?.deviceName?.toLowerCase() || '',
-      bus.device?.id?.toString() || '',
-      bus.status?.toLowerCase() || '',
+      bus.busName?.toLowerCase() || "",
+      bus.licensePlate?.toLowerCase() || "",
+      bus.route?.routeName?.toLowerCase() || "",
+      bus.route?.id?.toString() || "",
+      bus.device?.deviceName?.toLowerCase() || "",
+      bus.device?.id?.toString() || "",
+      bus.status?.toLowerCase() || "",
     ];
 
-    return searchFields.some(field => 
-      field.includes(searchTermLower)
-    );
+    return searchFields.some((field) => field.includes(searchTermLower));
   });
 
   // Pagination logic
@@ -106,12 +156,10 @@ export default function BusManagement() {
     }
   };
 
-  // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-  // Generate page numbers with ellipsis
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const showPagesAround = 1;
@@ -130,7 +178,6 @@ export default function BusManagement() {
     return pages;
   };
 
-  // Get status badge color
   const getStatusBadge = (status: string) => {
     if (status === "Online") {
       return "bg-[#E1FFDA] text-[#3EB900]";
@@ -178,7 +225,7 @@ export default function BusManagement() {
       {/* Search Results Count */}
       {!loading && searchTerm && (
         <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
-          Found {filteredBuses.length} result{filteredBuses.length !== 1 ? 's' : ''} for "{searchTerm}"
+          Found {filteredBuses.length} result{filteredBuses.length !== 1 ? "s" : ""} for "{searchTerm}"
         </div>
       )}
 
@@ -188,24 +235,12 @@ export default function BusManagement() {
           <table className="w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Bus ID
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  License Plate
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Route
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Device
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Device Status
-                </th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
-                  Actions
-                </th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus ID</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">License Plate</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Status</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -218,14 +253,21 @@ export default function BusManagement() {
               ) : paginatedBuses.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
-                    {searchTerm ? "No buses match your search." : "No buses added yet. Click 'Add Shuttle' to create one."}
+                    {searchTerm
+                      ? "No buses match your search."
+                      : "No buses added yet. Click 'Add Shuttle' to create one."}
                   </td>
                 </tr>
               ) : (
                 paginatedBuses.map((bus, index) => (
                   <tr
                     key={bus.id}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View details for bus B${String(bus.id).padStart(3, "0")}`}
+                    onClick={() => handleRowClick(bus.id)}
+                    onKeyDown={(e) => handleRowKeyDown(e, bus.id)}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
                       index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                     }`}
                   >
@@ -248,12 +290,17 @@ export default function BusManagement() {
                         {bus.device?.status || "No Device"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <ActionMenu 
-                        id={bus.id} 
-                        type="bus" 
-                        onDelete={handleDelete}
-                        customDeleteMessage={`Are you sure you want to delete bus B${String(bus.id).padStart(3, "0")} (${bus.licensePlate})?`}
+                    <td
+                      className="px-6 py-4"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <ActionMenu
+                        id={bus.id}
+                        type="bus"
+                        onDelete={handleDeleteClick}
+                        itemName={bus.busName}
+                        itemIdentifier={bus.licensePlate}
                       />
                     </td>
                   </tr>
@@ -320,6 +367,22 @@ export default function BusManagement() {
           </div>
         )}
       </div>
+
+      {/* Shared Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Bus"
+        message="Are you sure you want to delete"
+        itemName={
+          deleteModal.busId
+            ? `Bus B${String(deleteModal.busId).padStart(3, "0")} (${deleteModal.licensePlate})`
+            : undefined
+        }
+        description="This action cannot be undone. All data associated with this bus will be permanently removed."
+        loading={deleteModal.isDeleting}
+      />
     </div>
   );
 }
