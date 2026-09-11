@@ -7,11 +7,20 @@ import Link from "next/link";
 interface ActionMenuProps {
   id: number;
   type: "bus" | "route" | "device";
-  onDelete?: (id: number) => Promise<void>;
+  onDelete: (id: number, name: string, identifier?: string) => void;
   customDeleteMessage?: string;
+  itemName?: string;
+  itemIdentifier?: string;
 }
 
-export default function ActionMenu({ id, type, onDelete, customDeleteMessage }: ActionMenuProps) {
+export default function ActionMenu({
+  id,
+  type,
+  onDelete,
+  customDeleteMessage,
+  itemName = "",
+  itemIdentifier = "",
+}: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -43,15 +52,12 @@ export default function ActionMenu({ id, type, onDelete, customDeleteMessage }: 
     setIsOpen(!isOpen);
   };
 
-  // Latest update 2/9/26: Added device path
   let basePath = "/admin/buses";
   if (type === "route") basePath = "/admin/routes";
   else if (type === "device") basePath = "/admin/devices";
-  const deleteMessage = customDeleteMessage || `Are you sure you want to delete this ${type}?`;
 
   return (
     <div className="relative">
-      {/* Three-dot button */}
       <button
         ref={buttonRef}
         onClick={handleToggle}
@@ -62,15 +68,11 @@ export default function ActionMenu({ id, type, onDelete, customDeleteMessage }: 
         </svg>
       </button>
 
-      {/* Dropdown menu - matching Figma design */}
       {isOpen && (
         <div
           ref={menuRef}
           className="fixed z-[100] bg-[#2B2B36] rounded-lg shadow-lg py-2 w-[169px]"
-          style={{
-            top: menuPosition.top,
-            left: menuPosition.left,
-          }}
+          style={{ top: menuPosition.top, left: menuPosition.left }}
         >
           <Link
             href={`${basePath}/${id}`}
@@ -87,13 +89,10 @@ export default function ActionMenu({ id, type, onDelete, customDeleteMessage }: 
             Edit
           </Link>
           <button
-            onClick={async () => {
+            onClick={() => {
               setIsOpen(false);
-              if (confirm(deleteMessage)) {
-                if (onDelete) {
-                  await onDelete(id);
-                }
-              }
+              // Hand off to parent — parent opens the shared modal
+              onDelete(id, itemName, itemIdentifier);
             }}
             className="block w-full text-left px-6 py-2 text-[#FA2121] hover:bg-[#3C3D44] transition font-['Inter'] text-sm"
           >
