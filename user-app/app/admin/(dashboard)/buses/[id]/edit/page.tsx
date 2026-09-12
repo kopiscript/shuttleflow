@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 interface Bus {
   id: number;
@@ -40,6 +41,8 @@ export default function EditBusPage({ params }: PageProps) {
   });
   const [routes, setRoutes] = useState<{ id: number; routeName: string }[]>([]);
   const [devices, setDevices] = useState<{ id: number; deviceName: string }[]>([]);
+  const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
+  const [showRemoveDeviceModal, setShowRemoveDeviceModal] = useState(false);
 
   // Unwrap params and fetch data
   useEffect(() => {
@@ -96,6 +99,14 @@ export default function EditBusPage({ params }: PageProps) {
       ...prev,
       status: prev.status === "Active" ? "Inactive" : "Active",
     }));
+  };
+
+  const handleRemoveRoute = () => {
+    setFormData((prev) => ({ ...prev, routeId: "" }));
+  };
+
+  const handleRemoveDevice = () => {
+    setFormData((prev) => ({ ...prev, deviceId: "" }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -216,14 +227,12 @@ export default function EditBusPage({ params }: PageProps) {
                   <button
                     type="button"
                     onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
-                      formData.status === "Active" ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                    }`}
+                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${formData.status === "Active" ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
+                      }`}
                   >
                     <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                        formData.status === "Active" ? "right-[3px]" : "left-[3px]"
-                      }`}
+                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${formData.status === "Active" ? "right-[3px]" : "left-[3px]"
+                        }`}
                     />
                   </button>
                 </div>
@@ -236,8 +245,8 @@ export default function EditBusPage({ params }: PageProps) {
             {/* Assigned Route */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Route</h3>
-              <div className="mt-4">
-                <div className="relative">
+              <div className="mt-4 flex gap-2">
+                <div className="relative flex-1">
                   <select
                     name="routeId"
                     value={formData.routeId}
@@ -257,6 +266,19 @@ export default function EditBusPage({ params }: PageProps) {
                     </svg>
                   </div>
                 </div>
+                {formData.routeId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveRouteModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
+                    title="Remove assigned route"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
 
@@ -266,8 +288,8 @@ export default function EditBusPage({ params }: PageProps) {
             {/* Assigned Device */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Device</h3>
-              <div className="mt-4">
-                <div className="relative">
+              <div className="mt-4 flex gap-2">
+                <div className="relative flex-1">
                   <select
                     name="deviceId"
                     value={formData.deviceId}
@@ -287,8 +309,61 @@ export default function EditBusPage({ params }: PageProps) {
                     </svg>
                   </div>
                 </div>
+                {formData.deviceId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveDeviceModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
+                    title="Remove assigned device"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Remove Route Confirmation Modal */}
+            <DeleteConfirmModal
+              isOpen={showRemoveRouteModal}
+              onClose={() => setShowRemoveRouteModal(false)}
+              onConfirm={() => {
+                handleRemoveRoute();
+                setShowRemoveRouteModal(false);
+              }}
+              title="Remove Route"
+              message="Are you sure you want to remove"
+              itemName={
+                routes.find((r) => r.id.toString() === formData.routeId)?.routeName ||
+                "this route"
+              }
+              description="This will unassign the route from this bus. The route itself will not be deleted."
+              confirmLabel="Remove"
+              loadingLabel="Removing..."
+              variant="warning"
+            />
+
+            {/* Remove Device Confirmation Modal */}
+            <DeleteConfirmModal
+              isOpen={showRemoveDeviceModal}
+              onClose={() => setShowRemoveDeviceModal(false)}
+              onConfirm={() => {
+                handleRemoveDevice();
+                setShowRemoveDeviceModal(false);
+              }}
+              title="Remove Device"
+              message="Are you sure you want to remove"
+              itemName={
+                devices.find((d) => d.id.toString() === formData.deviceId)?.deviceName ||
+                "this device"
+              }
+              description="This will unassign the device from this bus. The device itself will not be deleted."
+              confirmLabel="Remove"
+              loadingLabel="Removing..."
+              variant="warning"
+            />
           </div>
 
           {/* Footer */}

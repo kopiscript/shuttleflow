@@ -55,14 +55,14 @@ export async function GET(
       route: bus.routeAssignments[0]?.route || null,
       device: bus.deviceAssignments[0]?.device
         ? {
-            ...bus.deviceAssignments[0].device,
-            lastLat: bus.locations[0]?.latitude
-              ? parseFloat(bus.locations[0].latitude)
-              : null,
-            lastLng: bus.locations[0]?.longitude
-              ? parseFloat(bus.locations[0].longitude)
-              : null,
-          }
+          ...bus.deviceAssignments[0].device,
+          lastLat: bus.locations[0]?.latitude
+            ? parseFloat(bus.locations[0].latitude)
+            : null,
+          lastLng: bus.locations[0]?.longitude
+            ? parseFloat(bus.locations[0].longitude)
+            : null,
+        }
         : null,
     };
 
@@ -137,51 +137,69 @@ export async function PUT(
     }
 
     // Handle route assignment
-    if (routeId) {
-      // End current route assignment
+    // undefined = don't touch, null = unassign, number = assign
+    if (routeId !== undefined) {
+      // End any current active route assignment
       await prisma.busRouteAssignment.updateMany({
         where: { busId, endedAt: null },
         data: { endedAt: new Date() },
       });
 
-      // Create new route assignment
-      await prisma.busRouteAssignment.create({
-        data: {
-          busId,
-          routeId: parseInt(routeId),
-          assignedAt: new Date(),
-        },
-      });
+      if (routeId !== null) {
+        // Assign new route
+        await prisma.busRouteAssignment.create({
+          data: {
+            busId,
+            routeId: parseInt(routeId),
+            assignedAt: new Date(),
+          },
+        });
 
-      await logActivity(
-        busId,
-        "route_assigned",
-        `Route assigned to Bus B${String(busId).padStart(3, "0")}`
-      );
+        await logActivity(
+          busId,
+          "route_assigned",
+          `Route assigned to Bus B${String(busId).padStart(3, "0")}`
+        );
+      } else {
+        await logActivity(
+          busId,
+          "route_assigned",
+          `Route unassigned from Bus B${String(busId).padStart(3, "0")}`
+        );
+      }
     }
 
     // Handle device assignment
-    if (deviceId) {
-      // End current device assignment
+    // undefined = don't touch, null = unassign, number = assign
+    if (deviceId !== undefined) {
+      // End any current active device assignment
       await prisma.busDeviceAssignment.updateMany({
         where: { busId, endedAt: null },
         data: { endedAt: new Date() },
       });
 
-      // Create new device assignment
-      await prisma.busDeviceAssignment.create({
-        data: {
-          busId,
-          deviceId: parseInt(deviceId),
-          assignedAt: new Date(),
-        },
-      });
+      if (deviceId !== null) {
+        // Assign new device
+        await prisma.busDeviceAssignment.create({
+          data: {
+            busId,
+            deviceId: parseInt(deviceId),
+            assignedAt: new Date(),
+          },
+        });
 
-      await logActivity(
-        busId,
-        "device_assigned",
-        `Device assigned to Bus B${String(busId).padStart(3, "0")}`
-      );
+        await logActivity(
+          busId,
+          "device_assigned",
+          `Device assigned to Bus B${String(busId).padStart(3, "0")}`
+        );
+      } else {
+        await logActivity(
+          busId,
+          "device_assigned",
+          `Device unassigned from Bus B${String(busId).padStart(3, "0")}`
+        );
+      }
     }
 
     await logActivity(
