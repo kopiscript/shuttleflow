@@ -3,6 +3,8 @@
 
 import { useEffect } from "react";
 
+type Variant = "danger" | "warning";
+
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,6 +18,12 @@ interface DeleteConfirmModalProps {
   /** Secondary description under the item name */
   description?: string;
   loading?: boolean;
+  /** Label for the confirm button (default: "Delete") */
+  confirmLabel?: string;
+  /** Label while loading (default: "Deleting...") */
+  loadingLabel?: string;
+  /** Visual style: danger (red, trash icon) or warning (amber, unlink icon) */
+  variant?: Variant;
 }
 
 export default function DeleteConfirmModal({
@@ -27,6 +35,9 @@ export default function DeleteConfirmModal({
   itemName,
   description = "This action cannot be undone. All data associated with this item will be permanently removed.",
   loading = false,
+  confirmLabel = "Delete",
+  loadingLabel = "Deleting...",
+  variant = "danger",
 }: DeleteConfirmModalProps) {
   // Close on Escape key
   useEffect(() => {
@@ -52,6 +63,12 @@ export default function DeleteConfirmModal({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  // Variant-specific styles
+  const isWarning = variant === "warning";
+  const accentColor = isWarning ? "#F5A623" : "#CD0000";
+  const hoverBg = isWarning ? "#d99418" : "#b30000";
+  const iconBg = isWarning ? "bg-[#F5A623]/20" : "bg-[#CD0000]/20";
 
   return (
     <div
@@ -81,17 +98,39 @@ export default function DeleteConfirmModal({
         {/* Modal Body */}
         <div className="mb-6">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-[#CD0000]/20 flex items-center justify-center">
-              <svg className="w-8 h-8 text-[#CD0000]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+            <div className={`w-16 h-16 rounded-full ${iconBg} flex items-center justify-center`}>
+              {isWarning ? (
+                // Unlink icon for "warning" variant
+                <svg
+                  className="w-8 h-8"
+                  style={{ color: accentColor }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              ) : (
+                // Trash icon for "danger" variant
+                <svg
+                  className="w-8 h-8"
+                  style={{ color: accentColor }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
             </div>
           </div>
 
           <p className="text-white text-center font-['Inter'] text-base">
             {message} <br />
             {itemName && (
-              <span className="font-bold text-[#CD0000]">{itemName}</span>
+              <span className="font-bold" style={{ color: accentColor }}>
+                {itemName}
+              </span>
             )}
             ?
           </p>
@@ -113,12 +152,21 @@ export default function DeleteConfirmModal({
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-6 py-2.5 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-white rounded-lg font-semibold font-['Inter'] text-sm transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: accentColor }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverBg)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor)}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            {loading ? "Deleting..." : "Delete"}
+            {isWarning ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>
