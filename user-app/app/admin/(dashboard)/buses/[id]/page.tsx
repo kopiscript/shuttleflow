@@ -138,9 +138,9 @@ export default function BusDetailsPage({ params }: PageProps) {
       const response = await fetch(`/api/admin/buses/${busId}`, {
         method: "DELETE",
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         router.push("/admin/buses");
       } else {
@@ -241,14 +241,12 @@ export default function BusDetailsPage({ params }: PageProps) {
                 <button
                   type="button"
                   onClick={toggleStatus}
-                  className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
-                    isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                  }`}
+                  className={`relative w-[46px] h-[23px] rounded-full transition-colors ${isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
+                    }`}
                 >
                   <div
-                    className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                      isActive ? "right-[3px]" : "left-[3px]"
-                    }`}
+                    className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${isActive ? "right-[3px]" : "left-[3px]"
+                      }`}
                   />
                 </button>
               </div>
@@ -285,7 +283,7 @@ export default function BusDetailsPage({ params }: PageProps) {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Device ID</span>
-              <span className="text-white font-['Inter'] text-sm">{bus.device?.id ? `GPS${String(bus.device.id).padStart(3, "0")}` : "—"}</span>
+              <span className="text-white font-['Inter'] text-sm">{bus.device?.id ? `D${String(bus.device.id).padStart(3, "0")}` : "—"}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Device Name</span>
@@ -333,7 +331,7 @@ export default function BusDetailsPage({ params }: PageProps) {
               <Link
                 href={`/admin/buses/${bus.id}/map`}
                 className="px-8 py-2.5 border border-white text-white rounded-lg font-semibold font-['Inter'] text-base hover:bg-white/10 transition text-center whitespace-nowrap flex items-center justify-center"
-                style={{ 
+                style={{
                   width: "157px",
                   borderWidth: "1px"
                 }}
