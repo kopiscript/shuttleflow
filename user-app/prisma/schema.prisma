@@ -90,11 +90,13 @@ model Location {
 }
 
 model Admin {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  passwordHash String   @map("password_hash")
-  email        String   @unique
-  createdAt    DateTime @default(now()) @map("created_at")
+  id             Int             @id @default(autoincrement())
+  username       String          @unique
+  passwordHash   String          @map("password_hash")
+  email          String          @unique
+  role           AdminRole       @default(ADMIN)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  adminAuditLogs AdminAuditLog[]
 
   @@map("admins")
 }
@@ -142,4 +144,32 @@ model ActivityLog {
   bus         Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
 
   @@map("activity_logs")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum AuditCategory {
+  AUTH
+  FLEET
+  SETTINGS
+}
+
+model AdminAuditLog {
+  id         Int           @id @default(autoincrement())
+  adminId    Int?          @map("admin_id")
+  admin      Admin?        @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  category   AuditCategory
+  action     String        // e.g., "LOGIN_SUCCESS", "LOGIN_FAILED", "PASSWORD_CHANGED", "BUS_DELETED"
+  targetType String?       @map("target_type") // e.g., "Bus", "Route", "Device", "Admin"
+  targetId   String?       @map("target_id")   // e.g., "B001", "R002"
+  details    Json?         // Stores snapshots of deleted entities or metadata
+  ipAddress  String?       @map("ip_address")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@index([category, createdAt])
+  @@index([adminId])
+  @@map("admin_audit_logs")
 }
