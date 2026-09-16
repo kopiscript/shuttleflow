@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 
 export default function LoginPage() {
@@ -118,21 +119,30 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center gap-2">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-[#2C2D33] bg-[#1D1E27] checked:bg-[#96DDFF] checked:border-[#96DDFF] focus:ring-2 focus:ring-[#96DDFF] focus:ring-offset-0 cursor-pointer accent-[#96DDFF]"
-              />
-              <label
-                htmlFor="remember-me"
-                className="text-[#87888C] font-['Inter'] text-sm cursor-pointer select-none"
+            {/* Remember Me + Forgot Password Row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-[#2C2D33] bg-[#1D1E27] checked:bg-[#96DDFF] checked:border-[#96DDFF] focus:ring-2 focus:ring-[#96DDFF] focus:ring-offset-0 cursor-pointer accent-[#96DDFF]"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="text-[#87888C] font-['Inter'] text-sm cursor-pointer select-none"
+                >
+                  Remember me
+                </label>
+              </div>
+
+              <Link
+                href="/admin/forgot-password"
+                className="text-[#96DDFF] font-['Inter'] text-sm hover:underline"
               >
-                Remember me for 30 days
-              </label>
+                Forgot Password?
+              </Link>
             </div>
 
             <button

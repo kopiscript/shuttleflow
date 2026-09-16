@@ -96,6 +96,8 @@ model Admin {
   email          String          @unique
   role           AdminRole       @default(ADMIN)
   createdAt      DateTime        @default(now()) @map("created_at")
+  resetToken       String?         @map("reset_token")
+  resetTokenExpiry DateTime?       @map("reset_token_expiry")
   adminAuditLogs AdminAuditLog[]
 
   @@map("admins")

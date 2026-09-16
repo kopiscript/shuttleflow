@@ -9,7 +9,11 @@ const secret = new TextEncoder().encode(
 const COOKIE_NAME = "admin_session";
 
 // Routes that don't require authentication
-const PUBLIC_ADMIN_ROUTES = ["/admin/login"];
+const PUBLIC_ADMIN_ROUTES = [
+  "/admin/login",
+  "/admin/forgot-password",
+  "/admin/reset-password",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
