@@ -4,42 +4,58 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    // Test: Check if we can connect to the database
-    console.log("Testing database connection...");
-    
-    // Try to count routes first
-    const count = await prisma.route.count();
-    console.log(`Found ${count} routes in database`);
-    
-    // Then fetch all routes
     const routes = await prisma.route.findMany({
       orderBy: { id: "asc" },
-      select: {
-        id: true,
-        routeName: true,
-        pickupStop: true,
-        dropoffStop: true,
-        intermediateStops: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        busAssignments: {
+          where: { endedAt: null },
+          include: {
+            bus: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    console.log(`Returning ${routes.length} routes`);
-    
-    return NextResponse.json({ 
-      success: true, 
-      routes,
-      count: count 
+    const transformedRoutes = routes.map((route) => {
+      // Route is active only if there's an active bus assigned
+      const activeBusAssignment = route.busAssignments.find(
+        (assignment) => assignment.bus.status === "Active"
+      );
+
+      const derivedStatus = activeBusAssignment ? "Active" : "Inactive";
+
+      return {
+        id: route.id,
+        routeName: route.routeName,
+        pickupStop: route.pickupStop,
+        dropoffStop: route.dropoffStop,
+        intermediateStops: route.intermediateStops,
+        pickupLat: route.pickupLat,
+        pickupLng: route.pickupLng,
+        dropoffLat: route.dropoffLat,
+        dropoffLng: route.dropoffLng,
+        status: derivedStatus, // Derived, not from DB
+        assignedBus: activeBusAssignment?.bus || null,
+        createdAt: route.createdAt,
+        updatedAt: route.updatedAt,
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      routes: transformedRoutes,
     });
   } catch (error) {
     console.error("Error in /api/admin/routes:", error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : "Failed to fetch routes",
-        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     );
@@ -49,13 +65,23 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { routeName, pickupStop, dropoffStop, intermediateStops, status } = body;
-
-    console.log("Creating route:", { routeName, pickupStop, dropoffStop });
+    const {
+      routeName,
+      pickupStop,
+      dropoffStop,
+      intermediateStops,
+      pickupLat,
+      pickupLng,
+      dropoffLat,
+      dropoffLng,
+    } = body;
 
     if (!routeName || !pickupStop || !dropoffStop) {
       return NextResponse.json(
-        { success: false, error: "Route name, pickup stop, and drop-off stop are required" },
+        {
+          success: false,
+          error: "Route name, pickup stop, and drop-off stop are required",
+        },
         { status: 400 }
       );
     }
@@ -66,7 +92,11 @@ export async function POST(request: Request) {
         pickupStop,
         dropoffStop,
         intermediateStops: intermediateStops || [],
-        status: status || "Active",
+        pickupLat: pickupLat ? parseFloat(pickupLat) : null,
+        pickupLng: pickupLng ? parseFloat(pickupLng) : null,
+        dropoffLat: dropoffLat ? parseFloat(dropoffLat) : null,
+        dropoffLng: dropoffLng ? parseFloat(dropoffLng) : null,
+        // No status field - it will be derived
       },
     });
 

@@ -2,7 +2,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// app/api/admin/routes/[id]/route.ts - Update the GET method
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -20,29 +19,15 @@ export async function GET(
 
     const route = await prisma.route.findUnique({
       where: { id: routeId },
-      select: {
-        id: true,
-        routeName: true,
-        pickupStop: true,
-        dropoffStop: true,
-        intermediateStops: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         busAssignments: {
-          where: {
-            endedAt: null,
-          },
+          where: { endedAt: null },
           include: {
             bus: {
               include: {
                 deviceAssignments: {
-                  where: {
-                    endedAt: null,
-                  },
-                  include: {
-                    device: true,
-                  },
+                  where: { endedAt: null },
+                  include: { device: true },
                 },
               },
             },
@@ -58,21 +43,33 @@ export async function GET(
       );
     }
 
+    // Find active bus assignment
+    const activeBusAssignment = route.busAssignments.find(
+      (assignment) => assignment.bus.status === "Active"
+    );
+
+    const derivedStatus = activeBusAssignment ? "Active" : "Inactive";
+
     const transformedRoute = {
       id: route.id,
       routeName: route.routeName,
       pickupStop: route.pickupStop,
       dropoffStop: route.dropoffStop,
       intermediateStops: route.intermediateStops,
-      status: route.status,
-      createdAt: route.createdAt,
-      updatedAt: route.updatedAt,
+      pickupLat: route.pickupLat,
+      pickupLng: route.pickupLng,
+      dropoffLat: route.dropoffLat,
+      dropoffLng: route.dropoffLng,
+      status: derivedStatus, // Derived
       assignedBuses: route.busAssignments.map((assignment) => ({
         id: assignment.bus.id,
         busName: assignment.bus.busName,
         licensePlate: assignment.bus.licensePlate,
+        status: assignment.bus.status,
         device: assignment.bus.deviceAssignments[0]?.device || null,
       })),
+      createdAt: route.createdAt,
+      updatedAt: route.updatedAt,
     };
 
     return NextResponse.json({ success: true, route: transformedRoute });
@@ -93,9 +90,16 @@ export async function PUT(
     const { id } = await params;
     const routeId = parseInt(id);
     const body = await request.json();
-    const { routeName, pickupStop, dropoffStop, intermediateStops, status } = body;
-
-    console.log(`Updating route ${routeId}:`, { routeName, pickupStop, dropoffStop });
+    const {
+      routeName,
+      pickupStop,
+      dropoffStop,
+      intermediateStops,
+      pickupLat,
+      pickupLng,
+      dropoffLat,
+      dropoffLng,
+    } = body;
 
     if (isNaN(routeId)) {
       return NextResponse.json(
@@ -122,7 +126,11 @@ export async function PUT(
         pickupStop: pickupStop || existingRoute.pickupStop,
         dropoffStop: dropoffStop || existingRoute.dropoffStop,
         intermediateStops: intermediateStops || existingRoute.intermediateStops,
-        status: status || existingRoute.status,
+        pickupLat: pickupLat !== undefined ? parseFloat(pickupLat) : existingRoute.pickupLat,
+        pickupLng: pickupLng !== undefined ? parseFloat(pickupLng) : existingRoute.pickupLng,
+        dropoffLat: dropoffLat !== undefined ? parseFloat(dropoffLat) : existingRoute.dropoffLat,
+        dropoffLng: dropoffLng !== undefined ? parseFloat(dropoffLng) : existingRoute.dropoffLng,
+        // No status update - it's derived
       },
     });
 
@@ -144,8 +152,6 @@ export async function DELETE(
     const { id } = await params;
     const routeId = parseInt(id);
 
-    console.log(`Deleting route ${routeId}`);
-
     if (isNaN(routeId)) {
       return NextResponse.json(
         { success: false, error: "Invalid route ID" },
@@ -162,9 +168,9 @@ export async function DELETE(
 
     if (assignments.length > 0) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `Cannot delete route with ${assignments.length} active bus assignment(s).` 
+        {
+          success: false,
+          error: `Cannot delete route with ${assignments.length} active bus assignment(s). Please unassign the bus first.`,
         },
         { status: 400 }
       );
