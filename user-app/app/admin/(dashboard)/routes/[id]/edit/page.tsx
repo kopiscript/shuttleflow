@@ -67,14 +67,30 @@ export default function EditRoutePage({ params }: PageProps) {
 
         if (data.success) {
           const route: Route = data.route;
+
+          // ✅ Debug — open devtools to confirm values arrive
+          console.log("[edit] route from API:", route);
+
           setFormData({
             routeName: route.routeName || "",
             pickupStop: route.pickupStop || "",
-            pickupLat: route.pickupLat?.toString() || "",
-            pickupLng: route.pickupLng?.toString() || "",
+            pickupLat:
+              route.pickupLat !== null && route.pickupLat !== undefined
+                ? String(route.pickupLat)
+                : "",
+            pickupLng:
+              route.pickupLng !== null && route.pickupLng !== undefined
+                ? String(route.pickupLng)
+                : "",
             dropoffStop: route.dropoffStop || "",
-            dropoffLat: route.dropoffLat?.toString() || "",
-            dropoffLng: route.dropoffLng?.toString() || "",
+            dropoffLat:
+              route.dropoffLat !== null && route.dropoffLat !== undefined
+                ? String(route.dropoffLat)
+                : "",
+            dropoffLng:
+              route.dropoffLng !== null && route.dropoffLng !== undefined
+                ? String(route.dropoffLng)
+                : "",
             intermediateStops: route.intermediateStops?.join(", ") || "",
           });
         }
@@ -94,7 +110,6 @@ export default function EditRoutePage({ params }: PageProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Stable callbacks for the map component
   const handlePickupChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, pickupLat: lat, pickupLng: lng }));
   }, []);
