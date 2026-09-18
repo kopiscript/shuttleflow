@@ -31,10 +31,10 @@ model Route {
   status            String               @default("Active")
   createdAt         DateTime             @default(now()) @map("created_at")
   updatedAt         DateTime             @updatedAt @map("updated_at")
-  pickup_lat        Float?
-  pickup_lng        Float?
-  dropoff_lat       Float?
-  dropoff_lng       Float?
+  pickupLat         Float?               @map("pickup_lat")
+  pickupLng         Float?               @map("pickup_lng")
+  dropoffLat        Float?               @map("dropoff_lat")
+  dropoffLng        Float?               @map("dropoff_lng")
   busAssignments    BusRouteAssignment[]
 
   @@map("routes")
