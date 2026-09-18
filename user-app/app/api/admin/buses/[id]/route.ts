@@ -53,16 +53,20 @@ export async function GET(
       createdAt: bus.createdAt,
       updatedAt: bus.updatedAt,
       route: bus.routeAssignments[0]?.route || null,
-      device: bus.deviceAssignments[0]?.device
+            device: bus.deviceAssignments[0]?.device
         ? {
-          ...bus.deviceAssignments[0].device,
-          lastLat: bus.locations[0]?.latitude
-            ? Number(bus.locations[0].latitude)
-            : null,
-          lastLng: bus.locations[0]?.longitude
-            ? Number(bus.locations[0].longitude)
-            : null,
-        }
+            ...bus.deviceAssignments[0].device,
+            lastLat: bus.locations[0]?.latitude
+              ? Number(bus.locations[0].latitude)
+              : null,
+            lastLng: bus.locations[0]?.longitude
+              ? Number(bus.locations[0].longitude)
+              : null,
+            // Override lastSeen with the actual last GPS signal time
+            lastSeen: bus.locations[0]?.recordedAt
+              ? bus.locations[0].recordedAt.toISOString()
+              : bus.deviceAssignments[0].device.lastSeen,
+          }
         : null,
     };
 

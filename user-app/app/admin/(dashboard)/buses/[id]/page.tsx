@@ -72,7 +72,7 @@ export default function BusDetailsPage({ params }: PageProps) {
     unwrapParams();
   }, [params]);
 
-  // Fetch bus details
+  // Fetch bus details with auto-refresh every 5 seconds (live map)
   useEffect(() => {
     if (!busId) return;
 
@@ -91,10 +91,17 @@ export default function BusDetailsPage({ params }: PageProps) {
         setLoading(false);
       }
     };
+
+    // Fetch immediately on page load
     fetchBusDetails();
+
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(fetchBusDetails, 5000);
+
+    return () => clearInterval(interval);
   }, [busId]);
 
-  // Fetch activity logs
+  // Fetch activity logs (once when busId loads)
   useEffect(() => {
     if (!busId) return;
 

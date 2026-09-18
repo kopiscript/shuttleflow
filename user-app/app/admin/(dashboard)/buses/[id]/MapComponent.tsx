@@ -34,7 +34,7 @@ interface Bus {
 
 export default function MapComponent({ bus }: { bus: Bus }) {
   return (
-    <div className="relative w-full h-[500px] rounded-lg overflow-hidden border border-[#2C2D33]">
+    <div className="relative w-full h-full rounded-lg overflow-hidden border border-[#2C2D33]">
       <LeafletMap bus={bus} />
     </div>
   );
