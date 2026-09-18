@@ -1,42 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-// Fix Leaflet default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-// Custom icons for pickup and dropoff
-const pickupIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const dropoffIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+import { createPickupIcon, createDropoffIcon, createBusIcon } from "./mapIcons";
 
 interface RouteMarkerData {
   id: number;
@@ -46,113 +13,112 @@ interface RouteMarkerData {
   dropoffLat: number | null;
   dropoffLng: number | null;
   status: string;
+  pickupStop?: string;
+  dropoffStop?: string;
+}
+
+export interface BusMarkerData {
+  id: number;
+  busName: string;
+  lat: number;
+  lng: number;
+  routeName?: string;
+  status?: string;
 }
 
 interface RouteMarkersMapProps {
   routes: RouteMarkerData[];
+  buses?: BusMarkerData[]; // optional — dashboard only
 }
 
-export default function RouteMarkersMap({ routes }: RouteMarkersMapProps) {
+export default function RouteMarkersMap({ routes, buses = [] }: RouteMarkersMapProps) {
   const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
-  // Initialize map
+  const pickupIcon = useMemo(() => createPickupIcon(), []);
+  const dropoffIcon = useMemo(() => createDropoffIcon(), []);
+  const busIcon = useMemo(() => createBusIcon(), []);
+
+  const DEFAULT_LAT = 3.0742;
+  const DEFAULT_LNG = 101.5913;
+
+  // Init map
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current) return;
 
-    // Default center: INTI Subang
-    const defaultLat = 3.0742;
-    const defaultLng = 101.5913;
-
-    mapRef.current = L.map(mapContainerRef.current).setView(
-      [defaultLat, defaultLng],
-      12
-    );
-
+    mapRef.current = L.map(containerRef.current).setView([DEFAULT_LAT, DEFAULT_LNG], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(mapRef.current);
 
     markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
 
-    // Force size invalidation after mount
-    setTimeout(() => {
-      if (mapRef.current) mapRef.current.invalidateSize();
-    }, 100);
+    setTimeout(() => mapRef.current?.invalidateSize(), 100);
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
   }, []);
 
-  // Update markers when routes change
+  // Update markers
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
-
-    // Clear existing markers
     markersLayerRef.current.clearLayers();
 
-    const allCoordinates: [number, number][] = [];
+    const allCoords: [number, number][] = [];
 
+    // Routes → pickup + dropoff + dashed line
     routes.forEach((route) => {
-      // Only show markers for routes with valid coordinates
       if (
-        route.pickupLat &&
-        route.pickupLng &&
-        route.dropoffLat &&
-        route.dropoffLng
-      ) {
-        const pickupCoord: [number, number] = [
-          route.pickupLat,
-          route.pickupLng,
-        ];
-        const dropoffCoord: [number, number] = [
-          route.dropoffLat,
-          route.dropoffLng,
-        ];
+        route.pickupLat == null || route.pickupLng == null ||
+        route.dropoffLat == null || route.dropoffLng == null
+      ) return;
 
-        // Add pickup marker
-        L.marker(pickupCoord, { icon: pickupIcon })
-          .bindPopup(
-            `<b>${route.routeName}</b><br/><span style="color:#1A4B9B">Pickup Stop</span>`
-          )
-          .addTo(markersLayerRef.current!);
+      const pickupCoord: [number, number] = [route.pickupLat, route.pickupLng];
+      const dropoffCoord: [number, number] = [route.dropoffLat, route.dropoffLng];
 
-        // Add dropoff marker
-        L.marker(dropoffCoord, { icon: dropoffIcon })
-          .bindPopup(
-            `<b>${route.routeName}</b><br/><span style="color:#3EB900">Drop-off Stop</span>`
-          )
-          .addTo(markersLayerRef.current!);
+      L.marker(pickupCoord, { icon: pickupIcon })
+        .bindPopup(`<b>🚏 ${route.routeName}</b><br/>Pickup: ${route.pickupStop ?? ""}`)
+        .addTo(markersLayerRef.current!);
 
-        // Draw a dashed line between pickup and dropoff
-        L.polyline([pickupCoord, dropoffCoord], {
-          color: "#96DDFF",
-          weight: 2,
-          dashArray: "5, 10",
-          opacity: 0.6,
-        }).addTo(markersLayerRef.current!);
+      L.marker(dropoffCoord, { icon: dropoffIcon })
+        .bindPopup(`<b>🏁 ${route.routeName}</b><br/>Drop-off: ${route.dropoffStop ?? ""}`)
+        .addTo(markersLayerRef.current!);
 
-        allCoordinates.push(pickupCoord, dropoffCoord);
-      }
+      L.polyline([pickupCoord, dropoffCoord], {
+        color: "#96DDFF",
+        weight: 2,
+        dashArray: "5, 10",
+        opacity: 0.6,
+      }).addTo(markersLayerRef.current!);
+
+      allCoords.push(pickupCoord, dropoffCoord);
     });
 
-    // Auto-fit bounds to show all markers
-    if (allCoordinates.length > 0) {
-      const bounds = L.latLngBounds(allCoordinates);
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    // Buses
+    buses.forEach((bus) => {
+      const coord: [number, number] = [bus.lat, bus.lng];
+      L.marker(coord, { icon: busIcon })
+        .bindPopup(
+          `<b>🚌 ${bus.busName}</b><br/>` +
+          (bus.routeName ? `Route: ${bus.routeName}<br/>` : "") +
+          (bus.status ? `Status: ${bus.status}` : "")
+        )
+        .addTo(markersLayerRef.current!);
+      allCoords.push(coord);
+    });
+
+    if (allCoords.length > 0) {
+      mapRef.current.fitBounds(L.latLngBounds(allCoords), { padding: [50, 50] });
     }
-  }, [routes]);
+  }, [routes, buses, pickupIcon, dropoffIcon, busIcon]);
 
   return (
     <div
-      ref={mapContainerRef}
+      ref={containerRef}
       className="w-full h-full rounded-lg"
       style={{ minHeight: "400px" }}
     />

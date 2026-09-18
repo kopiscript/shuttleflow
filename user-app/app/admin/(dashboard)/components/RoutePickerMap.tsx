@@ -1,36 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import L from "leaflet";
+
 import "leaflet/dist/leaflet.css";
 
-// Fix Leaflet default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-// Create inline SVG markers (no external image dependency)
-const createSvgIcon = (color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${color}"/><circle cx="12.5" cy="12.5" r="5" fill="white"/></svg>`;
-  return L.icon({
-    iconUrl: `data:image/svg+xml;base64,${btoa(svg)}`,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    shadowSize: [41, 41],
-  });
-};
-
-const pickupIcon = createSvgIcon("#1A4B9B");
-const dropoffIcon = createSvgIcon("#3EB900");
+import { createPickupIcon, createDropoffIcon } from "./mapIcons";
 
 interface RoutePickerMapProps {
   pickupLat: string;
@@ -51,11 +27,13 @@ export default function RoutePickerMap({
 }: RoutePickerMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const pickupMarkerRef = useRef<L.Marker | null>(null);
   const dropoffMarkerRef = useRef<L.Marker | null>(null);
   const lineRef = useRef<L.Polyline | null>(null);
 
-  // Store latest callbacks in refs so event handlers always have fresh versions
+  const [mapReady, setMapReady] = useState(false);
+
   const onPickupChangeRef = useRef(onPickupChange);
   const onDropoffChangeRef = useRef(onDropoffChange);
 
@@ -67,102 +45,162 @@ export default function RoutePickerMap({
     onDropoffChangeRef.current = onDropoffChange;
   }, [onDropoffChange]);
 
-  // Default center (INTI Subang)
+  const pickupIcon = useMemo(() => createPickupIcon(), []);
+  const dropoffIcon = useMemo(() => createDropoffIcon(), []);
+
   const DEFAULT_LAT = 3.0742;
   const DEFAULT_LNG = 101.5913;
 
-  // Initialize map (only once)
+  // ============================================================
+  // Initialise Leaflet map
+  // ============================================================
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    mapRef.current = L.map(containerRef.current).setView(
+    const map = L.map(containerRef.current).setView(
       [DEFAULT_LAT, DEFAULT_LNG],
       13
     );
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-    }).addTo(mapRef.current);
+    mapRef.current = map;
 
+    L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }
+    ).addTo(map);
+
+    // Tell React that the Leaflet map is now ready.
+    setMapReady(true);
+
+    // Make sure the map renders correctly after the container is visible.
     setTimeout(() => {
-      if (mapRef.current) mapRef.current.invalidateSize();
+      mapRef.current?.invalidateSize();
     }, 100);
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      pickupMarkerRef.current?.remove();
+      dropoffMarkerRef.current?.remove();
+      lineRef.current?.remove();
+
+      pickupMarkerRef.current = null;
+      dropoffMarkerRef.current = null;
+      lineRef.current = null;
+
+      map.remove();
+
+      mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
-  // Sync markers with props
+  // ============================================================
+  // Sync pickup / drop-off markers with the coordinates
+  // ============================================================
   useEffect(() => {
-    if (!mapRef.current) return;
+    // Important:
+    // Wait until the Leaflet map has actually been created.
+    if (!mapReady || !mapRef.current) return;
+
+    const map = mapRef.current;
 
     const pLat = parseFloat(pickupLat);
     const pLng = parseFloat(pickupLng);
+
     const dLat = parseFloat(dropoffLat);
     const dLng = parseFloat(dropoffLng);
 
-    const hasPickup = !isNaN(pLat) && !isNaN(pLng);
-    const hasDropoff = !isNaN(dLat) && !isNaN(dLng);
+    const hasPickup =
+      Number.isFinite(pLat) && Number.isFinite(pLng);
 
-    // --- Pickup Marker ---
+    const hasDropoff =
+      Number.isFinite(dLat) && Number.isFinite(dLng);
+
+    // ==========================================================
+    // Pickup marker
+    // ==========================================================
     if (hasPickup) {
       if (pickupMarkerRef.current) {
+        // Existing marker: update its position.
         pickupMarkerRef.current.setLatLng([pLat, pLng]);
       } else {
+        // No marker yet: create it.
         pickupMarkerRef.current = L.marker([pLat, pLng], {
           icon: pickupIcon,
           draggable: true,
           autoPan: true,
         })
-          .bindPopup("<b>Pickup Stop</b><br/>Drag me to adjust")
-          .addTo(mapRef.current);
+          .bindPopup(
+            "<b>🚏 Pickup Stop</b><br/>Drag me to adjust"
+          )
+          .addTo(map);
 
         pickupMarkerRef.current.on("dragend", (e) => {
           const marker = e.target as L.Marker;
           const { lat, lng } = marker.getLatLng();
-          onPickupChangeRef.current(lat.toFixed(6), lng.toFixed(6));
+
+          onPickupChangeRef.current(
+            lat.toFixed(6),
+            lng.toFixed(6)
+          );
         });
       }
-    } else if (pickupMarkerRef.current) {
-      pickupMarkerRef.current.remove();
-      pickupMarkerRef.current = null;
+    } else {
+      // No valid pickup coordinates: remove marker.
+      if (pickupMarkerRef.current) {
+        pickupMarkerRef.current.remove();
+        pickupMarkerRef.current = null;
+      }
     }
 
-    // --- Dropoff Marker ---
+    // ==========================================================
+    // Drop-off marker
+    // ==========================================================
     if (hasDropoff) {
       if (dropoffMarkerRef.current) {
+        // Existing marker: update its position.
         dropoffMarkerRef.current.setLatLng([dLat, dLng]);
       } else {
+        // No marker yet: create it.
         dropoffMarkerRef.current = L.marker([dLat, dLng], {
           icon: dropoffIcon,
           draggable: true,
           autoPan: true,
         })
-          .bindPopup("<b>Drop-off Stop</b><br/>Drag me to adjust")
-          .addTo(mapRef.current);
+          .bindPopup(
+            "<b>🏁 Drop-off Stop</b><br/>Drag me to adjust"
+          )
+          .addTo(map);
 
         dropoffMarkerRef.current.on("dragend", (e) => {
           const marker = e.target as L.Marker;
           const { lat, lng } = marker.getLatLng();
-          onDropoffChangeRef.current(lat.toFixed(6), lng.toFixed(6));
+
+          onDropoffChangeRef.current(
+            lat.toFixed(6),
+            lng.toFixed(6)
+          );
         });
       }
-    } else if (dropoffMarkerRef.current) {
-      dropoffMarkerRef.current.remove();
-      dropoffMarkerRef.current = null;
+    } else {
+      // No valid drop-off coordinates: remove marker.
+      if (dropoffMarkerRef.current) {
+        dropoffMarkerRef.current.remove();
+        dropoffMarkerRef.current = null;
+      }
     }
 
-    // --- Dashed Line Between Markers ---
+    // ==========================================================
+    // Update dashed line
+    // ==========================================================
     if (lineRef.current) {
       lineRef.current.remove();
       lineRef.current = null;
     }
+
     if (hasPickup && hasDropoff) {
       lineRef.current = L.polyline(
         [
@@ -173,68 +211,97 @@ export default function RoutePickerMap({
           color: "#96DDFF",
           weight: 2,
           dashArray: "5, 10",
+          opacity: 0.6,
         }
-      ).addTo(mapRef.current);
+      ).addTo(map);
     }
 
-    // --- Auto Fit Bounds ---
+    // ==========================================================
+    // Adjust map view
+    // ==========================================================
     if (hasPickup && hasDropoff) {
-      const bounds = L.latLngBounds([
-        [pLat, pLng],
-        [dLat, dLng],
-      ]);
-      mapRef.current.fitBounds(bounds, { padding: [60, 60] });
+      map.fitBounds(
+        L.latLngBounds([
+          [pLat, pLng],
+          [dLat, dLng],
+        ]),
+        {
+          padding: [60, 60],
+        }
+      );
     } else if (hasPickup) {
-      mapRef.current.setView([pLat, pLng], 15);
+      map.setView([pLat, pLng], 15);
     } else if (hasDropoff) {
-      mapRef.current.setView([dLat, dLng], 15);
+      map.setView([dLat, dLng], 15);
     }
-  }, [pickupLat, pickupLng, dropoffLat, dropoffLng]);
+  }, [
+    pickupLat,
+    pickupLng,
+    dropoffLat,
+    dropoffLng,
+    pickupIcon,
+    dropoffIcon,
+    mapReady,
+  ]);
 
-  // Click on Map to Place Markers
+  // ============================================================
+  // Click on map to place / change markers
+  // ============================================================
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapReady || !mapRef.current) return;
 
-    const handleMapClick = (e: L.LeafletMouseEvent) => {
+    const map = mapRef.current;
+
+    const onClick = (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
+
       const latStr = lat.toFixed(6);
       const lngStr = lng.toFixed(6);
 
+      // If pickup marker does not exist yet,
+      // place pickup marker first.
       if (!pickupMarkerRef.current) {
         onPickupChangeRef.current(latStr, lngStr);
         return;
       }
 
+      // If pickup exists but drop-off does not,
+      // place drop-off marker.
       if (!dropoffMarkerRef.current) {
         onDropoffChangeRef.current(latStr, lngStr);
         return;
       }
 
-      const pickupLatLng = pickupMarkerRef.current.getLatLng();
-      const dropoffLatLng = dropoffMarkerRef.current.getLatLng();
+      // Both markers exist.
+      // Change whichever marker is closer to the clicked location.
+      const pickup = pickupMarkerRef.current.getLatLng();
+      const dropoff = dropoffMarkerRef.current.getLatLng();
 
-      const distToPickup = mapRef.current!.distance(
-        L.latLng(lat, lng),
-        pickupLatLng
-      );
-      const distToDropoff = mapRef.current!.distance(
-        L.latLng(lat, lng),
-        dropoffLatLng
+      const clickedPoint = L.latLng(lat, lng);
+
+      const distanceToPickup = map.distance(
+        clickedPoint,
+        pickup
       );
 
-      if (distToPickup < distToDropoff) {
+      const distanceToDropoff = map.distance(
+        clickedPoint,
+        dropoff
+      );
+
+      if (distanceToPickup < distanceToDropoff) {
         onPickupChangeRef.current(latStr, lngStr);
       } else {
         onDropoffChangeRef.current(latStr, lngStr);
       }
     };
 
-    mapRef.current.on("click", handleMapClick);
+    map.on("click", onClick);
 
     return () => {
-      mapRef.current?.off("click", handleMapClick);
+      map.off("click", onClick);
     };
-  }, []);
+  }, [mapReady]);
 
   return (
     <>
@@ -242,17 +309,22 @@ export default function RoutePickerMap({
         ref={containerRef}
         className="w-full h-[400px] rounded-lg border border-[#2C2D33]"
       />
+
       <div className="flex flex-wrap items-center gap-4 mt-3">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#1A4B9B]"></div>
-          <span className="text-[#87888C] font-['Inter'] text-xs">Pickup</span>
+          <div className="w-3 h-3 rounded-full bg-[#3b82f6]" />
+          <span className="text-[#87888C] font-['Inter'] text-xs">
+            Pickup
+          </span>
         </div>
+
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#3EB900]"></div>
+          <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
           <span className="text-[#87888C] font-['Inter'] text-xs">
             Drop-off
           </span>
         </div>
+
         <span className="text-[#87888C] font-['Inter'] text-xs ml-auto">
           Drag markers or click on the map to set coordinates
         </span>
