@@ -13,6 +13,14 @@ export async function GET() {
     const transformedRoutes = routes.map((route) => {
       const derivedStatus = deriveRouteStatus(route.busAssignments);
 
+      // This assignment is used for the route dropdown.
+      // A route is considered assigned here whenever the BusRouteAssignment
+      // is still open (endedAt === null), regardless of bus/device status.
+      // This is intentionally different from derived route Active status.
+      const currentRouteAssignment = route.busAssignments.find(
+        (a) => a.endedAt === null
+      );
+
       // Find the assignment that actually satisfies the Active rule:
       // open assignment + active bus + bus has a currently assigned device.
       const activeBusAssignment = route.busAssignments.find((a) => {
@@ -33,6 +41,10 @@ export async function GET() {
         dropoffLat: route.dropoffLat,
         dropoffLng: route.dropoffLng,
         status: derivedStatus, // Derived, not from DB
+        // Used by Bus Add/Edit to disable routes already assigned to another bus.
+        assignedBusId: currentRouteAssignment?.bus.id ?? null,
+        assignedBusName: currentRouteAssignment?.bus.busName ?? null,
+
         assignedBus: activeBusAssignment?.bus
           ? {
               id: activeBusAssignment.bus.id,

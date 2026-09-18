@@ -14,6 +14,8 @@ interface Bus {
 interface Route {
   id: number;
   routeName: string;
+  assignedBusId: number | null;
+  assignedBusName: string | null;
 }
 
 interface Device {
@@ -123,7 +125,7 @@ export default function AddBusPage() {
       if (data.success) {
         router.push("/admin/buses");
       } else {
-        console.error("Failed to add bus:", data.error);
+        alert(data.error || "Failed to add bus");
       }
     } catch (error) {
       console.error("Error adding bus:", error);
@@ -248,11 +250,20 @@ export default function AddBusPage() {
                         No routes available
                       </option>
                     ) : (
-                      routes.map((route) => (
-                        <option key={route.id} value={route.id.toString()}>
-                          {route.routeName}
-                        </option>
-                      ))
+                      routes.map((route) => {
+                        const alreadyAssigned = route.assignedBusId !== null;
+
+                        return (
+                          <option
+                            key={route.id}
+                            value={route.id.toString()}
+                            disabled={alreadyAssigned}
+                          >
+                            {route.routeName}
+                            {alreadyAssigned ? " (Already assigned)" : ""}
+                          </option>
+                        );
+                      })
                     )}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">

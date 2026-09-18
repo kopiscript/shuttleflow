@@ -22,6 +22,13 @@ interface Bus {
   };
 }
 
+interface RouteOption {
+  id: number;
+  routeName: string;
+  assignedBusId: number | null;
+  assignedBusName: string | null;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -39,7 +46,7 @@ export default function EditBusPage({ params }: PageProps) {
     routeId: "",
     deviceId: "",
   });
-  const [routes, setRoutes] = useState<{ id: number; routeName: string }[]>([]);
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [devices, setDevices] = useState<{ id: number; deviceName: string }[]>([]);
   const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
   const [showRemoveDeviceModal, setShowRemoveDeviceModal] = useState(false);
@@ -131,7 +138,7 @@ export default function EditBusPage({ params }: PageProps) {
       if (data.success) {
         router.push(`/admin/buses/${busId}`);
       } else {
-        console.error("Failed to update bus:", data.error);
+        alert(data.error || "Failed to update bus");
       }
     } catch (error) {
       console.error("Error updating bus:", error);
@@ -263,11 +270,23 @@ export default function EditBusPage({ params }: PageProps) {
                     className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
                   >
                     <option value="">Select route</option>
-                    {routes.map((route) => (
-                      <option key={route.id} value={route.id}>
-                        {route.routeName}
-                      </option>
-                    ))}
+                    {routes.map((route) => {
+                      // The route currently assigned to this bus stays selectable.
+                      // Routes assigned to a different bus are disabled.
+                      const alreadyAssignedToAnotherBus =
+                        route.assignedBusId !== null && route.assignedBusId !== busId;
+
+                      return (
+                        <option
+                          key={route.id}
+                          value={route.id}
+                          disabled={alreadyAssignedToAnotherBus}
+                        >
+                          {route.routeName}
+                          {alreadyAssignedToAnotherBus ? " (Already assigned)" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

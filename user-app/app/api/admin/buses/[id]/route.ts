@@ -57,10 +57,10 @@ export async function GET(
         ? {
           ...bus.deviceAssignments[0].device,
           lastLat: bus.locations[0]?.latitude
-            ? parseFloat(bus.locations[0].latitude)
+            ? Number(bus.locations[0].latitude)
             : null,
           lastLng: bus.locations[0]?.longitude
-            ? parseFloat(bus.locations[0].longitude)
+            ? Number(bus.locations[0].longitude)
             : null,
         }
         : null,
