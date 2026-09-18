@@ -43,13 +43,13 @@ export async function GET(
       );
     }
 
-    // Find active bus assignment
     const activeBusAssignment = route.busAssignments.find(
       (assignment) => assignment.bus.status === "Active"
     );
 
     const derivedStatus = activeBusAssignment ? "Active" : "Inactive";
 
+    // Prisma already returns camelCase — pass it through.
     const transformedRoute = {
       id: route.id,
       routeName: route.routeName,
@@ -60,7 +60,7 @@ export async function GET(
       pickupLng: route.pickupLng,
       dropoffLat: route.dropoffLat,
       dropoffLng: route.dropoffLng,
-      status: derivedStatus, // Derived
+      status: derivedStatus,
       assignedBuses: route.busAssignments.map((assignment) => ({
         id: assignment.bus.id,
         busName: assignment.bus.busName,
@@ -122,15 +122,27 @@ export async function PUT(
     const route = await prisma.route.update({
       where: { id: routeId },
       data: {
-        routeName: routeName || existingRoute.routeName,
-        pickupStop: pickupStop || existingRoute.pickupStop,
-        dropoffStop: dropoffStop || existingRoute.dropoffStop,
-        intermediateStops: intermediateStops || existingRoute.intermediateStops,
-        pickupLat: pickupLat !== undefined ? parseFloat(pickupLat) : existingRoute.pickupLat,
-        pickupLng: pickupLng !== undefined ? parseFloat(pickupLng) : existingRoute.pickupLng,
-        dropoffLat: dropoffLat !== undefined ? parseFloat(dropoffLat) : existingRoute.dropoffLat,
-        dropoffLng: dropoffLng !== undefined ? parseFloat(dropoffLng) : existingRoute.dropoffLng,
-        // No status update - it's derived
+        routeName: routeName ?? existingRoute.routeName,
+        pickupStop: pickupStop ?? existingRoute.pickupStop,
+        dropoffStop: dropoffStop ?? existingRoute.dropoffStop,
+        intermediateStops:
+          intermediateStops ?? existingRoute.intermediateStops,
+        pickupLat:
+          pickupLat !== undefined && pickupLat !== null
+            ? parseFloat(pickupLat)
+            : existingRoute.pickupLat,
+        pickupLng:
+          pickupLng !== undefined && pickupLng !== null
+            ? parseFloat(pickupLng)
+            : existingRoute.pickupLng,
+        dropoffLat:
+          dropoffLat !== undefined && dropoffLat !== null
+            ? parseFloat(dropoffLat)
+            : existingRoute.dropoffLat,
+        dropoffLng:
+          dropoffLng !== undefined && dropoffLng !== null
+            ? parseFloat(dropoffLng)
+            : existingRoute.dropoffLng,
       },
     });
 
