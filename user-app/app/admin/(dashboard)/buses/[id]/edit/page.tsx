@@ -235,6 +235,15 @@ export default function EditBusPage({ params }: PageProps) {
                         }`}
                     />
                   </button>
+
+                  <div className="mt-2 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                    <p className="text-[#87888C] font-['Inter'] text-xs">
+                      <span className="text-[#96DDFF] font-semibold">Note:</span> Setting this bus
+                      to <span className="text-[#EA1701]">Inactive</span> will also deactivate
+                      its assigned route. The route will not appear in the user app.
+                    </p>
+                  </div>
+                  
                 </div>
               </div>
             </div>
