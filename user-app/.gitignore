@@ -37,6 +37,7 @@ yarn-error.log*
 .vercel
 
 repomix-output.xml
+*repomix*.xml
 
 # typescript
 *.tsbuildinfo
