@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 export async function PUT(request: Request) {
   try {
@@ -61,6 +62,16 @@ export async function PUT(request: Request) {
     await prisma.admin.update({
       where: { id: session.adminId },
       data: { passwordHash: newPasswordHash },
+    });
+
+    // Record the password change event in the audit log
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "AUTH",
+      action: "PASSWORD_CHANGED",
+      targetType: "Admin",
+      targetId: session.adminId,
+      req: request,
     });
 
     return NextResponse.json({
