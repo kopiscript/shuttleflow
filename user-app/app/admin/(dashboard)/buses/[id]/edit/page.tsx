@@ -68,7 +68,7 @@ export default function EditBusPage({ params }: PageProps) {
         }
 
         // Fetch routes for dropdown
-        const routesRes = await fetch("/api/routes");
+        const routesRes = await fetch("/api/admin/routes");
         const routesData = await routesRes.json();
         if (routesData.success) {
           setRoutes(routesData.routes);

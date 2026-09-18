@@ -11,10 +11,23 @@ interface Bus {
   licensePlate: string;
 }
 
+interface Route {
+  id: number;
+  routeName: string;
+}
+
+interface Device {
+  id: number;
+  deviceName: string;
+  busId: number | null; // null/undefined = unassigned, available to pick
+}
+
 export default function AddBusPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nextBusId, setNextBusId] = useState(1);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [formData, setFormData] = useState({
     busName: "",
     licensePlate: "",
@@ -39,6 +52,41 @@ export default function AddBusPage() {
       }
     };
     fetchBuses();
+  }, []);
+
+  // Fetch routes for dropdown — use the ADMIN endpoint so routes that
+  // aren't Active yet (no bus/device assigned) still show up. The
+  // public /api/routes endpoint only returns already-Active routes,
+  // which would make it impossible to ever assign a bus to a new route.
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      try {
+        const response = await fetch("/api/admin/routes");
+        const data = await response.json();
+        if (data.success) {
+          setRoutes(data.routes);
+        }
+      } catch (error) {
+        console.error("Failed to fetch routes:", error);
+      }
+    };
+    fetchRoutes();
+  }, []);
+
+  // Fetch devices for dropdown
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const response = await fetch("/api/admin/devices");
+        const data = await response.json();
+        if (data.success) {
+          setDevices(data.devices);
+        }
+      } catch (error) {
+        console.error("Failed to fetch devices:", error);
+      }
+    };
+    fetchDevices();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -195,8 +243,17 @@ export default function AddBusPage() {
                     className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
                   >
                     <option value="">Select route</option>
-                    <option value="1">Subang to Nilai</option>
-                    <option value="2">Nilai to Subang</option>
+                    {routes.length === 0 ? (
+                      <option value="" disabled>
+                        No routes available
+                      </option>
+                    ) : (
+                      routes.map((route) => (
+                        <option key={route.id} value={route.id.toString()}>
+                          {route.routeName}
+                        </option>
+                      ))
+                    )}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,8 +278,18 @@ export default function AddBusPage() {
                     className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
                   >
                     <option value="">Select device</option>
-                    <option value="1">GPS-01</option>
-                    <option value="2">GPS-02</option>
+                    {devices.length === 0 ? (
+                      <option value="" disabled>
+                        No devices available
+                      </option>
+                    ) : (
+                      devices.map((device) => (
+                        <option key={device.id} value={device.id.toString()}>
+                          {device.deviceName}
+                          {device.busId ? " (already assigned)" : ""}
+                        </option>
+                      ))
+                    )}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
