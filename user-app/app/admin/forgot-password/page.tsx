@@ -8,13 +8,13 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
-  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: "", text: "" });
-    setResetToken(null);
+    setEmailSent(false);
 
     try {
       const res = await fetch("/api/admin/forgot-password", {
@@ -28,11 +28,9 @@ export default function ForgotPasswordPage() {
       if (data.success) {
         setMessage({
           type: "success",
-          text: data.message || "Check your email for reset instructions.",
+          text: data.message || "Reset link sent! Check your email.",
         });
-        if (data.resetToken) {
-          setResetToken(data.resetToken);
-        }
+        setEmailSent(true);
       } else {
         setMessage({ type: "error", text: data.error });
       }
@@ -77,44 +75,65 @@ export default function ForgotPasswordPage() {
             </div>
           )}
 
-          {/* Dev mode: show token */}
-          {resetToken && (
-            <div className="mb-6 p-4 rounded-lg bg-[#96DDFF]/10 border border-[#96DDFF]">
-              <p className="text-[#96DDFF] font-['Inter'] text-xs mb-2">
-                🔧 Dev Mode — Reset Token:
+          {/* Success state */}
+          {emailSent ? (
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-[#E1FFDA]/10 flex items-center justify-center">
+                  <svg
+                    className="w-8 h-8 text-[#3EB900]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-[#87888C] font-['Inter'] text-sm">
+                Didn't receive the email? Check your spam folder or{" "}
+                <button
+                  onClick={() => {
+                    setEmailSent(false);
+                    setMessage({ type: "", text: "" });
+                    setEmail("");
+                  }}
+                  className="text-[#96DDFF] hover:underline"
+                >
+                  try again
+                </button>
               </p>
-              <Link
-                href={`/admin/reset-password?token=${resetToken}`}
-                className="text-[#96DDFF] font-['Inter'] text-xs break-all underline"
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50"
               >
-                Click here to reset password
-              </Link>
-            </div>
+                {loading ? "Sending..." : "Send Reset Link"}
+              </button>
+            </form>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50"
-            >
-              {loading ? "Sending..." : "Send Reset Link"}
-            </button>
-          </form>
 
           <div className="mt-6 text-center">
             <Link
@@ -125,6 +144,10 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         </div>
+
+        <p className="text-center text-[#87888C] font-['Inter'] text-xs mt-6">
+          © 2026 ShuttleFlow. All rights reserved.
+        </p>
       </div>
     </div>
   );
