@@ -297,9 +297,8 @@ export default function RouteManagement() {
                     aria-label={`View details for route R${String(route.id).padStart(3, "0")}`}
                     onClick={() => handleRowClick(route.id)}
                     onKeyDown={(e) => handleRowKeyDown(e, route.id)}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
-                      index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                    }`}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
+                      }`}
                   >
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       R{String(route.id).padStart(3, "0")}
@@ -313,9 +312,13 @@ export default function RouteManagement() {
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {route.dropoffStop}
                     </td>
+                    {/* display status as a read-only badge (derived from bus assignment) */}
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(route.status)}`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${route.status === "Active"
+                            ? "bg-[#E1FFDA] text-[#3EB900]"
+                            : "bg-[#FFC0B9] text-[#EA1701]"
+                          }`}
                       >
                         {route.status}
                       </span>
@@ -346,11 +349,10 @@ export default function RouteManagement() {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === 1
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === 1
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Previous
               </button>
@@ -370,11 +372,10 @@ export default function RouteManagement() {
                   <button
                     key={page}
                     onClick={() => goToPage(page as number)}
-                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                      currentPage === page
+                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === page
                         ? "bg-[#96DDFF] text-[#171821]"
                         : "text-[#87888C] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -384,11 +385,10 @@ export default function RouteManagement() {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === totalPages
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === totalPages
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Next
               </button>
