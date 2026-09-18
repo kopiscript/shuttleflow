@@ -104,17 +104,29 @@ model Admin {
 }
 
 model SupportTicket {
-  id          Int      @id @default(autoincrement())
+  id          Int           @id @default(autoincrement())
   description String
-  status      String   @default("Open")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  status      String        @default("Open")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
   email       String
   fileUrl     String?
   reportType  String
-  title       String?  @db.VarChar(200)
+  title       String?       @db.VarChar(200)
+  replies     TicketReply[]
 
   @@map("support_tickets")
+}
+
+model TicketReply {
+  id        Int           @id @default(autoincrement())
+  ticketId  Int           @map("ticket_id")
+  message   String
+  sentBy    String        @default("admin") @map("sent_by")
+  sentAt    DateTime      @default(now()) @map("sent_at")
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_replies")
 }
 
 model Notification {
