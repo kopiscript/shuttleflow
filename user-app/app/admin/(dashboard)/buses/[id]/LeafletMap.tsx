@@ -54,10 +54,14 @@ export default function LeafletMap({ bus }: { bus: Bus }) {
     const defaultLat = 3.0742;
     const defaultLng = 101.5913;
 
-    mapRef.current = L.map(mapContainerRef.current).setView([defaultLat, defaultLng], 15);
+    mapRef.current = L.map(mapContainerRef.current, {
+      zoomControl: true,
+      attributionControl: true,
+    }).setView([defaultLat, defaultLng], 15);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(mapRef.current);
 
@@ -66,14 +70,32 @@ export default function LeafletMap({ bus }: { bus: Bus }) {
       .bindPopup("Bus Location")
       .addTo(mapRef.current);
 
-    // Force map to render correctly after mount
-    setTimeout(() => {
+    // Force invalidateSize multiple times to fix offset issues
+    const invalidate = () => {
       if (mapRef.current) {
         mapRef.current.invalidateSize();
       }
-    }, 100);
+    };
+
+    const timeouts = [
+      setTimeout(invalidate, 50),
+      setTimeout(invalidate, 200),
+      setTimeout(invalidate, 500),
+      setTimeout(invalidate, 1000),
+    ];
+
+    // ResizeObserver — re-invalidates when container resizes
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof window !== "undefined" && mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        invalidate();
+      });
+      resizeObserver.observe(mapContainerRef.current);
+    }
 
     return () => {
+      timeouts.forEach((t) => clearTimeout(t));
+      if (resizeObserver) resizeObserver.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -92,9 +114,15 @@ export default function LeafletMap({ bus }: { bus: Bus }) {
       const lng = bus.device.lastLng!;
       markerRef.current.setLatLng([lat, lng]);
       markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${bus.device?.status || "Unknown"}<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
+        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${
+          bus.device?.status || "Unknown"
+        }<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
       );
-      mapRef.current.setView([lat, lng], 15);
+      mapRef.current.setView([lat, lng], mapRef.current.getZoom());
+
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.invalidateSize();
+      }, 100);
     } else {
       markerRef.current.setPopupContent(
         `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: No location data`
@@ -103,12 +131,8 @@ export default function LeafletMap({ bus }: { bus: Bus }) {
   }, [bus]);
 
   return (
-    <>
-      <div ref={mapContainerRef} className="w-full h-full" />
-      {/* Last updated - bottom right corner of map */}
-      <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg font-['Inter']">
-        Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
-      </div>
-    </>
+    <div className="relative w-full h-full">
+      <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
+    </div>
   );
 }
