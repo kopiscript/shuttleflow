@@ -1,33 +1,26 @@
 // app/api/admin/routes/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { deriveRouteStatus, routeStatusInclude } from "@/lib/routeStatus";
 
 export async function GET() {
   try {
     const routes = await prisma.route.findMany({
       orderBy: { id: "asc" },
-      include: {
-        busAssignments: {
-          where: { endedAt: null },
-          include: {
-            bus: {
-              select: {
-                id: true,
-                status: true,
-              },
-            },
-          },
-        },
-      },
+      include: routeStatusInclude,
     });
 
     const transformedRoutes = routes.map((route) => {
-      // Route is active only if there's an active bus assigned
-      const activeBusAssignment = route.busAssignments.find(
-        (assignment) => assignment.bus.status === "Active"
-      );
+      const derivedStatus = deriveRouteStatus(route.busAssignments);
 
-      const derivedStatus = activeBusAssignment ? "Active" : "Inactive";
+      // Find the assignment that actually satisfies the Active rule:
+      // open assignment + active bus + bus has a currently assigned device.
+      const activeBusAssignment = route.busAssignments.find((a) => {
+        if (a.endedAt !== null) return false;
+        if (a.bus.status.trim().toLowerCase() !== "active") return false;
+        const deviceAssignments = a.bus.deviceAssignments ?? [];
+        return deviceAssignments.some((d) => d.endedAt === null);
+      });
 
       return {
         id: route.id,
@@ -40,7 +33,14 @@ export async function GET() {
         dropoffLat: route.dropoffLat,
         dropoffLng: route.dropoffLng,
         status: derivedStatus, // Derived, not from DB
-        assignedBus: activeBusAssignment?.bus || null,
+        assignedBus: activeBusAssignment?.bus
+          ? {
+              id: activeBusAssignment.bus.id,
+              busName: activeBusAssignment.bus.busName,
+              licensePlate: activeBusAssignment.bus.licensePlate,
+              status: activeBusAssignment.bus.status,
+            }
+          : null,
         createdAt: route.createdAt,
         updatedAt: route.updatedAt,
       };
@@ -55,7 +55,8 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch routes",
+        error:
+          error instanceof Error ? error.message : "Failed to fetch routes",
       },
       { status: 500 }
     );
@@ -92,15 +93,33 @@ export async function POST(request: Request) {
         pickupStop,
         dropoffStop,
         intermediateStops: intermediateStops || [],
-        pickupLat: pickupLat ? parseFloat(pickupLat) : null,
-        pickupLng: pickupLng ? parseFloat(pickupLng) : null,
-        dropoffLat: dropoffLat ? parseFloat(dropoffLat) : null,
-        dropoffLng: dropoffLng ? parseFloat(dropoffLng) : null,
-        // No status field - it will be derived
+        pickupLat:
+          pickupLat !== undefined && pickupLat !== null
+            ? parseFloat(pickupLat)
+            : null,
+        pickupLng:
+          pickupLng !== undefined && pickupLng !== null
+            ? parseFloat(pickupLng)
+            : null,
+        dropoffLat:
+          dropoffLat !== undefined && dropoffLat !== null
+            ? parseFloat(dropoffLat)
+            : null,
+        dropoffLng:
+          dropoffLng !== undefined && dropoffLng !== null
+            ? parseFloat(dropoffLng)
+            : null,
       },
+      include: routeStatusInclude,
     });
 
-    return NextResponse.json({ success: true, route });
+    return NextResponse.json({
+      success: true,
+      route: {
+        ...route,
+        status: deriveRouteStatus(route.busAssignments),
+      },
+    });
   } catch (error) {
     console.error("Failed to create route:", error);
     return NextResponse.json(

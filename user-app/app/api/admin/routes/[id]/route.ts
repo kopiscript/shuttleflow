@@ -1,6 +1,7 @@
 // app/api/admin/routes/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { deriveRouteStatus, routeStatusInclude } from "@/lib/routeStatus";
 
 export async function GET(
   request: Request,
@@ -19,21 +20,11 @@ export async function GET(
 
     const route = await prisma.route.findUnique({
       where: { id: routeId },
-      include: {
-        busAssignments: {
-          where: { endedAt: null },
-          include: {
-            bus: {
-              include: {
-                deviceAssignments: {
-                  where: { endedAt: null },
-                  include: { device: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      // Use the shared include so device assignments are fetched too —
+      // the old custom include here only selected bus fields and never
+      // fetched deviceAssignments, so this endpoint could never see
+      // whether a device was actually attached.
+      include: routeStatusInclude,
     });
 
     if (!route) {
@@ -43,13 +34,8 @@ export async function GET(
       );
     }
 
-    const activeBusAssignment = route.busAssignments.find(
-      (assignment) => assignment.bus.status === "Active"
-    );
+    const derivedStatus = deriveRouteStatus(route.busAssignments);
 
-    const derivedStatus = activeBusAssignment ? "Active" : "Inactive";
-
-    // Prisma already returns camelCase — pass it through.
     const transformedRoute = {
       id: route.id,
       routeName: route.routeName,
@@ -61,13 +47,20 @@ export async function GET(
       dropoffLat: route.dropoffLat,
       dropoffLng: route.dropoffLng,
       status: derivedStatus,
-      assignedBuses: route.busAssignments.map((assignment) => ({
-        id: assignment.bus.id,
-        busName: assignment.bus.busName,
-        licensePlate: assignment.bus.licensePlate,
-        status: assignment.bus.status,
-        device: assignment.bus.deviceAssignments[0]?.device || null,
-      })),
+      assignedBuses: route.busAssignments
+        .filter((a) => a.endedAt === null)
+        .map((assignment) => {
+          const hasDevice = (assignment.bus.deviceAssignments ?? []).some(
+            (d) => d.endedAt === null
+          );
+          return {
+            id: assignment.bus.id,
+            busName: assignment.bus.busName,
+            licensePlate: assignment.bus.licensePlate,
+            status: assignment.bus.status,
+            hasDevice, // lets the admin UI show *why* a route isn't active
+          };
+        }),
       createdAt: route.createdAt,
       updatedAt: route.updatedAt,
     };
@@ -143,10 +136,18 @@ export async function PUT(
           dropoffLng !== undefined && dropoffLng !== null
             ? parseFloat(dropoffLng)
             : existingRoute.dropoffLng,
+        // NOTE: `status` is deliberately NOT written here — it's derived on read.
       },
+      include: routeStatusInclude,
     });
 
-    return NextResponse.json({ success: true, route });
+    return NextResponse.json({
+      success: true,
+      route: {
+        ...route,
+        status: deriveRouteStatus(route.busAssignments),
+      },
+    });
   } catch (error) {
     console.error("Failed to update route:", error);
     return NextResponse.json(
