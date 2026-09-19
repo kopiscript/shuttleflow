@@ -7,7 +7,6 @@ import Link from "next/link";
 
 interface SupportTicket {
     id: number;
-    title: string | null;
     description: string;
     email: string;
     reportType: string;
@@ -210,12 +209,6 @@ export default function TicketDetailsPage({ params }: PageProps) {
                             <span className="text-[#87888C] font-['Inter'] text-sm">Ticket ID</span>
                             <span className="text-white font-['Inter'] text-sm">
                                 T{String(ticket.id).padStart(3, "0")}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Title</span>
-                            <span className="text-white font-['Inter'] text-sm">
-                                {ticket.title || "Untitled"}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">

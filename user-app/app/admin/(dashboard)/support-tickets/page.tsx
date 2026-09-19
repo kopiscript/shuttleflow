@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 
 interface SupportTicket {
     id: number;
-    title: string | null;
     description: string;
     email: string;
     reportType: string;

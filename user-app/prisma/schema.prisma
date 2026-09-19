@@ -112,7 +112,6 @@ model SupportTicket {
   email       String
   fileUrl     String?
   reportType  String
-  title       String?       @db.VarChar(200)
   replies     TicketReply[]
 
   @@map("support_tickets")

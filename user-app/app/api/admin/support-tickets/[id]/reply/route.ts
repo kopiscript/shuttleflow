@@ -5,6 +5,14 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// your verified domain in Resend
+const FROM_EMAIL = "ShuttleFlow Support <support@shuttleflow.azmiproductions.com>";
+
+// ✅ OPTIONAL: where user replies should land (leave as-is for post-only)
+// If you want replies to be ignored, point this at a noreply address.
+// If you want to receive them, point this at a real inbox you monitor.
+//const REPLY_TO_EMAIL = "noreply@shuttleflow.azmiproductions.com";
+
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -52,9 +60,10 @@ export async function POST(
         // Send email via Resend
         try {
             await resend.emails.send({
-                from: "ShuttleFlow Support <onboarding@resend.dev>",
+                from: FROM_EMAIL,
                 to: ticket.email,
-                subject: `Re: Support Ticket #T${String(ticket.id).padStart(3, "0")} - ${ticket.title || "Your Request"}`,
+                //replyTo: REPLY_TO_EMAIL,          // ← replies go here, not to Resend
+                subject: `Re: Support Ticket #T${String(ticket.id).padStart(3, "0")} - ${formatReportType(ticket.reportType)}`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
             <h2 style="color: #171821;">ShuttleFlow Support</h2>
@@ -63,7 +72,7 @@ export async function POST(
 
             <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 0; font-size: 13px; color: #666;"><strong>Ticket ID:</strong> T${String(ticket.id).padStart(3, "0")}</p>
-              <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;"><strong>Subject:</strong> ${ticket.title || "Untitled"}</p>
+              <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;"><strong>Report Type:</strong> ${escapeHtml(formatReportType(ticket.reportType))}</p>
             </div>
 
             <div style="background: #f0f9ff; border-left: 4px solid #96DDFF; padding: 15px; margin: 20px 0;">
@@ -76,12 +85,11 @@ export async function POST(
               <p style="margin: 0; font-size: 14px; color: #333; white-space: pre-wrap;">${escapeHtml(message.trim())}</p>
             </div>
 
-            <p>If you have any further questions, feel free to reply to this email.</p>
             <p style="margin-top: 30px; color: #666;">Best regards,<br/><strong>ShuttleFlow Support Team</strong></p>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
             <p style="font-size: 11px; color: #999; text-align: center;">
-              This is an automated reply. Please do not reply directly to this email.
+              This is a post-only mailing. Please do not reply directly to this email.
             </p>
           </div>
         `,
@@ -104,6 +112,17 @@ export async function POST(
         );
     }
 }
+
+function formatReportType(type: string): string {
+    const labels: Record<string, string> = {
+        route_problem: "Route Problem",
+        feedback: "Feedback",
+        bus_delay: "Bus Delay",
+        other: "Other",
+    };
+    return labels[type] || type;
+}
+
 
 function escapeHtml(text: string): string {
     return text
