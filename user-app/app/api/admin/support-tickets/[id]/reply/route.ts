@@ -2,22 +2,41 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { getSession } from "@/lib/session";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// your verified domain in Resend
 const FROM_EMAIL = "ShuttleFlow Support <support@shuttleflow.azmiproductions.com>";
-
-// ✅ OPTIONAL: where user replies should land (leave as-is for post-only)
-// If you want replies to be ignored, point this at a noreply address.
-// If you want to receive them, point this at a real inbox you monitor.
-//const REPLY_TO_EMAIL = "noreply@shuttleflow.azmiproductions.com";
+const REPLY_TO_EMAIL = "noreply@shuttleflow.azmiproductions.com";
 
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        // 1. Auth check
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json(
+                { success: false, error: "Not authenticated" },
+                { status: 401 }
+            );
+        }
+
+        // 2. Fetch admin fresh from DB (guarantees correct username)
+        const admin = await prisma.admin.findUnique({
+            where: { id: session.adminId },
+            select: { id: true, username: true },
+        });
+
+        if (!admin) {
+            return NextResponse.json(
+                { success: false, error: "Admin not found" },
+                { status: 401 }
+            );
+        }
+
+        // 3. Parse params + body
         const { id } = await params;
         const ticketId = parseInt(id);
         const body = await request.json();
@@ -37,6 +56,7 @@ export async function POST(
             );
         }
 
+        // 4. Find ticket
         const ticket = await prisma.supportTicket.findUnique({
             where: { id: ticketId },
         });
@@ -48,21 +68,21 @@ export async function POST(
             );
         }
 
-        // Save reply to database
+        // 5. Save reply — sentBy is the real admin username from DB
         const reply = await prisma.ticketReply.create({
             data: {
                 ticketId: ticket.id,
                 message: message.trim(),
-                sentBy: "admin",
+                sentBy: admin.username,
             },
         });
 
-        // Send email via Resend
+        // 6. Send email
         try {
             await resend.emails.send({
                 from: FROM_EMAIL,
                 to: ticket.email,
-                //replyTo: REPLY_TO_EMAIL,          // ← replies go here, not to Resend
+                replyTo: REPLY_TO_EMAIL,
                 subject: `Re: Support Ticket #T${String(ticket.id).padStart(3, "0")} - ${formatReportType(ticket.reportType)}`,
                 html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
@@ -85,7 +105,11 @@ export async function POST(
               <p style="margin: 0; font-size: 14px; color: #333; white-space: pre-wrap;">${escapeHtml(message.trim())}</p>
             </div>
 
-            <p style="margin-top: 30px; color: #666;">Best regards,<br/><strong>ShuttleFlow Support Team</strong></p>
+            <p style="margin-top: 30px; color: #666;">
+              Best regards,<br/>
+              <strong>${escapeHtml(admin.username)}</strong><br/>
+              ShuttleFlow Support Team
+            </p>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
             <p style="font-size: 11px; color: #999; text-align: center;">
@@ -122,7 +146,6 @@ function formatReportType(type: string): string {
     };
     return labels[type] || type;
 }
-
 
 function escapeHtml(text: string): string {
     return text
