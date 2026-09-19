@@ -85,6 +85,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </defs>
         </svg>
       )
+
+
+    },
+    {
+      name: "Audit Logs",
+      href: "/admin/audit-logs",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19Z" fill="currentColor" />
+          <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H14V17H7V15Z" fill="currentColor" />
+        </svg>
+      )
     },
   ];
 
@@ -96,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (data.success) setAdmin(data.admin);
       })
       .catch(() => { });
-  }, [pathname]);
+  }, [pathname]); // Refetch when route changes (e.g., after profile update)
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -1,7 +1,9 @@
-// app/api/admin/routes/[id]/route.ts
+// user-app/app/api/admin/routes/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { deriveRouteStatus, routeStatusInclude } from "@/lib/routeStatus";
+import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 export async function GET(
   request: Request,
@@ -187,6 +189,24 @@ export async function DELETE(
         },
         { status: 400 }
       );
+    }
+
+    const session = await getSession();
+
+    const routeToDelete = await prisma.route.findUnique({
+      where: { id: routeId },
+    });
+
+    if (routeToDelete) {
+      await logAdminAudit({
+        adminId: session?.adminId ?? null,
+        category: "FLEET",
+        action: "ROUTE_DELETED",
+        targetType: "Route",
+        targetId: routeId,
+        details: { deletedRecord: routeToDelete },
+        req: request,
+      });
     }
 
     await prisma.route.delete({

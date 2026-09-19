@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 
-// Dynamically import map (Leaflet requires browser environment)
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
   loading: () => (
@@ -25,29 +24,50 @@ interface Route {
   status: string;
 }
 
+interface Bus {
+  id: number;
+  busName: string;
+  lat: number;
+  lng: number;
+  routeId: number | null;
+  routeName?: string;
+  status?: string;
+}
+
 export default function AdminDashboard() {
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchRoutes = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("/api/admin/routes");
-        const data = await res.json();
-        if (data.success) {
-          // Only show routes that are active (bus assigned)
-          const activeRoutes = data.routes.filter(
-            (r: Route) => r.status === "Active"
+        const [routesRes, busesRes] = await Promise.all([
+          fetch("/api/admin/routes"),
+          fetch("/api/admin/buses"),
+        ]);
+        const routesData = await routesRes.json();
+        const busesData = await busesRes.json();
+
+        if (routesData.success) {
+          setRoutes(
+            routesData.routes.filter((r: Route) => r.status === "Active")
           );
-          setRoutes(activeRoutes);
+        }
+        if (busesData.success) {
+          const validBuses = (busesData.buses ?? []).filter(
+            (b: any) => b.lat != null && b.lng != null
+          );
+          setBuses(validBuses);
         }
       } catch (error) {
-        console.error("Failed to fetch routes:", error);
+        console.error("Failed to fetch dashboard data:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchRoutes();
+    fetchData();
   }, []);
 
   return (
@@ -61,9 +81,30 @@ export default function AdminDashboard() {
 
       {/* Map Card */}
       <div className="mt-6 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-        <h2 className="text-white font-bold font-['Inter'] text-base mb-4">
-          Active Route Map
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-white font-bold font-['Inter'] text-base">
+            Active Route Map
+          </h2>
+
+          {/* Route selector */}
+          <select
+            value={selectedRouteId ?? ""}
+            onChange={(e) =>
+              setSelectedRouteId(e.target.value ? Number(e.target.value) : null)
+            }
+            className="bg-[#171821] text-white text-sm font-['Inter']
+                       border border-[#2C2D33] rounded-lg px-3 py-2
+                       focus:outline-none focus:border-[#99121A]"
+          >
+            <option value="">All Routes</option>
+            {routes.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.routeName}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="h-[500px] rounded-xl overflow-hidden">
           {loading ? (
             <div className="w-full h-full bg-[#171821] flex items-center justify-center">
@@ -79,7 +120,11 @@ export default function AdminDashboard() {
               </p>
             </div>
           ) : (
-            <RouteMarkersMap routes={routes} />
+            <RouteMarkersMap
+              routes={routes}
+              buses={buses}
+              selectedRouteId={selectedRouteId}
+            />
           )}
         </div>
 
@@ -95,6 +140,12 @@ export default function AdminDashboard() {
             <div className="w-3 h-3 rounded-full bg-[#3EB900]"></div>
             <span className="text-[#87888C] font-['Inter'] text-xs">
               Drop-off Stop
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#FEB002]"></div>
+            <span className="text-[#87888C] font-['Inter'] text-xs">
+              Active Bus
             </span>
           </div>
         </div>

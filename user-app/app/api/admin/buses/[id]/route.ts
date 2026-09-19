@@ -1,6 +1,7 @@
-// app/api/admin/buses/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 import { logActivity } from "@/lib/activityLog";
 
 // GET - Fetch a single bus
@@ -228,6 +229,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const busId = parseInt(id);
 
@@ -238,14 +247,61 @@ export async function DELETE(
       );
     }
 
-    // Log the deletion
-    await logActivity(
-      busId,
-      "bus_deleted",
-      `Bus B${String(busId).padStart(3, "0")} deleted from system`
-    );
+    // 1. Fetch complete bus state and relationships before deletion
+    const busToDelete = await prisma.bus.findUnique({
+      where: { id: busId },
+      include: {
+        routeAssignments: {
+          where: { endedAt: null },
+          include: { route: true },
+        },
+        deviceAssignments: {
+          where: { endedAt: null },
+          include: { device: true },
+        },
+      },
+    });
 
-    // Delete the bus (cascade will handle related records)
+    if (!busToDelete) {
+      return NextResponse.json(
+        { success: false, error: "Bus not found" },
+        { status: 404 }
+      );
+    }
+
+    // 2. Save full snapshot into AdminAuditLog
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "BUS_DELETED",
+      targetType: "Bus",
+      targetId: busId,
+      details: {
+        deletedRecord: {
+          id: busToDelete.id,
+          busName: busToDelete.busName,
+          licensePlate: busToDelete.licensePlate,
+          capacity: busToDelete.capacity,
+          status: busToDelete.status,
+          assignedRoute: busToDelete.routeAssignments[0]?.route || null,
+          assignedDevice: busToDelete.deviceAssignments[0]?.device || null,
+        },
+      },
+      req: request,
+    });
+
+    // 3. Clean up active assignments before deleting the bus
+    await prisma.busRouteAssignment.updateMany({
+      where: { busId, endedAt: null },
+      data: { endedAt: new Date() },
+    });
+
+    await prisma.busDeviceAssignment.updateMany({
+      where: { busId, endedAt: null },
+      data: { endedAt: new Date() },
+    });
+
+    // 4. Delete the bus record
     await prisma.bus.delete({
       where: { id: busId },
     });

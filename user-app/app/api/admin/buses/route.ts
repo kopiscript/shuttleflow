@@ -24,27 +24,47 @@ export async function GET() {
       },
     });
 
-    const transformed = buses.map((bus) => ({
-      id: bus.id,
-      busName: bus.busName,
-      licensePlate: bus.licensePlate,
-      capacity: bus.capacity,
-      status: bus.status,
-      createdAt: bus.createdAt,
-      updatedAt: bus.updatedAt,
-      route: bus.routeAssignments[0]?.route || null,
-      device: bus.deviceAssignments[0]?.device
-        ? {
-            ...bus.deviceAssignments[0].device,
-            lastLat: bus.locations[0]?.latitude
-              ? Number(bus.locations[0].latitude)
-              : null,
-            lastLng: bus.locations[0]?.longitude
-              ? Number(bus.locations[0].longitude)
-              : null,
-          }
-        : null,
-    }));
+    const transformed = buses.map((bus) => {
+      const activeRoute = bus.routeAssignments[0]?.route ?? null;
+      const latestLocation = bus.locations[0] ?? null;
+
+      return {
+        id: bus.id,
+        busName: bus.busName,
+        licensePlate: bus.licensePlate,
+        capacity: bus.capacity,
+        status: bus.status,
+        createdAt: bus.createdAt,
+        updatedAt: bus.updatedAt,
+
+        // flat fields for the dashboard map / bus markers
+        routeIds: bus.routeAssignments.map((a) => a.routeId),
+        routeNames: bus.routeAssignments.map((a) => a.route?.routeName).filter(Boolean),
+        routeId: activeRoute?.id ?? null,
+        routeName: activeRoute?.routeName ?? null,
+        lat: latestLocation ? Number(latestLocation.latitude) : null,
+        lng: latestLocation ? Number(latestLocation.longitude) : null,
+        lastSeen: latestLocation?.recordedAt ?? null,
+
+        // existing nested shapes (kept for backwards compatibility)
+        route: activeRoute,
+        device: bus.deviceAssignments[0]?.device
+          ? {
+              ...bus.deviceAssignments[0].device,
+              lastLat: latestLocation?.latitude
+                ? Number(latestLocation.latitude)
+                : null,
+              lastLng: latestLocation?.longitude
+                ? Number(latestLocation.longitude)
+                : null,
+              // Override lastSeen with the actual last GPS signal time
+              lastSeen: latestLocation?.recordedAt
+                ? latestLocation.recordedAt.toISOString()
+                : bus.deviceAssignments[0].device.lastSeen,
+            }
+          : null,
+      };
+    });
 
     return NextResponse.json({ success: true, buses: transformed });
   } catch (error) {

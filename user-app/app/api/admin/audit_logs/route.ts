@@ -1,25 +1,33 @@
-// app/api/admin/audit_logs/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 export async function GET() {
     try {
-        const logs = await prisma.activityLog.findMany({
-            orderBy: {
-                createdAt: 'desc',
+        const session = await getSession();
+        if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+        // Ultra-safe fallback: Check all possible Prisma casing names
+        const auditClient =
+            (prisma as any).adminAuditLog ??
+            (prisma as any).admin_audit_logs ??
+            (prisma as any).adminAuditLogs;
+
+        if (!auditClient) {
+            throw new Error("Audit client still undefined after fixing import.");
+        }
+
+        const logs = await auditClient.findMany({
+            include: {
+                admin: { select: { username: true, email: true } },
             },
-            take: 100, // Limit to last 100 logs
+            orderBy: { createdAt: "desc" },
+            take: 100,
         });
 
-        return NextResponse.json({
-            success: true,
-            logs: logs,
-        });
+        return NextResponse.json({ success: true, logs });
     } catch (error) {
         console.error("Failed to fetch audit logs:", error);
-        return NextResponse.json(
-            { success: false, error: "Failed to fetch audit logs" },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: false, error: "Failed to fetch audit logs" }, { status: 500 });
     }
 }
