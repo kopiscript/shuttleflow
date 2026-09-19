@@ -223,10 +223,10 @@ export default function SupportTicketsManagement() {
                             className="px-4 py-2 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-9 cursor-pointer"
                         >
                             <option value="all">All</option>
-                            <option value="Open">Status: Open</option>
-                            <option value="In Progress">Status: In Progress</option>
-                            <option value="Resolved">Status: Resolved</option>
-                            <option value="Closed">Status: Closed</option>
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
                         </select>
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                             <svg className="w-3.5 h-3.5 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
