@@ -53,7 +53,7 @@ export default function HomePage() {
   const [etaData, setEtaData] = useState<ETAData | null>(null);
   const [loading, setLoading] = useState(true);
   const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
+
   // Proximity state
   const [proximityData, setProximityData] = useState<ProximityData | null>(null);
 
@@ -163,6 +163,20 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
+  // ✅ Handle route change + log view for analytics
+  const handleRouteChange = (routeId: string) => {
+    setSelectedRoute(routeId);
+
+    // Log the view (fire-and-forget) for most-viewed-routes analytics
+    if (routeId) {
+      fetch(`/api/routes/${routeId}/view`, {
+        method: "POST",
+      }).catch((err) => {
+        console.error("Failed to log view:", err);
+      });
+    }
+  };
+
   return (
     <PageShell
       fullHeight={true}
@@ -206,7 +220,7 @@ export default function HomePage() {
           <CustomDropdown
             options={routes}
             value={selectedRoute}
-            onChange={setSelectedRoute}
+            onChange={handleRouteChange}
             loading={loading}
             placeholder={t("home.selectRoute")}
           />
@@ -242,12 +256,12 @@ export default function HomePage() {
             {proximityData && (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className={`text-xs font-medium ${
-                  proximityData.isNear 
-                    ? 'text-green-600 dark:text-green-400' 
+                  proximityData.isNear
+                    ? 'text-green-600 dark:text-green-400'
                     : 'text-gray-500 dark:text-gray-400'
                 }`}>
-                  {proximityData.isNear 
-                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}` 
+                  {proximityData.isNear
+                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}`
                     : `${proximityData.distance}m to destination`}
                 </span>
               </div>
