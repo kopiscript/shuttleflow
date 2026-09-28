@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
+import ActiveRoutesTable from "./components/ActiveRoutesTable";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -151,6 +152,11 @@ export default function AdminDashboard() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Active routes table */}
+      <div className="mt-6">
+        <ActiveRoutesTable />
       </div>
 
       {/* Most Viewed Routes Chart */}
