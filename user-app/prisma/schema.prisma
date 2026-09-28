@@ -37,6 +37,7 @@ model Route {
   dropoffLat        Float?               @map("dropoff_lat")
   dropoffLng        Float?               @map("dropoff_lng")
   busAssignments    BusRouteAssignment[]
+  views             RouteView[]
 
   @@map("routes")
 }
@@ -144,4 +145,14 @@ model activity_logs {
   description String
   created_at  DateTime @default(now())
   buses       Bus      @relation(fields: [bus_id], references: [id], onDelete: Cascade)
+}
+
+model RouteView {
+  id       Int      @id @default(autoincrement())
+  routeId  Int      @map("route_id")
+  viewedAt DateTime @default(now()) @map("viewed_at")
+  route    Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, viewedAt])
+  @@map("route_views")
 }
