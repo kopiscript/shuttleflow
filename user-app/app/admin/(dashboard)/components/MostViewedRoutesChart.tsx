@@ -71,10 +71,12 @@ export default function MostViewedRoutesChart() {
     fetchData();
   }, [selectedRouteId, range]);
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
+  const formatDate = (value: React.ReactNode): string => {
+    if (typeof value !== "string") return "";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
     return d.toLocaleDateString("en-MY", { day: "numeric", month: "short" });
-  };
+};
 
   const handleExport = () => {
     if (chartData.length === 0) return;
