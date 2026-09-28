@@ -8,9 +8,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
+import SmallDropdown from "./SmallDropdown";
 
 interface Route {
   id: number;
@@ -27,16 +27,10 @@ interface ChartEntry {
   [routeName: string]: string | number;
 }
 
-const COLORS = [
-  "#96DDFF",
-  "#3EB900",
-  "#FEB002",
-  "#FF6B6B",
-  "#A855F7",
-  "#F472B6",
-  "#14B8A6",
-  "#F59E0B",
-];
+const getColor = (index: number, total: number) => {
+  const hue = (index * 360) / Math.max(total, 1);
+  return `hsl(${hue}, 70%, 60%)`;
+};
 
 export default function MostViewedRoutesChart() {
   const [chartData, setChartData] = useState<ChartEntry[]>([]);
@@ -77,17 +71,14 @@ export default function MostViewedRoutesChart() {
     fetchData();
   }, [selectedRouteId, range]);
 
-  // Format date for display (e.g., "22 Sep")
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-MY", { day: "numeric", month: "short" });
   };
 
-  // Export to CSV
   const handleExport = () => {
     if (chartData.length === 0) return;
 
-    // Build CSV header
     const headers = ["Date", ...series.map((s) => s.name)];
     const rows = chartData.map((entry) => {
       const row = [entry.date];
@@ -102,14 +93,13 @@ export default function MostViewedRoutesChart() {
       ...rows.map((r) => r.join(",")),
     ].join("\n");
 
-    // Download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `most-viewed-routes-${range}-${new Date()
-      .toISOString()
-      .split("T")[0]}.csv`;
+    link.download = `most-viewed-routes-${range}-${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -132,28 +122,29 @@ export default function MostViewedRoutesChart() {
 
         <div className="flex items-center gap-3">
           {/* Range filter */}
-          <select
+          <SmallDropdown
             value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="bg-[#171821] text-white text-sm font-['Inter'] border border-[#2C2D33] rounded-lg px-3 py-2 focus:outline-none focus:border-[#96DDFF]"
-          >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-          </select>
+            onChange={setRange}
+            options={[
+              { value: "7d", label: "Last 7 days" },
+              { value: "30d", label: "Last 30 days" },
+            ]}
+            width="w-36"
+          />
 
           {/* Route filter */}
-          <select
+          <SmallDropdown
             value={selectedRouteId}
-            onChange={(e) => setSelectedRouteId(e.target.value)}
-            className="bg-[#171821] text-white text-sm font-['Inter'] border border-[#2C2D33] rounded-lg px-3 py-2 focus:outline-none focus:border-[#96DDFF]"
-          >
-            <option value="">All Routes</option>
-            {routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.routeName}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedRouteId}
+            options={[
+              { value: "", label: "All Routes" },
+              ...routes.map((r) => ({
+                value: String(r.id),
+                label: r.routeName,
+              })),
+            ]}
+            width="w-48"
+          />
 
           {/* Export button */}
           <button
@@ -191,52 +182,91 @@ export default function MostViewedRoutesChart() {
           </p>
         </div>
       ) : (
-        <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2C2D33" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDate}
-                stroke="#87888C"
-                style={{ fontSize: "12px", fontFamily: "Inter" }}
-              />
-              <YAxis
-                stroke="#87888C"
-                style={{ fontSize: "12px", fontFamily: "Inter" }}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#171821",
-                  border: "1px solid #2C2D33",
-                  borderRadius: "8px",
-                  fontFamily: "Inter",
-                  fontSize: "12px",
-                }}
-                labelStyle={{ color: "#FFFFFF" }}
-                labelFormatter={formatDate}
-              />
-              <Legend
-                wrapperStyle={{
-                  fontFamily: "Inter",
-                  fontSize: "12px",
-                  color: "#87888C",
-                }}
-              />
-              {series.map((s, i) => (
-                <Line
-                  key={s.id}
-                  type="monotone"
-                  dataKey={s.name}
-                  stroke={COLORS[i % COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: COLORS[i % COLORS.length] }}
-                  activeDot={{ r: 5 }}
+        <div className="flex gap-4">
+          <div className="flex-1 h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2C2D33" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  stroke="#87888C"
+                  style={{ fontSize: "12px", fontFamily: "Inter" }}
+                  height={50}
+                  label={{
+                    value: "Date",
+                    position: "insideBottom",
+                    offset: -5,
+                    style: {
+                      fill: "#87888C",
+                      fontFamily: "Inter",
+                      fontSize: "12px",
+                    },
+                  }}
                 />
+                <YAxis
+                  stroke="#87888C"
+                  style={{ fontSize: "12px", fontFamily: "Inter" }}
+                  allowDecimals={false}
+                  label={{
+                    value: "Views",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: {
+                      fill: "#87888C",
+                      fontFamily: "Inter",
+                      fontSize: "12px",
+                    },
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#171821",
+                    border: "1px solid #2C2D33",
+                    borderRadius: "8px",
+                    fontFamily: "Inter",
+                    fontSize: "12px",
+                  }}
+                  labelStyle={{ color: "#FFFFFF" }}
+                  labelFormatter={formatDate}
+                />
+                {series.map((s, i) => (
+                  <Line
+                    key={s.id}
+                    type="monotone"
+                    dataKey={s.name}
+                    stroke={getColor(i, series.length)}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: getColor(i, series.length) }}
+                    activeDot={{ r: 5 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Static Legend */}
+          <div className="w-48 flex-shrink-0">
+            <p className="text-[#87888C] font-['Inter'] text-xs uppercase tracking-wider mb-3">
+              Routes
+            </p>
+            <div className="space-y-2 max-h-[310px] overflow-y-auto pr-1">
+              {series.map((s, i) => (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-2 w-full px-2 py-1.5"
+                >
+                  <span
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: getColor(i, series.length) }}
+                  />
+                  <span className="text-white font-['Inter'] text-xs truncate">
+                    {s.name}
+                  </span>
+                </div>
               ))}
-            </LineChart>
-          </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       )}
     </div>
