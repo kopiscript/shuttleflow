@@ -1,7 +1,9 @@
+// app/admin/(dashboard)/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -149,6 +151,11 @@ export default function AdminDashboard() {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Most Viewed Routes Chart */}
+      <div className="mt-6">
+        <MostViewedRoutesChart />
       </div>
     </div>
   );
