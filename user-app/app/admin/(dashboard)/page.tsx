@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable from "./components/ActiveRoutesTable";
+import SmallDropdown from "./components/SmallDropdown";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -41,7 +42,7 @@ export default function AdminDashboard() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +74,9 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  // Convert to number for the map component
+  const numericRouteId = selectedRouteId ? Number(selectedRouteId) : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -84,31 +88,28 @@ export default function AdminDashboard() {
 
       {/* Map Card */}
       <div className="mt-6 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-        <div className="flex items-center justify-between mb-4">
+        {/* Header — z-10 keeps the dropdown above the map */}
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-white font-bold font-['Inter'] text-base">
             Active Route Map
           </h2>
 
-          {/* Route selector */}
-          <select
-            value={selectedRouteId ?? ""}
-            onChange={(e) =>
-              setSelectedRouteId(e.target.value ? Number(e.target.value) : null)
-            }
-            className="bg-[#171821] text-white text-sm font-['Inter']
-                       border border-[#2C2D33] rounded-lg px-3 py-2
-                       focus:outline-none focus:border-[#99121A]"
-          >
-            <option value="">All Routes</option>
-            {routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.routeName}
-              </option>
-            ))}
-          </select>
+          <SmallDropdown
+            value={selectedRouteId}
+            onChange={setSelectedRouteId}
+            options={[
+              { value: "", label: "All Routes" },
+              ...routes.map((r) => ({
+                value: String(r.id),
+                label: r.routeName,
+              })),
+            ]}
+            width="w-48"
+          />
         </div>
 
-        <div className="h-[500px] rounded-xl overflow-hidden">
+        {/* Map wrapper — z-0 so it never overrides the dropdown */}
+        <div className="relative z-0 h-[500px] rounded-xl overflow-hidden">
           {loading ? (
             <div className="w-full h-full bg-[#171821] flex items-center justify-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">
@@ -126,7 +127,7 @@ export default function AdminDashboard() {
             <RouteMarkersMap
               routes={routes}
               buses={buses}
-              selectedRouteId={selectedRouteId}
+              selectedRouteId={numericRouteId}
             />
           )}
         </div>
