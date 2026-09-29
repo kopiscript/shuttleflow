@@ -1,10 +1,13 @@
-// app/admin/support-tickets/[id]/page.tsx
+// app/admin/(dashboard)/support-tickets/[id]/page.tsx
 "use client";
-
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+interface TicketReply {
+    id: number;
+    message: string;
+    sentBy: string;
+    sentAt: string;
+}
 interface SupportTicket {
     id: number;
     description: string;
@@ -15,27 +18,21 @@ interface SupportTicket {
     fileUrls: string[];
     createdAt: string;
     updatedAt: string;
+    replies: TicketReply[];
 }
-
 interface PageProps {
     params: Promise<{ id: string }>;
 }
-
 export default function TicketDetailsPage({ params }: PageProps) {
-    const router = useRouter();
     const [ticket, setTicket] = useState<SupportTicket | null>(null);
     const [loading, setLoading] = useState(true);
     const [ticketId, setTicketId] = useState<number | null>(null);
-    const [updating, setUpdating] = useState(false);
-
-    // Reply state
     const [replyMessage, setReplyMessage] = useState("");
     const [sendingReply, setSendingReply] = useState(false);
     const [replyFeedback, setReplyFeedback] = useState<{
         type: "success" | "error";
         message: string;
     } | null>(null);
-
     useEffect(() => {
         const unwrapParams = async () => {
             const { id } = await params;
@@ -43,69 +40,48 @@ export default function TicketDetailsPage({ params }: PageProps) {
         };
         unwrapParams();
     }, [params]);
-
-    useEffect(() => {
-        if (!ticketId) return;
-        const fetchTicket = async () => {
-            try {
-                const response = await fetch(`/api/admin/support-tickets/${ticketId}`);
-                const data = await response.json();
-                if (data.success) {
-                    setTicket(data.ticket);
-                }
-            } catch (error) {
-                console.error("Failed to fetch ticket:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchTicket();
-    }, [ticketId]);
-
-    const handleStatusChange = async (newStatus: string) => {
-        if (!ticket) return;
-        setUpdating(true);
+    const fetchTicket = async (id: number) => {
         try {
-            const response = await fetch(`/api/admin/support-tickets/${ticket.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: newStatus }),
-            });
+            const response = await fetch(`/api/admin/support-tickets/${id}`);
             const data = await response.json();
             if (data.success) {
-                setTicket((prev) => (prev ? { ...prev, status: newStatus } : null));
+                setTicket(data.ticket);
             }
         } catch (error) {
-            console.error("Failed to update status:", error);
+            console.error("Failed to fetch ticket:", error);
         } finally {
-            setUpdating(false);
+            setLoading(false);
         }
     };
-
+    useEffect(() => {
+        if (!ticketId) return;
+        fetchTicket(ticketId);
+    }, [ticketId]);
     const handleSendReply = async () => {
         if (!ticket || !replyMessage.trim()) return;
-
         setSendingReply(true);
         setReplyFeedback(null);
-
         try {
             const response = await fetch(
                 `/api/admin/support-tickets/${ticket.id}/reply`,
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: replyMessage.trim() }),
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        message: replyMessage.trim(),
+                    }),
                 }
             );
-
             const data = await response.json();
-
             if (data.success) {
                 setReplyFeedback({
                     type: "success",
                     message: `Reply sent to ${ticket.email}`,
                 });
                 setReplyMessage("");
+                await fetchTicket(ticket.id);
             } else {
                 setReplyFeedback({
                     type: "error",
@@ -122,7 +98,6 @@ export default function TicketDetailsPage({ params }: PageProps) {
             setSendingReply(false);
         }
     };
-
     const formatDate = (dateString: string) => {
         if (!dateString) return "N/A";
         return new Date(dateString).toLocaleString("en-US", {
@@ -134,7 +109,6 @@ export default function TicketDetailsPage({ params }: PageProps) {
             hour12: true,
         });
     };
-
     const getReportTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
             route_problem: "Route Problem",
@@ -144,14 +118,6 @@ export default function TicketDetailsPage({ params }: PageProps) {
         };
         return labels[type] || type;
     };
-
-    const getStatusBadge = (status: string) => {
-        if (status === "Resolved") return "bg-[#E1FFDA] text-[#3EB900]";
-        if (status === "Open") return "bg-[#FFC0B9] text-[#EA1701]";
-        if (status === "In Progress") return "bg-[#FFF4CC] text-[#B8860B]";
-        return "bg-[#2C2D33] text-[#87888C]";
-    };
-
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -161,7 +127,6 @@ export default function TicketDetailsPage({ params }: PageProps) {
             </div>
         );
     }
-
     if (!ticket) {
         return (
             <div className="flex items-center justify-center h-64 flex-col gap-4">
@@ -177,18 +142,27 @@ export default function TicketDetailsPage({ params }: PageProps) {
             </div>
         );
     }
-
+    const isResolved = ticket.replies.length > 0;
     return (
         <div>
-            {/* Page Header */}
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                     <Link
                         href="/admin/support-tickets"
                         className="text-white hover:text-[#96DDFF] transition"
                     >
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg
+                            className="w-8 h-8"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 19l-7-7 7-7"
+                            />
                         </svg>
                     </Link>
                     <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -196,57 +170,68 @@ export default function TicketDetailsPage({ params }: PageProps) {
                     </h1>
                 </div>
             </div>
-
-            {/* Two-column layout */}
-            <div className="grid grid-cols-2 gap-6">
-                {/* ===== LEFT COLUMN: Ticket Information ===== */}
-                <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 h-fit">
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                         Ticket Information
                     </h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Ticket ID</span>
+                    <div>
+                        <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Ticket ID
+                            </span>
                             <span className="text-white font-['Inter'] text-sm">
                                 T{String(ticket.id).padStart(3, "0")}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Email</span>
-                            <span className="text-white font-['Inter'] text-sm break-all">
+                        <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Email
+                            </span>
+                            <span className="text-white font-['Inter'] text-sm break-all text-right">
                                 {ticket.email}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Report Type</span>
+                        <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Report Type
+                            </span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {getReportTypeLabel(ticket.reportType)}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Submitted</span>
+                        <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Submitted
+                            </span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {formatDate(ticket.createdAt)}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Last Updated</span>
+                        <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Last Updated
+                            </span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {formatDate(ticket.updatedAt)}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(ticket.status)}`}>
-                                {ticket.status}
+                        <div className="flex justify-between items-center py-3">
+                            <span className="text-[#87888C] font-['Inter'] text-sm">
+                                Status
+                            </span>
+                            <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${isResolved
+                                    ? "bg-[#E1FFDA] text-[#3EB900]"
+                                    : "bg-[#FFC0B9] text-[#EA1701]"
+                                    }`}
+                            >
+                                {isResolved ? "Resolved" : "Unresolved"}
                             </span>
                         </div>
                     </div>
                 </div>
-
-                {/* ===== RIGHT COLUMN: Description + Attachments + Reply ===== */}
                 <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-                    {/* User Description */}
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
                         User Description
                     </h3>
@@ -255,10 +240,7 @@ export default function TicketDetailsPage({ params }: PageProps) {
                             {ticket.description}
                         </p>
                     </div>
-
                     <div className="border-t border-[#2C2D33] my-6 -mx-6" />
-
-                    {/* Attachments */}
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
                         Attachments ({ticket.fileUrls.length})
                     </h3>
@@ -286,8 +268,18 @@ export default function TicketDetailsPage({ params }: PageProps) {
                                             />
                                         ) : (
                                             <div className="w-full h-24 flex items-center justify-center">
-                                                <svg className="w-8 h-8 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                <svg
+                                                    className="w-8 h-8 text-[#87888C]"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
                                                 </svg>
                                             </div>
                                         )}
@@ -301,58 +293,85 @@ export default function TicketDetailsPage({ params }: PageProps) {
                             })}
                         </div>
                     )}
-
                     <div className="border-t border-[#2C2D33] my-6 -mx-6" />
-
-                    {/* Admin Reply */}
-                    <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
-                        Reply to User
-                    </h3>
-                    <textarea
-                        value={replyMessage}
-                        onChange={(e) => setReplyMessage(e.target.value)}
-                        placeholder="Type your reply here. This will be sent to the user's email address."
-                        rows={5}
-                        disabled={sendingReply}
-                        className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36] resize-none disabled:opacity-50"
-                    />
-
-                    {replyFeedback && (
-                        <div
-                            className={`mt-3 p-3 rounded-lg font-['Inter'] text-sm ${replyFeedback.type === "success"
-                                ? "bg-[#3EB900]/20 border border-[#3EB900] text-[#3EB900]"
-                                : "bg-[#CD0000]/20 border border-[#CD0000] text-[#CD0000]"
-                                }`}
-                        >
-                            {replyFeedback.message}
+                    {isResolved ? (
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-white font-bold font-['Inter'] text-base">
+                                    Admin Response
+                                </h3>
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] bg-[#E1FFDA] text-[#3EB900]">
+                                    Resolved
+                                </span>
+                            </div>
+                            <div className="space-y-3">
+                                {ticket.replies.map((reply) => (
+                                    <div
+                                        key={reply.id}
+                                        className="bg-[#171821] rounded-xl border border-[#2C2D33] p-4"
+                                    >
+                                        <p className="text-white font-['Inter'] text-sm whitespace-pre-wrap break-words">
+                                            {reply.message}
+                                        </p>
+                                        <div className="border-t border-[#2C2D33] mt-4 pt-3 flex items-center justify-between gap-4">
+                                            <span className="text-[#87888C] font-['Inter'] text-xs">
+                                                Replied by {reply.sentBy}
+                                            </span>
+                                            <span className="text-[#87888C] font-['Inter'] text-xs">
+                                                {formatDate(reply.sentAt)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
+                                Reply to User
+                            </h3>
+                            <textarea
+                                value={replyMessage}
+                                onChange={(e) => setReplyMessage(e.target.value)}
+                                placeholder="Type your reply here. This will be sent to the user's email address."
+                                rows={5}
+                                disabled={sendingReply}
+                                className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C] resize-none disabled:opacity-50"
+                            />
+                            {replyFeedback && (
+                                <div
+                                    className={`mt-3 p-3 rounded-lg font-['Inter'] text-sm ${replyFeedback.type === "success"
+                                        ? "bg-[#3EB900]/20 border border-[#3EB900] text-[#3EB900]"
+                                        : "bg-[#CD0000]/20 border border-[#CD0000] text-[#CD0000]"
+                                        }`}
+                                >
+                                    {replyFeedback.message}
+                                </div>
+                            )}
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={handleSendReply}
+                                    disabled={sendingReply || !replyMessage.trim()}
+                                    className="px-5 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                                        />
+                                    </svg>
+                                    {sendingReply ? "Sending..." : "Send Reply"}
+                                </button>
+                            </div>
                         </div>
                     )}
-
-                    {/* Action Buttons */}
-                    <div className="mt-4 flex items-center justify-end gap-3">
-                        {ticket.status !== "Resolved" && ticket.status !== "Closed" && (
-                            <button
-                                onClick={() => handleStatusChange("Resolved")}
-                                disabled={updating}
-                                className="px-5 py-2.5 bg-[#3EB900] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#359e00] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                {updating ? "Updating..." : "Mark as Resolved"}
-                            </button>
-                        )}
-                        <button
-                            onClick={handleSendReply}
-                            disabled={sendingReply || !replyMessage.trim()}
-                            className="px-5 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            {sendingReply ? "Sending..." : "Send Reply"}
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
