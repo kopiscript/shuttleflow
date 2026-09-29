@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable from "./components/ActiveRoutesTable";
+import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -37,22 +38,33 @@ interface Bus {
   status?: string;
 }
 
+interface TicketPreview {
+  id: number;
+  reportType: string;
+}
+
 export default function AdminDashboard() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
+  const [unresolvedTickets, setUnresolvedTickets] = useState(0);
+  const [unresolvedTicketList, setUnresolvedTicketList] = useState<TicketPreview[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [routesRes, busesRes] = await Promise.all([
+        setLoading(true);
+        setTicketsLoading(true);
+        const [routesRes, busesRes, ticketsRes] = await Promise.all([
           fetch("/api/admin/routes"),
           fetch("/api/admin/buses"),
+          fetch("/api/admin/support-tickets?status=unresolved"),
         ]);
         const routesData = await routesRes.json();
         const busesData = await busesRes.json();
-
+        const ticketsData = await ticketsRes.json();
         if (routesData.success) {
           setRoutes(
             routesData.routes.filter((r: Route) => r.status === "Active")
@@ -64,10 +76,18 @@ export default function AdminDashboard() {
           );
           setBuses(validBuses);
         }
+        if (ticketsData.success) {
+          setUnresolvedTickets(ticketsData.count ?? 0);
+          setUnresolvedTicketList(ticketsData.tickets ?? []);
+        } else {
+          setUnresolvedTickets(0);
+        }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
+        setUnresolvedTickets(0);
       } finally {
         setLoading(false);
+        setTicketsLoading(false);
       }
     };
     fetchData();
@@ -83,75 +103,74 @@ export default function AdminDashboard() {
       </p>
 
       {/* Map Card */}
-      <div className="mt-6 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-bold font-['Inter'] text-base">
-            Active Route Map
-          </h2>
-
-          {/* Route selector */}
-          <select
-            value={selectedRouteId ?? ""}
-            onChange={(e) =>
-              setSelectedRouteId(e.target.value ? Number(e.target.value) : null)
-            }
-            className="bg-[#171821] text-white text-sm font-['Inter']
-                       border border-[#2C2D33] rounded-lg px-3 py-2
-                       focus:outline-none focus:border-[#99121A]"
-          >
-            <option value="">All Routes</option>
-            {routes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.routeName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="h-[500px] rounded-xl overflow-hidden">
-          {loading ? (
-            <div className="w-full h-full bg-[#171821] flex items-center justify-center">
-              <span className="text-[#87888C] font-['Inter'] text-sm">
-                Loading map...
+      <div className="mt-6 grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
+        <div className="xl:col-span-3 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-bold font-['Inter'] text-base">
+              Active Route Map
+            </h2>
+            <select
+              value={selectedRouteId ?? ""}
+              onChange={(e) =>
+                setSelectedRouteId(e.target.value ? Number(e.target.value) : null)
+              }
+              className="bg-[#171821] text-white text-sm font-['Inter'] border border-[#2C2D33] rounded-lg px-3 py-2 focus:outline-none focus:border-[#99121A]"
+            >
+              <option value="">All Routes</option>
+              {routes.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.routeName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="h-[500px] rounded-xl overflow-hidden">
+            {loading ? (
+              <div className="w-full h-full bg-[#171821] flex items-center justify-center">
+                <span className="text-[#87888C] font-['Inter'] text-sm">
+                  Loading map...
+                </span>
+              </div>
+            ) : routes.length === 0 ? (
+              <div className="w-full h-full bg-[#171821] flex items-center justify-center">
+                <p className="text-[#87888C] font-['Inter'] text-sm">
+                  No active routes to display. Assign a bus to a route to see it here.
+                </p>
+              </div>
+            ) : (
+              <RouteMarkersMap
+                routes={routes}
+                buses={buses}
+                selectedRouteId={selectedRouteId}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-6 mt-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#1A4B9B]"></div>
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Pickup Stop
               </span>
             </div>
-          ) : routes.length === 0 ? (
-            <div className="w-full h-full bg-[#171821] flex items-center justify-center">
-              <p className="text-[#87888C] font-['Inter'] text-sm">
-                No active routes to display. Assign a bus to a route to see it
-                here.
-              </p>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#3EB900]"></div>
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Drop-off Stop
+              </span>
             </div>
-          ) : (
-            <RouteMarkersMap
-              routes={routes}
-              buses={buses}
-              selectedRouteId={selectedRouteId}
-            />
-          )}
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-6 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#1A4B9B]"></div>
-            <span className="text-[#87888C] font-['Inter'] text-xs">
-              Pickup Stop
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#3EB900]"></div>
-            <span className="text-[#87888C] font-['Inter'] text-xs">
-              Drop-off Stop
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#FEB002]"></div>
-            <span className="text-[#87888C] font-['Inter'] text-xs">
-              Active Bus
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#FEB002]"></div>
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Active Bus
+              </span>
+            </div>
           </div>
         </div>
+        <UnresolvedTicketsCard
+          count={unresolvedTickets}
+          tickets={unresolvedTicketList}
+          loading={ticketsLoading}
+        />
       </div>
 
       {/* Active routes table */}
