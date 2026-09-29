@@ -30,17 +30,15 @@ export async function GET(request: Request) {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    // Get all active routes for the dropdown
+    // ✅ Fetch ALL routes (no status filter)
     const routes = await prisma.route.findMany({
-      where: { status: "Active" },
       select: { id: true, routeName: true },
       orderBy: { routeName: "asc" },
     });
 
-    // Build where clause — query a wider range to account for UTC vs Malaysia
-    // We'll filter more precisely in code
+    // Build where clause
     const queryStart = new Date(startDate);
-    queryStart.setHours(queryStart.getHours() - 8); // Go back 8 extra hours to cover UTC offset
+    queryStart.setHours(queryStart.getHours() - 8);
 
     const whereClause: any = {
       viewedAt: {
@@ -51,7 +49,6 @@ export async function GET(request: Request) {
       whereClause.routeId = routeId;
     }
 
-    // Fetch all views in range
     const views = await prisma.routeView.findMany({
       where: whereClause,
       select: {
@@ -63,7 +60,7 @@ export async function GET(request: Request) {
       },
     });
 
-    // Build date buckets (one per day, INCLUDING today, in Malaysia time)
+    // Build date buckets
     const dateBuckets: { [key: string]: { [routeId: number]: number } } = {};
     const routeNames: { [routeId: number]: string } = {};
 
@@ -72,11 +69,11 @@ export async function GET(request: Request) {
       d.setDate(d.getDate() + i);
       const key = d.toLocaleDateString("en-CA", {
         timeZone: "Asia/Kuala_Lumpur",
-      }); // YYYY-MM-DD format
+      });
       dateBuckets[key] = {};
     }
 
-    // Fill in the view counts (converted to Malaysia timezone)
+    // Fill in view counts
     for (const view of views) {
       const viewDate = new Date(
         view.viewedAt.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" })
@@ -92,14 +89,17 @@ export async function GET(request: Request) {
       routeNames[view.routeId] = view.route.routeName;
     }
 
-    // Format for chart
+    // ✅ Format for chart — include ALL routes (0 views = line at 0)
     const chartData = Object.keys(dateBuckets).map((date) => {
       const entry: any = { date };
 
       if (routeId) {
-        const routeName = routeNames[routeId] || "Selected Route";
+        // Single route mode — use route name even if no views
+        const targetRoute = routes.find((r) => r.id === routeId);
+        const routeName = targetRoute?.routeName || routeNames[routeId] || "Selected Route";
         entry[routeName] = dateBuckets[date][routeId] || 0;
       } else {
+        // All routes mode — include every route
         for (const r of routes) {
           entry[r.routeName] = dateBuckets[date][r.id] || 0;
         }
@@ -107,9 +107,17 @@ export async function GET(request: Request) {
       return entry;
     });
 
-    // Build series list
+    // ✅ Series = ALL routes
     const series = routeId
-      ? [{ id: routeId, name: routeNames[routeId] || "Selected Route" }]
+      ? [
+          {
+            id: routeId,
+            name:
+              routes.find((r) => r.id === routeId)?.routeName ||
+              routeNames[routeId] ||
+              "Selected Route",
+          },
+        ]
       : routes.map((r) => ({ id: r.id, name: r.routeName }));
 
     const totalViews = views.length;
