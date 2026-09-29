@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable from "./components/ActiveRoutesTable";
+import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
@@ -47,7 +48,11 @@ export default function AdminDashboard() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null);
+
+  // Your side: string state for SmallDropdown
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
+
+  // Teammate's side: tickets card
   const [unresolvedTickets, setUnresolvedTickets] = useState(0);
   const [unresolvedTicketList, setUnresolvedTicketList] = useState<TicketPreview[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -65,6 +70,7 @@ export default function AdminDashboard() {
         const routesData = await routesRes.json();
         const busesData = await busesRes.json();
         const ticketsData = await ticketsRes.json();
+
         if (routesData.success) {
           setRoutes(
             routesData.routes.filter((r: Route) => r.status === "Active")
@@ -93,6 +99,9 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  // Your side: convert string → number at the boundary for the map
+  const numericRouteId = selectedRouteId ? Number(selectedRouteId) : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -102,29 +111,33 @@ export default function AdminDashboard() {
         Welcome to the admin panel.
       </p>
 
-      {/* Map Card */}
+      {/* Map + Tickets row — teammate's grid layout, your dropdown styling */}
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
+        {/* Map card */}
         <div className="xl:col-span-3 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-          <div className="flex items-center justify-between mb-4">
+          {/* Header — z-10 keeps the dropdown above the map */}
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 mb-4">
             <h2 className="text-white font-bold font-['Inter'] text-base">
               Active Route Map
             </h2>
-            <select
-              value={selectedRouteId ?? ""}
-              onChange={(e) =>
-                setSelectedRouteId(e.target.value ? Number(e.target.value) : null)
-              }
-              className="bg-[#171821] text-white text-sm font-['Inter'] border border-[#2C2D33] rounded-lg px-3 py-2 focus:outline-none focus:border-[#99121A]"
-            >
-              <option value="">All Routes</option>
-              {routes.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.routeName}
-                </option>
-              ))}
-            </select>
+
+            {/* Your side: SmallDropdown replaces native <select> */}
+            <SmallDropdown
+              value={selectedRouteId}
+              onChange={setSelectedRouteId}
+              options={[
+                { value: "", label: "All Routes" },
+                ...routes.map((r) => ({
+                  value: String(r.id),
+                  label: r.routeName,
+                })),
+              ]}
+              width="w-48"
+            />
           </div>
-          <div className="h-[500px] rounded-xl overflow-hidden">
+
+          {/* Map wrapper — z-0 so it never overrides the dropdown */}
+          <div className="relative z-0 h-[500px] rounded-xl overflow-hidden">
             {loading ? (
               <div className="w-full h-full bg-[#171821] flex items-center justify-center">
                 <span className="text-[#87888C] font-['Inter'] text-sm">
@@ -134,17 +147,20 @@ export default function AdminDashboard() {
             ) : routes.length === 0 ? (
               <div className="w-full h-full bg-[#171821] flex items-center justify-center">
                 <p className="text-[#87888C] font-['Inter'] text-sm">
-                  No active routes to display. Assign a bus to a route to see it here.
+                  No active routes to display. Assign a bus to a route to see
+                  it here.
                 </p>
               </div>
             ) : (
               <RouteMarkersMap
                 routes={routes}
                 buses={buses}
-                selectedRouteId={selectedRouteId}
+                selectedRouteId={numericRouteId}
               />
             )}
           </div>
+
+          {/* Legend */}
           <div className="flex items-center gap-6 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-[#1A4B9B]"></div>
@@ -166,6 +182,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Teammate's side: unresolved tickets card */}
         <UnresolvedTicketsCard
           count={unresolvedTickets}
           tickets={unresolvedTicketList}

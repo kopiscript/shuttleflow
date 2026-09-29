@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import SmallDropdown from "../components/SmallDropdown";
 
 interface SupportTicket {
     id: number;
@@ -157,8 +158,13 @@ export default function SupportTicketsManagement() {
         router.replace("/admin/support-tickets");
     };
 
-    const hasActiveFilters =
-        statusFilter !== "all" || reportTypeFilter !== "all" || startDate !== "" || endDate !== "";
+    const hasActiveFilters = statusFilter !== "all" || reportTypeFilter !== "all" || startDate !== "" || endDate !== "";
+
+    // Small helpers to reduce JSX repetition
+    const filterLabel = "text-[#87888C] font-['Inter'] text-sm whitespace-nowrap mr-2";
+    const filterSelect = "px-4 py-2 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm cursor-pointer";
+    const filterDate = "px-4 py-2 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm [color-scheme:dark]";
+    const chip = "inline-flex items-center gap-2 px-3 py-1.5 bg-[#96DDFF]/10 text-[#96DDFF] rounded-full text-xs font-['Inter'] border border-[#96DDFF]/30";
 
     return (
         <div>
@@ -185,29 +191,30 @@ export default function SupportTicketsManagement() {
             <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 mb-6">
                 <div className="flex items-center gap-3 flex-wrap">
                     <div>
-                        <label className={FILTER_LABEL}>Status:</label>
-                        <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value)} className={FILTER_SELECT}>
+                        <label className={filterLabel}>Status:</label>
+                        <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value)} className={filterSelect}>
                             <option value="all">All</option>
                             <option value="unresolved">Unresolved</option>
-                            <option value="resolved">Resolved</option>
+                            <option value="Resolved">Resolved</option>
                         </select>
                     </div>
+
                     <div>
-                        <label className={FILTER_LABEL}>Report Type:</label>
-                        <select value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)} className={FILTER_SELECT}>
+                        <label className={filterLabel}>Report Type:</label>
+                        <select value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)} className={filterSelect}>
                             <option value="all">All</option>
-                            {Object.entries(REPORT_TYPES).map(([value, label]) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
+                            {Object.entries(REPORT_TYPES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                     </div>
+
                     <div>
-                        <label className={FILTER_LABEL}>Start:</label>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={FILTER_DATE} />
+                        <label className={filterLabel}>Start:</label>
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={filterDate} />
                     </div>
+
                     <div>
-                        <label className={FILTER_LABEL}>End:</label>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={FILTER_DATE} />
+                        <label className={filterLabel}>End:</label>
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={filterDate} />
                     </div>
                 </div>
 
