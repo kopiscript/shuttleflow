@@ -1,8 +1,6 @@
 // app/api/admin/support-tickets/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-
-// GET - Fetch all support tickets with optional filters
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -10,17 +8,19 @@ export async function GET(request: Request) {
         const reportType = searchParams.get("reportType");
         const startDate = searchParams.get("startDate");
         const endDate = searchParams.get("endDate");
-
         const where: any = {};
-
-        if (status && status !== "all") {
-            where.status = status;
+        if (status === "unresolved") {
+            where.replies = {
+                none: {},
+            };
+        } else if (status === "resolved") {
+            where.replies = {
+                some: {},
+            };
         }
-
         if (reportType && reportType !== "all") {
             where.reportType = reportType;
         }
-
         if (startDate || endDate) {
             where.createdAt = {};
             if (startDate) {
@@ -32,32 +32,53 @@ export async function GET(request: Request) {
                 where.createdAt.lte = end;
             }
         }
-
         const tickets = await prisma.supportTicket.findMany({
             where,
-            orderBy: { createdAt: "desc" },
+            include: {
+                replies: {
+                    select: {
+                        id: true,
+                        sentBy: true,
+                        sentAt: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
         });
-
-        // Transform fileUrl into a proper array
         const transformedTickets = tickets.map((ticket) => ({
-            ...ticket,
+            id: ticket.id,
+            description: ticket.description,
+            email: ticket.email,
+            reportType: ticket.reportType,
+            status: ticket.replies.length > 0 ? "Resolved" : "Unresolved",
+            originalStatus: ticket.status,
+            fileUrl: ticket.fileUrl,
             fileUrls: parseFileUrls(ticket.fileUrl),
+            createdAt: ticket.createdAt,
+            updatedAt: ticket.updatedAt,
+            replyCount: ticket.replies.length,
+            hasAdminReply: ticket.replies.length > 0,
         }));
-
         return NextResponse.json({
             success: true,
             tickets: transformedTickets,
+            count: transformedTickets.length,
         });
     } catch (error) {
         console.error("Failed to fetch support tickets:", error);
         return NextResponse.json(
-            { success: false, error: "Failed to fetch support tickets" },
-            { status: 500 }
+            {
+                success: false,
+                error: "Failed to fetch support tickets",
+            },
+            {
+                status: 500,
+            }
         );
     }
 }
-
-// Helper to handle both string and JSON array formats
 function parseFileUrls(fileUrl: string | null): string[] {
     if (!fileUrl) return [];
     try {
