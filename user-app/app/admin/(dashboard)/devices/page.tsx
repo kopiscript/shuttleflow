@@ -193,11 +193,9 @@ export default function DeviceManagement() {
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "Online") {
-      return "bg-[#E1FFDA] text-[#3EB900]";
-    } else if (status === "Offline") {
-      return "bg-[#FFC0B9] text-[#EA1701]";
-    }
+    if (status === "Online") return "bg-[#E1FFDA] text-[#3EB900]";
+    if (status === "Warning") return "bg-[#FFF4CC] text-[#B8860B]";
+    if (status === "Offline") return "bg-[#FFC0B9] text-[#EA1701]";
     return "bg-[#2C2D33] text-[#87888C]";
   };
 
@@ -303,9 +301,8 @@ export default function DeviceManagement() {
                     aria-label={`View details for device D${String(device.id).padStart(3, "0")}`}
                     onClick={() => handleRowClick(device.id)}
                     onKeyDown={(e) => handleRowKeyDown(e, device.id)}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
-                      index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                    }`}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
+                      }`}
                   >
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       D{String(device.id).padStart(3, "0")}
@@ -354,11 +351,10 @@ export default function DeviceManagement() {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === 1
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === 1
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Previous
               </button>
@@ -378,11 +374,10 @@ export default function DeviceManagement() {
                   <button
                     key={page}
                     onClick={() => goToPage(page as number)}
-                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                      currentPage === page
+                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === page
                         ? "bg-[#96DDFF] text-[#171821]"
                         : "text-[#87888C] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -392,11 +387,10 @@ export default function DeviceManagement() {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === totalPages
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === totalPages
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Next
               </button>

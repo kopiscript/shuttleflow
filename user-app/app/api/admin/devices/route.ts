@@ -1,8 +1,9 @@
 // app/api/admin/devices/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getDeviceHealth } from "@/lib/deviceHealth";
 
-// GET /api/admin/devices - Fetch all devices
+
 export async function GET() {
   try {
     const devices = await prisma.device.findMany({
@@ -27,11 +28,13 @@ export async function GET() {
 
     const formattedDevices = devices.map((device) => {
       const activeAssignment = device.busAssignments[0];
+      const health = getDeviceHealth(device.lastSeen);
       return {
         id: device.id,
         deviceName: device.deviceName,
-        status: device.status,
+        status: health.status,
         lastSeen: device.lastSeen,
+        minutesSinceLastPing: health.minutesSinceLastPing,
         busId: activeAssignment?.busId || null,
         busName: activeAssignment?.bus?.busName || null,
         busLicensePlate: activeAssignment?.bus?.licensePlate || null,
@@ -56,7 +59,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { deviceName, busId, status } = body;
+    const { deviceName, busId } = body;
 
     if (!deviceName) {
       return NextResponse.json(
@@ -82,9 +85,9 @@ export async function POST(request: NextRequest) {
     // Create the device
     const device = await prisma.device.create({
       data: {
-        deviceName: deviceName,
-        status: status || "Offline",
-        lastSeen: status === "Online" ? new Date() : null,
+        deviceName,
+        status: "Offline",
+        lastSeen: null,
       },
     });
 

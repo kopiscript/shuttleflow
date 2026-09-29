@@ -1,6 +1,7 @@
 // app/api/admin/devices/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getDeviceHealth } from "@/lib/deviceHealth";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -47,11 +48,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         // Format the response
         const activeAssignment = device.busAssignments[0];
+        const health = getDeviceHealth(device.lastSeen);
         const formattedDevice = {
             id: device.id,
             deviceName: device.deviceName,
-            status: device.status,
+            status: health.status,
             lastSeen: device.lastSeen,
+            minutesSinceLastPing: health.minutesSinceLastPing,
             busId: activeAssignment?.busId || null,
             busName: activeAssignment?.bus?.busName || null,
             busLicensePlate: activeAssignment?.bus?.licensePlate || null,
@@ -79,7 +82,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const { id } = await params;
         const deviceId = parseInt(id);
         const body = await request.json();
-        const { deviceName, status, busId } = body;
+        const { deviceName, busId } = body;
 
         if (isNaN(deviceId)) {
             return NextResponse.json(
@@ -93,8 +96,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             where: { id: deviceId },
             data: {
                 deviceName: deviceName,
-                status: status,
-                lastSeen: status === "Online" ? new Date() : undefined,
             },
         });
 
