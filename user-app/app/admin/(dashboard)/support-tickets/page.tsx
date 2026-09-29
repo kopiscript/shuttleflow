@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import SmallDropdown from "../components/SmallDropdown";
 
 interface SupportTicket {
     id: number;
@@ -32,7 +33,6 @@ const STATUS_BADGES: Record<string, string> = {
     Closed: "bg-[#2C2D33] text-[#87888C]",
 };
 
-const VALID_STATUSES = ["unresolved", "Open", "In Progress", "Resolved", "Closed"];
 const ITEMS_PER_PAGE = 6;
 
 const getReportTypeLabel = (type: string) => REPORT_TYPES[type] || type;
@@ -160,9 +160,20 @@ export default function SupportTicketsManagement() {
 
     // Small helpers to reduce JSX repetition
     const filterLabel = "text-[#87888C] font-['Inter'] text-sm whitespace-nowrap mr-2";
-    const filterSelect = "px-4 py-2 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm cursor-pointer";
     const filterDate = "px-4 py-2 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm [color-scheme:dark]";
     const chip = "inline-flex items-center gap-2 px-3 py-1.5 bg-[#96DDFF]/10 text-[#96DDFF] rounded-full text-xs font-['Inter'] border border-[#96DDFF]/30";
+
+    // Dropdown options
+    const statusOptions = [
+        { value: "all", label: "All" },
+        { value: "unresolved", label: "Unresolved" },
+        { value: "Resolved", label: "Resolved" },
+    ];
+
+    const reportTypeOptions = [
+        { value: "all", label: "All" },
+        ...Object.entries(REPORT_TYPES).map(([value, label]) => ({ value, label })),
+    ];
 
     return (
         <div>
@@ -188,29 +199,32 @@ export default function SupportTicketsManagement() {
             {/* FILTER BAR */}
             <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 mb-6">
                 <div className="flex items-center gap-3 flex-wrap">
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>Status:</label>
-                        <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value)} className={filterSelect}>
-                            <option value="all">All</option>
-                            <option value="unresolved">Unresolved</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
+                        <SmallDropdown
+                            value={statusFilter}
+                            onChange={handleStatusChange}
+                            options={statusOptions}
+                            width="w-40"
+                        />
                     </div>
 
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>Report Type:</label>
-                        <select value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)} className={filterSelect}>
-                            <option value="all">All</option>
-                            {Object.entries(REPORT_TYPES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
+                        <SmallDropdown
+                            value={reportTypeFilter}
+                            onChange={setReportTypeFilter}
+                            options={reportTypeOptions}
+                            width="w-48"
+                        />
                     </div>
 
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>Start:</label>
                         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={filterDate} />
                     </div>
 
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>End:</label>
                         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={filterDate} />
                     </div>
