@@ -107,7 +107,7 @@ model Admin {
 model SupportTicket {
   id          Int           @id @default(autoincrement())
   description String
-  status      String        @default("Open")
+  status      String        @default("Unresolved")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
   email       String

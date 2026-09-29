@@ -10,13 +10,9 @@ export async function GET(request: Request) {
         const endDate = searchParams.get("endDate");
         const where: any = {};
         if (status === "unresolved") {
-            where.replies = {
-                none: {},
-            };
+            where.status = "Unresolved";
         } else if (status === "resolved") {
-            where.replies = {
-                some: {},
-            };
+            where.status = "Resolved";
         }
         if (reportType && reportType !== "all") {
             where.reportType = reportType;
@@ -52,8 +48,7 @@ export async function GET(request: Request) {
             description: ticket.description,
             email: ticket.email,
             reportType: ticket.reportType,
-            status: ticket.replies.length > 0 ? "Resolved" : "Unresolved",
-            originalStatus: ticket.status,
+            status: ticket.status,
             fileUrl: ticket.fileUrl,
             fileUrls: parseFileUrls(ticket.fileUrl),
             createdAt: ticket.createdAt,
