@@ -15,6 +15,7 @@ interface BusRow {
   lat: number | null;
   lng: number | null;
   lastSeen: string | null;
+  deviceStatus: string | null;
 }
 
 interface EtaResult {
@@ -25,6 +26,7 @@ interface EtaResult {
 }
 
 // ---------- helpers ----------
+const STALE_MINUTES = 15;
 
 const formatRelativeTime = (dateString: string | null): string => {
   if (!dateString) return "No signal";
@@ -41,9 +43,13 @@ const formatRelativeTime = (dateString: string | null): string => {
 };
 
 const formatEta = (seconds: number): string => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} hrs`;
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
+  const arrival = new Date(Date.now() + seconds * 1000);
+  return arrival.toLocaleTimeString("en-MY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const formatDistance = (meters: number): string => {
@@ -90,18 +96,32 @@ const fallbackEta = (
   };
 };
 
-// Same pill colours as your other badges, just tuned for a dark card
-const getStatusBadge = (eta: EtaResult | null, lastSeen: string | null) => {
-  if (!lastSeen)
-    return {
-      label: "No Signal",
-      classes: "bg-[#2C2D33] text-[#87888C]",
-    };
+const getStatusBadge = (
+  eta: EtaResult | null,
+  lastSeen: string | null,
+  deviceStatus: string | null,
+) => {
+  // 1. Device explicitly reports itself offline → No Signal
+  if (deviceStatus === "Offline") {
+    return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
+  }
+
+  // 2. No GPS ping at all → No Signal
+  if (!lastSeen) {
+    return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
+  }
+
+  // 3. Stale GPS ping → Delayed
   const ageMin = (Date.now() - new Date(lastSeen).getTime()) / 60000;
-  if (ageMin > 10)
+  if (ageMin > STALE_MINUTES) {
     return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
-  if (eta && eta.source === "tomtom" && eta.trafficDelaySeconds > 300)
+  }
+
+  // 4. TomTom says traffic is adding >5 min → Delayed
+  if (eta && eta.source === "tomtom" && eta.trafficDelaySeconds > 300) {
     return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
+  }
+
   return { label: "On Time", classes: "bg-[#E1FFDA] text-[#3EB900]" };
 };
 
@@ -120,9 +140,12 @@ export default function ActiveRoutesTable() {
         const res = await fetch("/api/admin/buses");
         const data = await res.json();
         if (data.success) {
-          const withRoutes = (data.buses ?? []).filter(
-            (b: any) => b.routeId != null,
-          );
+          const withRoutes = (data.buses ?? [])
+          .filter((b: any) => b.routeId != null)
+          .map((b: any) => ({
+            ...b,
+            deviceStatus: b.device?.status ?? null,
+          }));
           setBuses(withRoutes);
         }
       } catch (err) {
@@ -146,6 +169,10 @@ export default function ActiveRoutesTable() {
 
     const computeEtas = async () => {
       for (const bus of buses) {
+        if (bus.deviceStatus === "Offline") {
+          setEtas((prev) => ({ ...prev, [bus.id]: null }));
+          continue;
+        }
         if (bus.lat == null || bus.lng == null) continue;
         if (bus.pickupLat  == null || bus.pickupLng  == null) continue;
 
@@ -249,7 +276,11 @@ export default function ActiveRoutesTable() {
           <tbody>
             {buses.map((bus, i) => {
               const eta = etas[bus.id] ?? null;
-              const badge = getStatusBadge(eta, bus.lastSeen);
+              const badge = getStatusBadge(eta, bus.lastSeen, bus.deviceStatus);
+
+              // Hide stale ETA / distance when the device is offline
+              const isOffline = bus.deviceStatus === "Offline";
+              const showEta = !isOffline && eta !== null;
 
               return (
                 <tr
@@ -258,7 +289,7 @@ export default function ActiveRoutesTable() {
                     i % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                   }`}
                 >
-                  {/* Route ID (R007, R011, ...) */}
+                  {/* Route ID */}
                   <td className="py-4 pl-4 pr-4 align-middle whitespace-nowrap">
                     <span className="inline-block px-3 py-1 rounded-md text-sm font-bold font-['Inter'] bg-[#96DDFF] text-[#171821]">
                       {formatRouteId(bus.routeId)}
@@ -293,7 +324,7 @@ export default function ActiveRoutesTable() {
                     </div>
                   </td>
 
-                  {/* Chips: Distance + Updated */}
+                  {/* Distance + Updated */}
                   <td className="py-4 pr-2 align-middle">
                     <div className="flex items-center gap-2 flex-wrap">
                       {eta && (
