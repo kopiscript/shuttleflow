@@ -1,6 +1,6 @@
 // app/admin/(dashboard)/support-tickets/page.tsx
 "use client";
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { Suspense, useEffect, useState, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SmallDropdown from "../components/SmallDropdown";
 
@@ -54,7 +54,7 @@ const CHIP =
     "inline-flex items-center gap-2 px-3 py-1.5 bg-[#96DDFF]/10 text-[#96DDFF] rounded-full text-xs font-['Inter'] border border-[#96DDFF]/30";
 const PAGE_BTN = "px-3 py-2 rounded-lg font-['Inter'] text-sm transition";
 
-export default function SupportTicketsManagement() {
+function SupportTicketsManagement() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -346,5 +346,12 @@ export default function SupportTicketsManagement() {
                 )}
             </div>
         </div>
+    );
+}
+export default function SupportTicketsPage() {
+    return (
+        <Suspense fallback={<div role="status" className="text-[#87888C] font-['Inter']">Loading support tickets...</div>}>
+            <SupportTicketsManagement />
+        </Suspense>
     );
 }
