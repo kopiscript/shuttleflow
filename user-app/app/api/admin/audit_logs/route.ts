@@ -22,7 +22,7 @@ export async function GET() {
                 admin: { select: { username: true, email: true } },
             },
             orderBy: { createdAt: "desc" },
-            take: 100,
+            take: 300,
         });
 
         return NextResponse.json({ success: true, logs });
