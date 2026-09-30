@@ -107,16 +107,13 @@ export default function LeafletMap({ bus }: { bus: Bus }) {
   useEffect(() => {
     if (!bus || !mapRef.current || !markerRef.current) return;
 
-    const hasLocation = bus.device?.lastLat && bus.device?.lastLng;
+    const lat = bus.device?.lastLat;
+    const lng = bus.device?.lastLng;
 
-    if (hasLocation) {
-      const lat = bus.device.lastLat!;
-      const lng = bus.device.lastLng!;
+    if (typeof lat === "number" && typeof lng === "number") {
       markerRef.current.setLatLng([lat, lng]);
       markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${
-          bus.device?.status || "Unknown"
-        }<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
+        `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${bus.device?.status || "Unknown"}<br/>Last seen: ${formatDate(bus.device?.lastSeen || "")}`
       );
       mapRef.current.setView([lat, lng], mapRef.current.getZoom());
 

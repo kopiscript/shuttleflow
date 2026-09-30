@@ -32,14 +32,14 @@ export default function FullMap({ busId }: { busId: string }) {
   const [mapInitialized, setMapInitialized] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
-  
+
   // Use a ref callback to ensure we get the DOM element when ready
   const mapContainerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
-    
+
     // If map already exists, don't reinitialize
     if (mapRef.current) return;
-    
+
     console.log("✅ Map container node is ready:", node);
     console.log("📏 Container height:", node.clientHeight);
     console.log("📏 Container width:", node.clientWidth);
@@ -96,20 +96,19 @@ export default function FullMap({ busId }: { busId: string }) {
   // Update marker when bus data loads AND map is initialized
   useEffect(() => {
     if (!bus || !mapInitialized || !mapRef.current || !markerRef.current) {
-      console.log("⏳ Waiting for map or bus data...", { 
-        hasBus: !!bus, 
-        mapInitialized, 
+      console.log("⏳ Waiting for map or bus data...", {
+        hasBus: !!bus,
+        mapInitialized,
         hasMap: !!mapRef.current,
-        hasMarker: !!markerRef.current 
+        hasMarker: !!markerRef.current
       });
       return;
     }
 
-    const hasLocation = bus.device?.lastLat && bus.device?.lastLng;
+    const lat = bus.device?.lastLat;
+    const lng = bus.device?.lastLng;
 
-    if (hasLocation) {
-      const lat = bus.device.lastLat!;
-      const lng = bus.device.lastLng!;
+    if (typeof lat === "number" && typeof lng === "number") {
       console.log(`📍 Updating marker to: ${lat}, ${lng}`);
       markerRef.current.setLatLng([lat, lng]);
       markerRef.current.setPopupContent(
@@ -173,8 +172,8 @@ export default function FullMap({ busId }: { busId: string }) {
       {/* Full Screen Map - with explicit height */}
       <div className="flex-1 relative min-h-0 bg-[#1D1E27]">
         {/* Map container with ref callback */}
-        <div 
-          ref={mapContainerRef} 
+        <div
+          ref={mapContainerRef}
           className="w-full h-full"
           style={{ minHeight: "calc(100vh - 80px)" }} // Force height
         />
