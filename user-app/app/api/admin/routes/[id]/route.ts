@@ -52,7 +52,7 @@ export async function GET(
       assignedBuses: route.busAssignments
         .filter((a) => a.endedAt === null)
         .map((assignment) => {
-          const hasDevice = (assignment.bus.deviceAssignments ?? []).some(
+          const activeDevice = (assignment.bus.deviceAssignments ?? []).find(
             (d) => d.endedAt === null
           );
           return {
@@ -60,7 +60,14 @@ export async function GET(
             busName: assignment.bus.busName,
             licensePlate: assignment.bus.licensePlate,
             status: assignment.bus.status,
-            hasDevice, // lets the admin UI show *why* a route isn't active
+            hasDevice: !!activeDevice,
+            device: activeDevice?.device
+              ? {
+                id: activeDevice.device.id,
+                deviceName: activeDevice.device.deviceName,
+                status: activeDevice.device.status,
+              }
+              : null,
           };
         }),
       createdAt: route.createdAt,
