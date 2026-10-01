@@ -49,10 +49,10 @@ export default function AdminDashboard() {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Your side: string state for SmallDropdown
+  // string state for SmallDropdown
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
 
-  // Teammate's side: tickets card
+  // tickets card
   const [unresolvedTickets, setUnresolvedTickets] = useState(0);
   const [unresolvedTicketList, setUnresolvedTicketList] = useState<TicketPreview[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Your side: convert string → number at the boundary for the map
+  // convert string → number at the boundary for the map
   const numericRouteId = selectedRouteId ? Number(selectedRouteId) : null;
 
   return (

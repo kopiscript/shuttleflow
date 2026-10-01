@@ -189,74 +189,114 @@ function SupportTicketsManagement() {
 
             {/* Filter bar */}
             <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 mb-6">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center">
                         <label className={filterLabel}>Status:</label>
-                        <select value={statusFilter} onChange={(e) => handleStatusChange(e.target.value)} className={filterSelect}>
-                            <option value="all">All</option>
-                            <option value="unresolved">Unresolved</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
+                        <SmallDropdown
+                            value={statusFilter}
+                            onChange={handleStatusChange}
+                            options={[
+                                { value: "all", label: "All" },
+                                { value: "unresolved", label: "Unresolved" },
+                                { value: "resolved", label: "Resolved" },
+                            ]}
+                            width="w-40"
+                        />
                     </div>
-
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>Report Type:</label>
-                        <select value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)} className={filterSelect}>
-                            <option value="all">All</option>
-                            {Object.entries(REPORT_TYPES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
+                        <SmallDropdown
+                            value={reportTypeFilter}
+                            onChange={setReportTypeFilter}
+                            options={[
+                                { value: "all", label: "All" },
+                                ...Object.entries(REPORT_TYPES).map(([value, label]) => ({
+                                    value,
+                                    label,
+                                })),
+                            ]}
+                            width="w-48"
+                        />
                     </div>
-
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>Start:</label>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={filterDate} />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className={filterDate}
+                        />
                     </div>
-
-                    <div>
+                    <div className="flex items-center">
                         <label className={filterLabel}>End:</label>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={filterDate} />
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className={filterDate}
+                        />
                     </div>
                 </div>
-
-                {/* Active filter chips */}
                 {hasActiveFilters && (
                     <div className="flex items-center gap-2 flex-wrap mt-4 pt-4 border-t border-[#2C2D33]">
                         {statusFilter !== "all" && (
                             <span className={CHIP}>
                                 Status: {statusFilter === "resolved" ? "Resolved" : "Unresolved"}
-                                <button onClick={() => handleStatusChange("all")} className="hover:text-white">✕</button>
+                                <button
+                                    onClick={() => handleStatusChange("all")}
+                                    className="hover:text-white"
+                                >
+                                    ✕
+                                </button>
                             </span>
                         )}
                         {reportTypeFilter !== "all" && (
                             <span className={CHIP}>
                                 Type: {getReportTypeLabel(reportTypeFilter)}
-                                <button onClick={() => setReportTypeFilter("all")} className="hover:text-white">✕</button>
+                                <button
+                                    onClick={() => setReportTypeFilter("all")}
+                                    className="hover:text-white"
+                                >
+                                    ✕
+                                </button>
                             </span>
                         )}
                         {startDate && (
                             <span className={CHIP}>
                                 From: {formatDateOnly(startDate)}
-                                <button onClick={() => setStartDate("")} className="hover:text-white">✕</button>
+                                <button
+                                    onClick={() => setStartDate("")}
+                                    className="hover:text-white"
+                                >
+                                    ✕
+                                </button>
                             </span>
                         )}
                         {endDate && (
                             <span className={CHIP}>
                                 To: {formatDateOnly(endDate)}
-                                <button onClick={() => setEndDate("")} className="hover:text-white">✕</button>
+                                <button
+                                    onClick={() => setEndDate("")}
+                                    className="hover:text-white"
+                                >
+                                    ✕
+                                </button>
                             </span>
                         )}
-                        <button onClick={clearFilters} className="text-[#96DDFF] hover:text-white hover:underline font-['Inter'] text-xs ml-1 transition">
+                        <button
+                            onClick={clearFilters}
+                            className="text-[#96DDFF] hover:text-white hover:underline font-['Inter'] text-xs ml-1 transition"
+                        >
                             Clear filters
                         </button>
                     </div>
                 )}
-
-                {/* Results count */}
                 {!loading && !error && (
                     <div className="text-[#87888C] font-['Inter'] text-xs mt-4">
                         Showing {paginatedTickets.length === 0 ? 0 : startIndex + 1}–
                         {Math.min(startIndex + ITEMS_PER_PAGE, filteredTickets.length)} of{" "}
-                        {filteredTickets.length} {filteredTickets.length === 1 ? "ticket" : "tickets"}
+                        {filteredTickets.length}{" "}
+                        {filteredTickets.length === 1 ? "ticket" : "tickets"}
                     </div>
                 )}
             </div>
