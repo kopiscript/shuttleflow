@@ -90,7 +90,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5" autoComplete="on">
             <div>
               <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
-                Username
+                Username or Email
               </label>
               <input
                 type="text"
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
                 required
               />
             </div>

@@ -11,49 +11,55 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { success: false, error: "Username and password are required" },
+        { success: false, error: "Username/email and password are required" },
         { status: 400 }
       );
     }
 
-    const admin = await prisma.admin.findUnique({
-      where: { username },
+    // Accept either username OR email
+    const admin = await prisma.admin.findFirst({
+      where: {
+        OR: [{ username }, { email: username }],
+      },
     });
 
     if (!admin) {
+      // Log failed login attempt (unknown user)
       await logAdminAudit({
+        adminId: null,
         category: "AUTH",
         action: "LOGIN_FAILED",
-        details: { attemptedUsername: username, reason: "User not found" },
+        targetType: "Admin",
+        targetId: username,
+        details: { reason: "User not found" },
         req: request,
       });
 
       return NextResponse.json(
-        { success: false, error: "Invalid username or password" },
+        { success: false, error: "Invalid username/email or password" },
         { status: 401 }
       );
     }
 
     const isValid = await bcrypt.compare(password, admin.passwordHash);
     if (!isValid) {
+      // Log failed login attempt (wrong password)
       await logAdminAudit({
         adminId: admin.id,
         category: "AUTH",
         action: "LOGIN_FAILED",
-        details: { attemptedUsername: username, reason: "Incorrect password" },
+        targetType: "Admin",
+        targetId: admin.id,
+        details: { reason: "Invalid password" },
         req: request,
       });
 
       return NextResponse.json(
-        { success: false, error: "Invalid username or password" },
+        { success: false, error: "Invalid username/email or password" },
         { status: 401 }
       );
     }
 
-    // Safely read role even if IDE type cache is still refreshing
-    const role = (admin as any).role || "ADMIN";
-
-    // Pass role and rememberMe into session creation
     await createSession(
       {
         adminId: admin.id,
@@ -63,10 +69,14 @@ export async function POST(request: Request) {
       rememberMe === true
     );
 
+    // Log successful login
     await logAdminAudit({
       adminId: admin.id,
       category: "AUTH",
       action: "LOGIN_SUCCESS",
+      targetType: "Admin",
+      targetId: admin.id,
+      details: { username: admin.username },
       req: request,
     });
 
