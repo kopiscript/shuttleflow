@@ -64,13 +64,16 @@ export async function PUT(request: Request) {
       data: { passwordHash: newPasswordHash },
     });
 
-    // Record the password change event in the audit log
+    // Audit log: password changed
     await logAdminAudit({
       adminId: session.adminId,
       category: "AUTH",
       action: "PASSWORD_CHANGED",
       targetType: "Admin",
       targetId: session.adminId,
+      details: {
+        changedAt: new Date().toISOString(),
+      },
       req: request,
     });
 

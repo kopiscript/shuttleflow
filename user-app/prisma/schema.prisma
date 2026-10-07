@@ -91,15 +91,18 @@ model Location {
 }
 
 model Admin {
-  id             Int             @id @default(autoincrement())
-  username       String          @unique
-  passwordHash   String          @map("password_hash")
-  email          String          @unique
-  role           AdminRole       @default(ADMIN)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  resetToken       String?         @map("reset_token")
-  resetTokenExpiry DateTime?       @map("reset_token_expiry")
-  adminAuditLogs AdminAuditLog[]
+  id                  Int             @id @default(autoincrement())
+  username            String          @unique
+  passwordHash        String          @map("password_hash")
+  email               String          @unique
+  role                AdminRole       @default(ADMIN)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  resetToken          String?         @map("reset_token")
+  resetTokenExpiry    DateTime?       @map("reset_token_expiry")
+  pendingEmail        String?         @map("pending_email")
+  emailChangeToken    String?         @map("email_change_token")
+  emailChangeExpiry   DateTime?       @map("email_change_expiry")
+  adminAuditLogs      AdminAuditLog[]
 
   @@map("admins")
 }
