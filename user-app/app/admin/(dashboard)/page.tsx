@@ -5,8 +5,17 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable from "./components/ActiveRoutesTable";
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -56,6 +65,16 @@ export default function AdminDashboard() {
   const [unresolvedTickets, setUnresolvedTickets] = useState(0);
   const [unresolvedTicketList, setUnresolvedTicketList] = useState<TicketPreview[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+
+  // Road-following route paths, keyed by busId.
+  // - routePaths:  bus → pickup   (always fetched when bus is online)
+  // - dropoffPaths: bus → dropoff (only fetched for the selected route)
+  const [routePaths, setRoutePaths] = useState<
+    Record<number, [number, number][] | null>
+  >({});
+  const [dropoffPaths, setDropoffPaths] = useState<
+    Record<number, [number, number][] | null>
+  >({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -111,7 +130,7 @@ export default function AdminDashboard() {
         Welcome to the admin panel.
       </p>
 
-      {/* Map + Tickets row — teammate's grid layout, your dropdown styling */}
+      {/* Map + Tickets row */}
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch">
         {/* Map card */}
         <div className="xl:col-span-3 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
@@ -121,7 +140,6 @@ export default function AdminDashboard() {
               Active Route Map
             </h2>
 
-            {/* Your side: SmallDropdown replaces native <select> */}
             <SmallDropdown
               value={selectedRouteId}
               onChange={setSelectedRouteId}
@@ -156,31 +174,119 @@ export default function AdminDashboard() {
                 routes={routes}
                 buses={buses}
                 selectedRouteId={numericRouteId}
+                routePaths={routePaths}
+                dropoffPaths={dropoffPaths}
               />
             )}
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-6 mt-4">
+          <div className="flex items-center gap-6 mt-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#1A4B9B]"></div>
+              <svg width="14" height="18" viewBox="0 0 34 44">
+                <path
+                  d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43
+                     C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
+                  fill="#3b82f6"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                />
+                <text
+                  x="17"
+                  y="20"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="13"
+                  fontWeight="700"
+                  fill="#ffffff"
+                >
+                  P
+                </text>
+              </svg>
               <span className="text-[#87888C] font-['Inter'] text-xs">
                 Pickup Stop
               </span>
             </div>
+
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#3EB900]"></div>
+              <svg width="14" height="18" viewBox="0 0 34 44">
+                <path
+                  d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43
+                     C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
+                  fill="#bb0c0c"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                />
+                <text
+                  x="17"
+                  y="20"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="13"
+                  fontWeight="700"
+                  fill="#ffffff"
+                >
+                  D
+                </text>
+              </svg>
               <span className="text-[#87888C] font-['Inter'] text-xs">
                 Drop-off Stop
               </span>
             </div>
+
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-[#FEB002]"></div>
               <span className="text-[#87888C] font-['Inter'] text-xs">
                 Active Bus
               </span>
             </div>
+
+            <div className="flex items-center gap-2">
+              <svg width="24" height="8" viewBox="0 0 24 8">
+                <line
+                  x1="1"
+                  y1="4"
+                  x2="23"
+                  y2="4"
+                  stroke="#3b82f6"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Bus → Pickup
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <svg width="24" height="8" viewBox="0 0 24 8">
+                <line
+                  x1="1"
+                  y1="4"
+                  x2="23"
+                  y2="4"
+                  stroke="#bb0c0c"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="text-[#87888C] font-['Inter'] text-xs">
+                Bus → Drop-off (selected route)
+              </span>
+            </div>
           </div>
+
+          {/* Note about which lines are real vs estimated */}
+          <p className="text-[#87888C] font-['Inter'] text-xs mt-3 leading-5">
+            <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+            Solid road-following lines are only drawn for{" "}
+            <span className="text-white">online devices</span>. Offline or
+            not-yet-received devices show a{" "}
+            <span className="text-white">dashed straight line</span> between the
+            pickup and drop-off points instead.
+          </p>
         </div>
 
         {/* Teammate's side: unresolved tickets card */}
@@ -189,6 +295,43 @@ export default function AdminDashboard() {
           tickets={unresolvedTicketList}
           loading={ticketsLoading}
         />
+      </div>
+
+      {/* Active routes table — passes the ETA callback and the selected route */}
+      <div className="mt-6">
+        <ActiveRoutesTable
+          selectedRouteId={numericRouteId}
+          onEtaUpdate={(etas) => {
+            const pickup: Record<number, [number, number][] | null> = {};
+            const dropoff: Record<number, [number, number][] | null> = {};
+            for (const [busId, eta] of Object.entries(etas)) {
+              pickup[Number(busId)] = eta?.routePath ?? null;
+              dropoff[Number(busId)] = eta?.dropoffPath ?? null;
+            }
+            setRoutePaths(pickup);
+            setDropoffPaths(dropoff);
+          }}
+        />
+      </div>
+
+      {/* Active routes table */}
+      <div className="mt-6">
+        <ActiveRoutesTable />
+      </div>
+
+      {/* Active routes table */}
+      <div className="mt-6">
+        <ActiveRoutesTable />
+      </div>
+
+      {/* Active routes table */}
+      <div className="mt-6">
+        <ActiveRoutesTable />
+      </div>
+
+      {/* Active routes table */}
+      <div className="mt-6">
+        <ActiveRoutesTable />
       </div>
 
       {/* Active routes table */}
