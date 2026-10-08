@@ -5,17 +5,8 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable from "./components/ActiveRoutesTable";
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -312,16 +303,6 @@ export default function AdminDashboard() {
             setDropoffPaths(dropoff);
           }}
         />
-      </div>
-
-      {/* Active routes table */}
-      <div className="mt-6">
-        <ActiveRoutesTable />
-      </div>
-
-      {/* Active routes table */}
-      <div className="mt-6">
-        <ActiveRoutesTable />
       </div>
 
       {/* Active routes table */}

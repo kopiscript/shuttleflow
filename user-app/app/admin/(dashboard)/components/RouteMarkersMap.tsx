@@ -33,12 +33,19 @@ interface RouteMarkersMapProps {
   routes: RouteMarkerData[];
   buses?: BusMarkerData[];
   selectedRouteId?: number | null;
+  // Map of busId → bus → pickup road-following path.
+  routePaths?: Record<number, [number, number][] | null>;
+  // Map of busId → bus → dropoff road-following path.
+  // Only populated for the currently selected route.
+  dropoffPaths?: Record<number, [number, number][] | null>;
 }
 
 export default function RouteMarkersMap({
   routes,
   buses = [],
   selectedRouteId = null,
+  routePaths = {},
+  dropoffPaths = {},
 }: RouteMarkersMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,15 +80,14 @@ export default function RouteMarkersMap({
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
-      markersLayerRef.current = null; // 👈 FIX #1: honestly null the ref
+      markersLayerRef.current = null;
     };
   }, []);
 
-  // Update markers
+  // Update markers + route lines
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
 
-    // 👈 FIX #2: capture a stable local reference for this effect run
     const layer = markersLayerRef.current;
     layer.clearLayers();
 
@@ -93,7 +99,22 @@ export default function RouteMarkersMap({
         ? routes
         : routes.filter((r) => r.id === selectedRouteId);
 
-    // Routes → pickup + dropoff + dashed line
+    // Filter buses by selection (used later for both markers and path lookup)
+    const visibleBuses =
+      selectedRouteId == null
+        ? buses
+        : buses.filter((b) => b.routeIds?.includes(Number(selectedRouteId)));
+
+    // Build a quick lookup: routeId → bus (first bus per route)
+    const busByRouteId = new Map<number, BusMarkerData>();
+    for (const bus of visibleBuses) {
+      const ids = bus.routeIds ?? (bus.routeId != null ? [bus.routeId] : []);
+      for (const rid of ids) {
+        if (!busByRouteId.has(rid)) busByRouteId.set(rid, bus);
+      }
+    }
+
+    // Routes → pickup + dropoff + route lines
     visibleRoutes.forEach((route) => {
       if (
         route.pickupLat == null ||
@@ -109,6 +130,73 @@ export default function RouteMarkersMap({
         route.dropoffLng,
       ];
 
+      // Find the road-following path for this route, if the assigned
+      // bus has an ETA with a TomTom path recorded.
+      const assignedBus = busByRouteId.get(route.id);
+      const pickupPath = assignedBus ? routePaths[assignedBus.id] : null;
+      const dropoffPath = assignedBus ? dropoffPaths[assignedBus.id] : null;
+
+      const hasRealPickupPath =
+        Array.isArray(pickupPath) && pickupPath.length > 1;
+      const hasRealDropoffPath =
+        Array.isArray(dropoffPath) && dropoffPath.length > 1;
+
+      // ---- Bus → Pickup line (blue) ----
+      if (hasRealPickupPath) {
+        L.polyline(pickupPath!, {
+          color: "#3b82f6",
+          weight: 5,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
+        })
+          .addTo(layer)
+          .bindTooltip(`Bus → ${route.pickupStop ?? "Pickup"}`, {
+            sticky: true,
+          });
+
+        for (const coord of pickupPath!) allCoords.push(coord);
+      } else {
+        // No road path yet (TomTom pending or fallback): straight dashed line
+        L.polyline([pickupCoord, dropoffCoord], {
+          color: "#3b82f6",
+          weight: 3,
+          dashArray: "5, 10",
+          opacity: 0.8,
+          lineCap: "round",
+          lineJoin: "round",
+        })
+          .addTo(layer)
+          .bindTooltip(
+            `${route.pickupStop ?? "Pickup"} → ${
+              route.dropoffStop ?? "Drop-off"
+            } (estimated)`,
+            { sticky: true }
+          );
+
+        allCoords.push(pickupCoord, dropoffCoord);
+      }
+
+      // ---- Bus → Dropoff line (amber) ----
+      // Only drawn when we actually have a real drop-off path
+      // (which only happens when this route is selected).
+      if (hasRealDropoffPath) {
+        L.polyline(dropoffPath!, {
+          color: "#bb0c0c",
+          weight: 5,
+          opacity: 0.85,
+          lineCap: "round",
+          lineJoin: "round",
+        })
+          .addTo(layer)
+          .bindTooltip(`Bus → ${route.dropoffStop ?? "Drop-off"}`, {
+            sticky: true,
+          });
+
+        for (const coord of dropoffPath!) allCoords.push(coord);
+      }
+
+      // Draw pickup and dropoff markers on top of the lines
       L.marker(pickupCoord, { icon: pickupIcon })
         .bindPopup(
           `<b>🚏 ${route.routeName}</b><br/>Pickup: ${route.pickupStop ?? ""}`
@@ -122,26 +210,10 @@ export default function RouteMarkersMap({
           }`
         )
         .addTo(layer);
-
-      L.polyline([pickupCoord, dropoffCoord], {
-        color: "#96DDFF",
-        weight: 2,
-        dashArray: "5, 10",
-        opacity: 0.6,
-      }).addTo(layer);
-
-      allCoords.push(pickupCoord, dropoffCoord);
     });
-
-    // Filter buses by selection
-    const visibleBuses =
-      selectedRouteId == null
-        ? buses
-        : buses.filter((b) => b.routeIds?.includes(Number(selectedRouteId)));
 
     // Buses → yellow marker
     visibleBuses.forEach((bus) => {
-      // 👈 FIX #3: guard null coordinates before constructing the marker
       if (bus.lat == null || bus.lng == null) return;
 
       const coord: [number, number] = [bus.lat, bus.lng];
@@ -158,11 +230,30 @@ export default function RouteMarkersMap({
     });
 
     if (allCoords.length > 0) {
-      mapRef.current.fitBounds(L.latLngBounds(allCoords), {
-        padding: [50, 50],
-      });
+      // Drop any (0, 0) / NaN / Infinity coords that would break the zoom
+      const validCoords = allCoords.filter(
+        ([lat, lng]) =>
+          Number.isFinite(lat) &&
+          Number.isFinite(lng) &&
+          !(lat === 0 && lng === 0)
+      );
+
+      if (validCoords.length > 0) {
+        mapRef.current.fitBounds(L.latLngBounds(validCoords), {
+          padding: [50, 50],
+        });
+      }
     }
-  }, [routes, buses, selectedRouteId, pickupIcon, dropoffIcon, busIcon]);
+  }, [
+    routes,
+    buses,
+    selectedRouteId,
+    routePaths,
+    dropoffPaths,
+    pickupIcon,
+    dropoffIcon,
+    busIcon,
+  ]);
 
   return (
     <div
