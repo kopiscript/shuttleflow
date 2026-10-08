@@ -10,7 +10,7 @@ const createTeardropIcon = (color: string, ring: string, label: string) =>
   L.divIcon({
     className: "teardrop-marker",
     html: `
-      <div style="position: relative; width: 34px; height: 44px;">
+      <div style="position: relative; width: 36px; height: 44px;">
         <!-- Pulse ring behind the pin head -->
         <div style="
           position: absolute; top: 8px; left: 50%;
@@ -21,7 +21,7 @@ const createTeardropIcon = (color: string, ring: string, label: string) =>
         "></div>
 
         <!-- Teardrop / pin shape (SVG) -->
-        <svg width="34" height="44" viewBox="0 0 34 44"
+        <svg width="34" height="44" viewBox="0 0 36 44"
              style="position: absolute; top: 0; left: 0; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));">
           <!-- Pin body: circle head + triangle tip -->
           <path d="M17 1
@@ -66,7 +66,7 @@ export const createBusIcon = () =>
   L.divIcon({
     className: "bus-marker",
     html: `
-      <div style="position: relative; width: 36px; height: 36px;">
+      <div style="position: relative; width: 38px; height: 36px;">
         <div style="
           position: absolute; top: 50%; left: 50%;
           transform: translate(-50%, -50%);
