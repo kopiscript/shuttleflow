@@ -1,13 +1,22 @@
 // app/admin/(dashboard)/support-tickets/[id]/page.tsx
 "use client";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
+
 interface TicketReply {
     id: number;
     message: string;
     sentBy: string;
     sentAt: string;
 }
+
+interface TicketAttachment {
+    key: string;
+    fileName: string;
+    url: string;
+}
+
 interface SupportTicket {
     id: number;
     description: string;
@@ -15,14 +24,16 @@ interface SupportTicket {
     reportType: string;
     status: string;
     fileUrl: string | null;
-    fileUrls: string[];
+    fileUrls: TicketAttachment[];
     createdAt: string;
     updatedAt: string;
     replies: TicketReply[];
 }
+
 interface PageProps {
     params: Promise<{ id: string }>;
 }
+
 export default function TicketDetailsPage({ params }: PageProps) {
     const [ticket, setTicket] = useState<SupportTicket | null>(null);
     const [loading, setLoading] = useState(true);
@@ -33,6 +44,7 @@ export default function TicketDetailsPage({ params }: PageProps) {
         type: "success" | "error";
         message: string;
     } | null>(null);
+
     useEffect(() => {
         const unwrapParams = async () => {
             const { id } = await params;
@@ -40,6 +52,7 @@ export default function TicketDetailsPage({ params }: PageProps) {
         };
         unwrapParams();
     }, [params]);
+
     const fetchTicket = async (id: number) => {
         try {
             const response = await fetch(`/api/admin/support-tickets/${id}`);
@@ -53,10 +66,12 @@ export default function TicketDetailsPage({ params }: PageProps) {
             setLoading(false);
         }
     };
+
     useEffect(() => {
         if (!ticketId) return;
         fetchTicket(ticketId);
     }, [ticketId]);
+
     const handleSendReply = async () => {
         if (!ticket || !replyMessage.trim()) return;
         setSendingReply(true);
@@ -66,12 +81,8 @@ export default function TicketDetailsPage({ params }: PageProps) {
                 `/api/admin/support-tickets/${ticket.id}/reply`,
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        message: replyMessage.trim(),
-                    }),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: replyMessage.trim() }),
                 }
             );
             const data = await response.json();
@@ -98,6 +109,7 @@ export default function TicketDetailsPage({ params }: PageProps) {
             setSendingReply(false);
         }
     };
+
     const formatDate = (dateString: string) => {
         if (!dateString) return "N/A";
         return new Date(dateString).toLocaleString("en-US", {
@@ -109,15 +121,18 @@ export default function TicketDetailsPage({ params }: PageProps) {
             hour12: true,
         });
     };
+
     const getReportTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
             route_problem: "Route Problem",
             feedback: "Feedback",
             bus_delay: "Bus Delay",
+            driver_issue: "Driver Issue",
             other: "Other",
         };
         return labels[type] || type;
     };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -127,6 +142,7 @@ export default function TicketDetailsPage({ params }: PageProps) {
             </div>
         );
     }
+
     if (!ticket) {
         return (
             <div className="flex items-center justify-center h-64 flex-col gap-4">
@@ -142,27 +158,20 @@ export default function TicketDetailsPage({ params }: PageProps) {
             </div>
         );
     }
+
     const isResolved = ticket.replies.length > 0;
+
     return (
         <div>
+            {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                     <Link
                         href="/admin/support-tickets"
                         className="text-white hover:text-[#96DDFF] transition"
                     >
-                        <svg
-                            className="w-8 h-8"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                            />
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </Link>
                     <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -170,56 +179,46 @@ export default function TicketDetailsPage({ params }: PageProps) {
                     </h1>
                 </div>
             </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Ticket Information */}
                 <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 h-fit">
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                         Ticket Information
                     </h3>
                     <div>
                         <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Ticket ID
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Ticket ID</span>
                             <span className="text-white font-['Inter'] text-sm">
                                 T{String(ticket.id).padStart(3, "0")}
                             </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Email
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Email</span>
                             <span className="text-white font-['Inter'] text-sm break-all text-right">
                                 {ticket.email}
                             </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Report Type
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Report Type</span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {getReportTypeLabel(ticket.reportType)}
                             </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Submitted
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Submitted</span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {formatDate(ticket.createdAt)}
                             </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Last Updated
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Last Updated</span>
                             <span className="text-white font-['Inter'] text-sm">
                                 {formatDate(ticket.updatedAt)}
                             </span>
                         </div>
                         <div className="flex justify-between items-center py-3">
-                            <span className="text-[#87888C] font-['Inter'] text-sm">
-                                Status
-                            </span>
+                            <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
                             <span
                                 className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${isResolved
                                     ? "bg-[#E1FFDA] text-[#3EB900]"
@@ -231,7 +230,10 @@ export default function TicketDetailsPage({ params }: PageProps) {
                         </div>
                     </div>
                 </div>
+
+                {/* Description / Attachments / Reply */}
                 <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
+                    {/* Description */}
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
                         User Description
                     </h3>
@@ -241,51 +243,41 @@ export default function TicketDetailsPage({ params }: PageProps) {
                         </p>
                     </div>
                     <div className="border-t border-[#2C2D33] my-6 -mx-6" />
+
+                    {/* Attachments */}
                     <h3 className="text-white font-bold font-['Inter'] text-base mb-3">
                         Attachments ({ticket.fileUrls.length})
                     </h3>
                     {ticket.fileUrls.length === 0 ? (
-                        <p className="text-[#87888C] font-['Inter'] text-sm">
-                            No files attached
-                        </p>
+                        <p className="text-[#87888C] font-['Inter'] text-sm">No files attached</p>
                     ) : (
                         <div className="grid grid-cols-3 gap-3">
-                            {ticket.fileUrls.map((url, index) => {
-                                const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(url);
+                            {ticket.fileUrls.map((file, index) => {
+                                const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(file.fileName);
                                 return (
                                     <a
-                                        key={index}
-                                        href={url}
+                                        key={file.key}
+                                        href={file.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="bg-[#171821] rounded-xl border border-[#2C2D33] overflow-hidden hover:border-[#96DDFF] transition group"
                                     >
                                         {isImage ? (
                                             <img
-                                                src={url}
+                                                src={file.url}
                                                 alt={`Attachment ${index + 1}`}
                                                 className="w-full h-24 object-cover"
                                             />
                                         ) : (
                                             <div className="w-full h-24 flex items-center justify-center">
-                                                <svg
-                                                    className="w-8 h-8 text-[#87888C]"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                    />
+                                                <svg className="w-8 h-8 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
                                             </div>
                                         )}
                                         <div className="p-2">
                                             <p className="text-white font-['Inter'] text-xs truncate group-hover:text-[#96DDFF]">
-                                                {url.split("/").pop()}
+                                                {file.fileName}
                                             </p>
                                         </div>
                                     </a>
@@ -294,6 +286,8 @@ export default function TicketDetailsPage({ params }: PageProps) {
                         </div>
                     )}
                     <div className="border-t border-[#2C2D33] my-6 -mx-6" />
+
+                    {/* Admin Response */}
                     {isResolved ? (
                         <div>
                             <div className="flex items-center justify-between mb-3">
@@ -354,18 +348,8 @@ export default function TicketDetailsPage({ params }: PageProps) {
                                     disabled={sendingReply || !replyMessage.trim()}
                                     className="px-5 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <svg
-                                        className="w-4 h-4"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                                        />
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                     </svg>
                                     {sendingReply ? "Sending..." : "Send Reply"}
                                 </button>

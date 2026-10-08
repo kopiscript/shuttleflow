@@ -299,6 +299,8 @@ export default function DeviceDetailsPage({ params }: PageProps) {
             )}
           </div>
         </div>
+
+        {/* Right: Device Health Card */}
         <div className="w-full md:w-[400px] flex-shrink-0">
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
             <h3 className="text-white font-bold font-['Inter'] text-base mb-4">

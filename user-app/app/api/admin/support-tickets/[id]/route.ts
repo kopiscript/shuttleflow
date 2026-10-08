@@ -43,23 +43,46 @@ export async function GET(
             );
         }
         const resolved = ticket.replies.length > 0;
+
+        const fileKeys = parseFileUrls(ticket.fileUrl);
+
+        const attachments = fileKeys.map((key) => ({
+            key,
+
+            fileName:
+                key.split("/").pop() ||
+                "Attachment",
+
+            url:
+                `/api/admin/support-tickets/attachment?key=${encodeURIComponent(key)}`,
+        }));
+
         return NextResponse.json({
             success: true,
+
             ticket: {
                 id: ticket.id,
                 description: ticket.description,
                 email: ticket.email,
                 reportType: ticket.reportType,
+
                 status: resolved
                     ? "Resolved"
                     : "Unresolved",
+
                 originalStatus: ticket.status,
+
                 fileUrl: ticket.fileUrl,
-                fileUrls: parseFileUrls(ticket.fileUrl),
+
+                fileUrls: attachments,
+
                 createdAt: ticket.createdAt,
                 updatedAt: ticket.updatedAt,
+
                 replies: ticket.replies,
+
                 replyCount: ticket.replies.length,
+
                 hasAdminReply: resolved,
             },
         });
