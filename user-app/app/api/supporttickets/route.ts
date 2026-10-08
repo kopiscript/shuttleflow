@@ -38,7 +38,10 @@ export async function POST(request: NextRequest) {
                 email,
                 reportType,
                 description,
-                fileUrl: fileUrls ? JSON.stringify(fileUrls) : null, // Store as JSON string
+                fileUrl:
+                    Array.isArray(fileUrls) && fileUrls.length > 0
+                        ? JSON.stringify(fileUrls)
+                        : null,
                 status: "Open",
             },
         });

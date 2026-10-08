@@ -26,24 +26,34 @@ export default function SupportPage() {
 
         try {
             let fileUrls: string[] = [];
+
             if (selectedFiles && selectedFiles.length > 0) {
                 for (const file of selectedFiles) {
-                    const formData = new FormData();
-                    formData.append('file', file);
 
-                    const uploadResponse = await fetch('/api/fileupload', {
-                        method: 'POST',
-                        body: formData,
-                    });
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    const uploadResponse = await fetch(
+                        "/api/fileupload",
+                        {
+                            method: "POST",
+                            body: formData,
+                        }
+                    );
 
                     const uploadData = await uploadResponse.json();
-                    if (uploadData.success) {
-                        fileUrls.push(uploadData.fileUrl);
-                    } else {
-                        setErrorMessage(`${t("support.uploadFailed")} ${file.name}`);
+
+                    if (!uploadResponse.ok || !uploadData.success) {
+                        setErrorMessage(
+                            uploadData.error ||
+                            `${t("support.uploadFailed")} ${file.name}`
+                        );
+
                         setIsSubmitting(false);
                         return;
                     }
+
+                    fileUrls.push(uploadData.fileUrl);
                 }
             }
 

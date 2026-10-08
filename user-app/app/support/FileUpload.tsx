@@ -12,6 +12,7 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
     const { t } = useLanguage();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const MAX_FILES = 3;
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -52,8 +53,18 @@ export default function FileUpload({ onFileSelect, selectedFiles }: FileUploadPr
                 }
 
                 if (validFiles.length > 0) {
+                    //max number of file = 3
                     const currentFiles = selectedFiles || [];
-                    const allFiles = [...currentFiles, ...validFiles];
+
+                    const allFiles = [
+                        ...currentFiles,
+                        ...validFiles,
+                    ].slice(0, MAX_FILES);
+
+                    if (currentFiles.length + validFiles.length > MAX_FILES) {
+                        alert("Maximum 3 attachments allowed.");
+                    }
+
                     onFileSelect(allFiles);
                 }
             }
