@@ -280,7 +280,7 @@ export default function AdminDashboard() {
         {/* Unresolved tickets card — row 1, col 4.
          *  `self-start` keeps it at its natural height instead of
          *  stretching to fill the taller map card. */}
-        <div className="lg:col-span-1 lg:self-start">
+        <div className="lg:col-span-1">
           <UnresolvedTicketsCard
             count={unresolvedTickets}
             tickets={unresolvedTicketList}

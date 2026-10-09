@@ -31,8 +31,17 @@ export default function UnresolvedTicketsCard({
   const previewTickets = tickets.slice(0, 6);
 
   return (
-    <div className="bg-[#21222D] border border-[#2C2D33] rounded-2xl p-6 flex flex-col">
-      <div className="flex items-start justify-between mb-5">
+    /*
+     * h-full makes the card stretch to the height of its grid cell.
+     * The grid cell stretches because the row is sized by the taller
+     * sibling (the map card).
+     *
+     * flex-col + flex-1 on the table wrapper lets the table absorb
+     * whatever vertical space is left after the header and footer.
+     */
+    <div className="bg-[#21222D] border border-[#2C2D33] rounded-2xl p-6 flex flex-col h-full">
+      {/* Header — natural height, doesn't grow */}
+      <div className="flex items-start justify-between mb-5 flex-shrink-0">
         <div>
           <h2 className="text-white font-bold font-['Inter'] text-base">
             Unresolved Tickets
@@ -52,11 +61,12 @@ export default function UnresolvedTicketsCard({
         </div>
       </div>
 
-      <div className="border-t border-[#2C2D33] mb-4" />
+      <div className="border-t border-[#2C2D33] mb-4 flex-shrink-0" />
 
-      {/* No overflow-hidden, no fixed height — the table just renders
-          its natural height and the card grows to fit. */}
-      <div className="rounded-lg border border-[#2C2D33]">
+      {/* Ticket table — flex-1 so it fills the leftover height.
+       *  overflow-hidden just clips the rounded border cleanly;
+       *  it does NOT scroll (per your no-internal-scroll rule). */}
+      <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-[#2C2D33]">
         <table className="w-full table-fixed">
           <thead>
             <tr className="bg-[#2B2B36]">
@@ -108,7 +118,8 @@ export default function UnresolvedTicketsCard({
         </table>
       </div>
 
-      <div className="mt-5">
+      {/* Footer link — flex-shrink-0 so it stays anchored at the bottom */}
+      <div className="mt-5 flex-shrink-0">
         <Link
           href="/admin/support-tickets?status=unresolved"
           className="group inline-flex items-center gap-2 text-[#96DDFF] font-['Inter'] text-sm font-semibold hover:text-white transition-colors"
