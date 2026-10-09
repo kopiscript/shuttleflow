@@ -76,7 +76,7 @@ export default function MostViewedRoutesChart() {
     const d = new Date(value);
     if (isNaN(d.getTime())) return value;
     return d.toLocaleDateString("en-MY", { day: "numeric", month: "short" });
-};
+  };
 
   const handleExport = () => {
     if (chartData.length === 0) return;
@@ -111,7 +111,7 @@ export default function MostViewedRoutesChart() {
   return (
     <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-white font-bold font-['Inter'] text-base">
             Most Viewed Routes
@@ -123,7 +123,6 @@ export default function MostViewedRoutesChart() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Range filter */}
           <SmallDropdown
             value={range}
             onChange={setRange}
@@ -134,7 +133,6 @@ export default function MostViewedRoutesChart() {
             width="w-36"
           />
 
-          {/* Route filter */}
           <SmallDropdown
             value={selectedRouteId}
             onChange={setSelectedRouteId}
@@ -148,7 +146,6 @@ export default function MostViewedRoutesChart() {
             width="w-48"
           />
 
-          {/* Export button */}
           <button
             onClick={handleExport}
             disabled={chartData.length === 0}
@@ -174,18 +171,18 @@ export default function MostViewedRoutesChart() {
 
       {/* Chart */}
       {loading ? (
-        <div className="h-[350px] flex items-center justify-center">
+        <div className="h-[260px] flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-[#96DDFF] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : chartData.length === 0 ? (
-        <div className="h-[350px] flex items-center justify-center">
+        <div className="h-[260px] flex items-center justify-center">
           <p className="text-[#87888C] font-['Inter'] text-sm">
             No view data yet.
           </p>
         </div>
       ) : (
         <div className="flex gap-4">
-          <div className="flex-1 h-[350px]">
+          <div className="flex-1 h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2C2D33" />
@@ -194,32 +191,12 @@ export default function MostViewedRoutesChart() {
                   tickFormatter={formatDate}
                   stroke="#87888C"
                   style={{ fontSize: "12px", fontFamily: "Inter" }}
-                  height={50}
-                  label={{
-                    value: "Date",
-                    position: "insideBottom",
-                    offset: -5,
-                    style: {
-                      fill: "#87888C",
-                      fontFamily: "Inter",
-                      fontSize: "12px",
-                    },
-                  }}
+                  height={40}
                 />
                 <YAxis
                   stroke="#87888C"
                   style={{ fontSize: "12px", fontFamily: "Inter" }}
                   allowDecimals={false}
-                  label={{
-                    value: "Views",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: {
-                      fill: "#87888C",
-                      fontFamily: "Inter",
-                      fontSize: "12px",
-                    },
-                  }}
                 />
                 <Tooltip
                   contentStyle={{
@@ -247,12 +224,12 @@ export default function MostViewedRoutesChart() {
             </ResponsiveContainer>
           </div>
 
-          {/* Static Legend */}
+          {/* Legend — natural height, no max-h clipping */}
           <div className="w-48 flex-shrink-0">
             <p className="text-[#87888C] font-['Inter'] text-xs uppercase tracking-wider mb-3">
               Routes
             </p>
-            <div className="space-y-2 max-h-[310px] overflow-y-auto pr-1">
+            <div className="space-y-2">
               {series.map((s, i) => (
                 <div
                   key={s.id}
