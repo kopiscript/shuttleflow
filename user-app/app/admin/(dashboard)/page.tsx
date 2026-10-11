@@ -19,6 +19,33 @@ const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ),
 });
 
+const downloadCumulativeBusData = async () => {
+  try {
+    // Fetch up to 5000 recent pings for the cumulative export
+    const res = await fetch("/api/admin/bus-logs?export=true");
+    const data = await res.json();
+
+    if (!data.success || data.logs.length === 0) {
+      alert("No location data available to export.");
+      return;
+    }
+
+    const headers = ["Log ID", "Bus", "Plate", "Lat", "Lng", "Speed", "Time"];
+    const csvRows = data.logs.map((l: any) => [
+      l.id, l.bus?.bus_name, l.bus?.license_plate, l.latitude, l.longitude, l.speed || "0", new Date(l.recorded_at).toISOString()
+    ]);
+
+    const csvContent = [headers.join(","), ...csvRows.map((r: any) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cumulative_fleet_telemetry_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  } catch (err) {
+    console.error("Export failed", err);
+  }
+};
+
 interface Route {
   id: number;
   routeName: string;

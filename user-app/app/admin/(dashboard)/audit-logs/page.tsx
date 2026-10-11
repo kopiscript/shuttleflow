@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 interface AdminAuditLogItem {
     id: number;
@@ -18,21 +18,62 @@ interface AdminAuditLogItem {
     } | null;
 }
 
+// Reusable UI Component for standard dropdowns
+const CustomDropdown = ({ value, options, onChange, className = "w-full", scrollable = true }: any) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const selectedOption = options.find((opt: any) => opt.value.toString() === value.toString());
+
+    return (
+        <div className={`relative ${className}`} ref={dropdownRef}>
+            <div
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center justify-between w-full px-4 py-2.5 bg-[#171821] text-white rounded-xl border border-[#2C2D33] cursor-pointer hover:border-[#96DDFF] transition text-sm"
+            >
+                <span className="truncate">{selectedOption ? selectedOption.label : "Select..."}</span>
+                <svg className={`w-4 h-4 text-[#87888C] transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            {isOpen && (
+                <div className={`absolute right-0 z-50 w-full min-w-[140px] mt-2 bg-[#21222D] border border-[#2C2D33] rounded-xl shadow-xl overflow-hidden ${scrollable ? "max-h-60 overflow-y-auto" : ""}`}>
+                    {options.map((opt: any) => (
+                        <div
+                            key={opt.value}
+                            onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                            className={`px-4 py-2.5 text-sm cursor-pointer hover:bg-[#2B2B36] transition ${value.toString() === opt.value.toString() ? "text-[#96DDFF] bg-[#2B2B36]" : "text-white"}`}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function AuditLogsPage() {
     const [logs, setLogs] = useState<AdminAuditLogItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filters
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
     const [selectedAction, setSelectedAction] = useState<string>("ALL");
 
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-
-    // Snapshot Modal
     const [selectedSnapshot, setSelectedSnapshot] = useState<Record<string, any> | null>(null);
 
     useEffect(() => {
@@ -47,11 +88,8 @@ export default function AuditLogsPage() {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
 
-            if (data.success) {
-                setLogs(data.logs || []);
-            } else {
-                throw new Error(data.error || "Failed to fetch audit logs");
-            }
+            if (data.success) setLogs(data.logs || []);
+            else throw new Error(data.error || "Failed to fetch audit logs");
         } catch (err) {
             console.error("Failed to fetch audit logs:", err);
             setError(err instanceof Error ? err.message : "Failed to fetch audit logs");
@@ -60,26 +98,15 @@ export default function AuditLogsPage() {
         }
     };
 
-    // Extract unique actions dynamically from incoming data
     const uniqueActions = useMemo(() => {
-        const actions = Array.from(new Set(logs.map((l) => l.action))).sort();
-        return actions;
+        return Array.from(new Set(logs.map((l) => l.action))).sort();
     }, [logs]);
 
-    // Apply Search + Category Filter + Action Filter
     const filteredLogs = useMemo(() => {
         return logs.filter((log) => {
-            // Category Filter
-            if (selectedCategory !== "ALL" && log.category !== selectedCategory) {
-                return false;
-            }
+            if (selectedCategory !== "ALL" && log.category !== selectedCategory) return false;
+            if (selectedAction !== "ALL" && log.action !== selectedAction) return false;
 
-            // Action Filter
-            if (selectedAction !== "ALL" && log.action !== selectedAction) {
-                return false;
-            }
-
-            // Search query
             const searchLower = searchTerm.toLowerCase().trim();
             if (!searchLower) return true;
 
@@ -91,39 +118,23 @@ export default function AuditLogsPage() {
             const idString = `#${log.id}`;
 
             return (
-                adminName.includes(searchLower) ||
-                adminEmail.includes(searchLower) ||
-                actionName.includes(searchLower) ||
-                targetType.includes(searchLower) ||
-                targetId.includes(searchLower) ||
-                idString.includes(searchLower)
+                adminName.includes(searchLower) || adminEmail.includes(searchLower) ||
+                actionName.includes(searchLower) || targetType.includes(searchLower) ||
+                targetId.includes(searchLower) || idString.includes(searchLower)
             );
         });
     }, [logs, searchTerm, selectedCategory, selectedAction]);
 
-    // Pagination calculations
     const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedLogs = filteredLogs.slice(startIndex, startIndex + itemsPerPage);
 
-    const goToPage = (page: number) => {
-        if (page >= 1 && page <= totalPages) setCurrentPage(page);
-    };
-
-    // Export current filtered list
     const exportToCSV = () => {
         if (filteredLogs.length === 0) return;
         const headers = ["Log ID", "Admin", "Admin Email", "Category", "Action", "Target Type", "Target ID", "IP Address", "Timestamp"];
         const csvRows = filteredLogs.map((log) => [
-            log.id,
-            log.admin?.username || "System",
-            log.admin?.email || "N/A",
-            log.category,
-            log.action,
-            log.targetType || "N/A",
-            log.targetId || "N/A",
-            log.ipAddress || "N/A",
-            new Date(log.createdAt).toLocaleString(),
+            log.id, log.admin?.username || "System", log.admin?.email || "N/A", log.category, log.action,
+            log.targetType || "N/A", log.targetId || "N/A", log.ipAddress || "N/A", new Date(log.createdAt).toLocaleString(),
         ]);
 
         const csvContent = [headers.join(","), ...csvRows.map((row) => row.join(","))].join("\n");
@@ -134,42 +145,21 @@ export default function AuditLogsPage() {
         link.click();
     };
 
-    const formatDate = (dateString: string) => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleString("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        });
-    };
-
     const getCategoryBadge = (category: string) => {
         switch (category) {
-            case "AUTH":
-                return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
-            case "FLEET":
-                return "bg-[#96DDFF]/20 text-[#96DDFF] border border-[#96DDFF]/30";
-            case "SETTINGS":
-                return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
-            default:
-                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+            case "AUTH": return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
+            case "FLEET": return "bg-[#96DDFF]/20 text-[#96DDFF] border border-[#96DDFF]/30";
+            case "SETTINGS": return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+            default: return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
         }
     };
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
-                        Audit Logs
-                    </h1>
-                    <p className="text-[#87888C] font-['Inter'] text-sm mt-1">
-                        Track administrator actions, authentication events, and fleet mutations
-                    </p>
+                    <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">Audit Logs</h1>
+                    <p className="text-[#87888C] font-['Inter'] text-sm mt-1">Track administrator actions, authentication events, and fleet mutations</p>
                 </div>
                 <button
                     onClick={exportToCSV}
@@ -183,88 +173,60 @@ export default function AuditLogsPage() {
                 </button>
             </div>
 
-            {/* Filter & Search Bar */}
+            {/* Filter & Search Bar with Custom Dropdowns */}
             <div className="bg-[#21222D] p-4 rounded-2xl border border-[#2C2D33] flex flex-col md:flex-row gap-3">
-                {/* Search Input */}
                 <div className="relative flex-1">
                     <input
                         type="text"
                         placeholder="Search admin, email, action, or target ID..."
                         value={searchTerm}
-                        onChange={(e) => {
-                            setSearchTerm(e.target.value);
-                            setCurrentPage(1);
-                        }}
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         className="w-full px-4 py-2.5 bg-[#171821] text-white rounded-xl border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
                     />
                     {searchTerm && (
-                        <button
-                            onClick={() => setSearchTerm("")}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#87888C] hover:text-white text-xs"
-                        >
-                            Clear
-                        </button>
+                        <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#87888C] hover:text-white text-xs">Clear</button>
                     )}
                 </div>
 
-                {/* Category Dropdown */}
-                <div className="w-full md:w-44">
-                    <select
-                        value={selectedCategory}
-                        onChange={(e) => {
-                            setSelectedCategory(e.target.value);
-                            setCurrentPage(1);
-                        }}
-                        className="w-full px-3 py-2.5 bg-[#171821] text-white rounded-xl border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                    >
-                        <option value="ALL">All Categories</option>
-                        <option value="AUTH">AUTH</option>
-                        <option value="FLEET">FLEET</option>
-                        <option value="SETTINGS">SETTINGS</option>
-                    </select>
-                </div>
+                <CustomDropdown
+                    className="w-full md:w-44"
+                    value={selectedCategory}
+                    onChange={(val: string) => { setSelectedCategory(val); setCurrentPage(1); }}
+                    options={[
+                        { label: "All Categories", value: "ALL" },
+                        { label: "AUTH", value: "AUTH" },
+                        { label: "FLEET", value: "FLEET" },
+                        { label: "SETTINGS", value: "SETTINGS" }
+                    ]}
+                />
 
-                {/* Action Dropdown */}
-                <div className="w-full md:w-56">
-                    <select
-                        value={selectedAction}
-                        onChange={(e) => {
-                            setSelectedAction(e.target.value);
-                            setCurrentPage(1);
-                        }}
-                        className="w-full px-3 py-2.5 bg-[#171821] text-white rounded-xl border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                    >
-                        <option value="ALL">All Actions</option>
-                        {uniqueActions.map((action) => (
-                            <option key={action} value={action}>
-                                {action}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <CustomDropdown
+                    className="w-full md:w-56"
+                    value={selectedAction}
+                    onChange={(val: string) => { setSelectedAction(val); setCurrentPage(1); }}
+                    scrollable={false}
+                    options={[
+                        { label: "All Actions", value: "ALL" },
+                        ...uniqueActions.map(action => ({ label: action, value: action }))
+                    ]}
+                />
 
-                {/* Rows per page */}
-                <div className="w-full md:w-32">
-                    <select
-                        value={itemsPerPage}
-                        onChange={(e) => {
-                            setItemsPerPage(Number(e.target.value));
-                            setCurrentPage(1);
-                        }}
-                        className="w-full px-3 py-2.5 bg-[#171821] text-white rounded-xl border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                    >
-                        <option value={10}>10 / page</option>
-                        <option value={25}>25 / page</option>
-                        <option value={50}>50 / page</option>
-                    </select>
-                </div>
+                <CustomDropdown
+                    className="w-full md:w-32"
+                    value={itemsPerPage}
+                    onChange={(val: number) => { setItemsPerPage(val); setCurrentPage(1); }}
+                    options={[
+                        { label: "10 / page", value: 10 },
+                        { label: "25 / page", value: 25 },
+                        { label: "50 / page", value: 50 }
+                    ]}
+                />
             </div>
 
             {/* Error Message */}
             {error && (
-                <div className="p-4 bg-[#CD0000]/20 border border-[#CD0000] rounded-lg text-[#CD0000] font-['Inter'] text-sm">
-                    <p className="font-semibold">Error loading audit logs:</p>
-                    <p>{error}</p>
+                <div className="p-4 bg-[#CD0000]/20 border border-[#CD0000] rounded-lg text-[#CD0000] text-sm">
+                    <p className="font-semibold">Error loading audit logs:</p><p>{error}</p>
                 </div>
             )}
 
@@ -272,75 +234,45 @@ export default function AuditLogsPage() {
             <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead>
-                            <tr className="bg-[#2B2B36]">
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Log ID</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Admin</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Category</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Action</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Target</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Snapshot</th>
-                                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Timestamp</th>
+                        <thead className="bg-[#2B2B36]">
+                            <tr>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Log ID</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Admin</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Category</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Action</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Target</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Snapshot</th>
+                                <th className="text-left px-6 py-4 text-white font-semibold text-sm">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan={7} className="text-center py-10 text-[#87888C] font-['Inter'] text-sm">
-                                        Loading audit records...
-                                    </td>
-                                </tr>
+                                <tr><td colSpan={7} className="text-center py-10 text-[#87888C] text-sm">Loading audit records...</td></tr>
                             ) : paginatedLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} className="text-center py-10 text-[#87888C] font-['Inter'] text-sm">
-                                        No audit records match the selected filters.
-                                    </td>
-                                </tr>
+                                <tr><td colSpan={7} className="text-center py-10 text-[#87888C] text-sm">No audit records match filters.</td></tr>
                             ) : (
                                 paginatedLogs.map((log, index) => (
-                                    <tr
-                                        key={log.id}
-                                        className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                                            }`}
-                                    >
-                                        <td className="px-6 py-4 text-white font-['Inter'] text-sm whitespace-nowrap">
-                                            #{log.id}
-                                        </td>
-                                        <td className="px-6 py-4 font-['Inter'] text-sm whitespace-nowrap">
+                                    <tr key={log.id} className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"}`}>
+                                        <td className="px-6 py-4 text-white text-sm whitespace-nowrap">#{log.id}</td>
+                                        <td className="px-6 py-4 text-sm whitespace-nowrap">
                                             {log.admin ? (
-                                                <div>
-                                                    <span className="text-white font-medium block">{log.admin.username}</span>
-                                                    <span className="text-[#87888C] text-xs">{log.admin.email}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[#87888C]">System / Anonymous</span>
-                                            )}
+                                                <div><span className="text-white font-medium block">{log.admin.username}</span><span className="text-[#87888C] text-xs">{log.admin.email}</span></div>
+                                            ) : (<span className="text-[#87888C]">System / Anonymous</span>)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getCategoryBadge(log.category)}`}>
-                                                {log.category}
-                                            </span>
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getCategoryBadge(log.category)}`}>{log.category}</span>
                                         </td>
-                                        <td className="px-6 py-4 text-[#96DDFF] font-['Inter'] text-sm font-medium whitespace-nowrap">
-                                            {log.action}
-                                        </td>
-                                        <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm whitespace-nowrap">
+                                        <td className="px-6 py-4 text-[#96DDFF] text-sm font-medium whitespace-nowrap">{log.action}</td>
+                                        <td className="px-6 py-4 text-[#87888C] text-sm whitespace-nowrap">
                                             {log.targetType ? `${log.targetType} ${log.targetId ? `(#${log.targetId})` : ""}` : "—"}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {log.details ? (
-                                                <button
-                                                    onClick={() => setSelectedSnapshot(log.details)}
-                                                    className="px-3 py-1 bg-[#171821] border border-[#2C2D33] text-white hover:border-[#96DDFF] rounded-lg font-['Inter'] text-xs transition"
-                                                >
-                                                    View Snapshot
-                                                </button>
-                                            ) : (
-                                                <span className="text-[#87888C] font-['Inter'] text-xs">—</span>
-                                            )}
+                                                <button onClick={() => setSelectedSnapshot(log.details)} className="px-3 py-1 bg-[#171821] border border-[#2C2D33] text-white hover:border-[#96DDFF] rounded-lg text-xs transition">View Snapshot</button>
+                                            ) : (<span className="text-[#87888C] text-xs">—</span>)}
                                         </td>
-                                        <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm whitespace-nowrap">
-                                            {formatDate(log.createdAt)}
+                                        <td className="px-6 py-4 text-[#87888C] text-sm whitespace-nowrap">
+                                            {new Date(log.createdAt).toLocaleString()}
                                         </td>
                                     </tr>
                                 ))
@@ -349,62 +281,27 @@ export default function AuditLogsPage() {
                     </table>
                 </div>
 
-                {/* Pagination Controls */}
                 <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-[#2C2D33] gap-3">
-                    <span className="text-[#87888C] font-['Inter'] text-xs">
-                        Showing {filteredLogs.length === 0 ? 0 : startIndex + 1} to{" "}
-                        {Math.min(startIndex + itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
+                    <span className="text-[#87888C] text-xs">
+                        Showing {filteredLogs.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
                     </span>
-
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => goToPage(1)}
-                            disabled={currentPage === 1}
-                            className="px-2.5 py-1.5 rounded-lg font-['Inter'] text-xs text-[#87888C] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        >
-                            First
-                        </button>
-                        <button
-                            onClick={() => goToPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="px-3 py-1.5 rounded-lg font-['Inter'] text-sm text-[#87888C] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        >
-                            Prev
-                        </button>
-
-                        <span className="text-white font-['Inter'] text-sm px-2 font-medium">
-                            {currentPage} / {totalPages}
-                        </span>
-
-                        <button
-                            onClick={() => goToPage(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="px-3 py-1.5 rounded-lg font-['Inter'] text-sm text-[#87888C] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        >
-                            Next
-                        </button>
-                        <button
-                            onClick={() => goToPage(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="px-2.5 py-1.5 rounded-lg font-['Inter'] text-xs text-[#87888C] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        >
-                            Last
-                        </button>
+                        <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-2.5 py-1.5 rounded-lg text-xs text-[#87888C] hover:text-white disabled:opacity-30">First</button>
+                        <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg text-sm text-[#87888C] hover:text-white disabled:opacity-30">Prev</button>
+                        <span className="text-white text-sm px-2 font-medium">{currentPage} / {totalPages}</span>
+                        <button onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg text-sm text-[#87888C] hover:text-white disabled:opacity-30">Next</button>
+                        <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-2.5 py-1.5 rounded-lg text-xs text-[#87888C] hover:text-white disabled:opacity-30">Last</button>
                     </div>
                 </div>
             </div>
 
-            {/* Snapshot Details Modal */}
+            {/* JSON Snapshot Modal */}
             {selectedSnapshot && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
                     <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl">
                         <div className="flex items-center justify-between pb-4 border-b border-[#2C2D33]">
-                            <h3 className="text-lg font-bold text-white font-['Bai_Jamjuree']">
-                                Record Snapshot Payload
-                            </h3>
-                            <button onClick={() => setSelectedSnapshot(null)} className="text-[#87888C] hover:text-white transition">
-                                ✕
-                            </button>
+                            <h3 className="text-lg font-bold text-white">Record Snapshot Payload</h3>
+                            <button onClick={() => setSelectedSnapshot(null)} className="text-[#87888C] hover:text-white transition">✕</button>
                         </div>
                         <div className="flex-1 overflow-y-auto my-4 bg-[#171821] p-4 rounded-xl border border-[#2C2D33]">
                             <pre className="text-xs text-[#96DDFF] font-mono leading-relaxed whitespace-pre-wrap break-all">
@@ -412,12 +309,7 @@ export default function AuditLogsPage() {
                             </pre>
                         </div>
                         <div className="flex justify-end pt-2">
-                            <button
-                                onClick={() => setSelectedSnapshot(null)}
-                                className="px-5 py-2 bg-[#2B2B36] hover:bg-[#3C3D44] text-white rounded-lg font-['Inter'] text-sm transition"
-                            >
-                                Close
-                            </button>
+                            <button onClick={() => setSelectedSnapshot(null)} className="px-5 py-2 bg-[#2B2B36] hover:bg-[#3C3D44] text-white rounded-lg text-sm transition">Close</button>
                         </div>
                     </div>
                 </div>
