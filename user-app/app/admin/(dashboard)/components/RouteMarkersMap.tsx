@@ -197,17 +197,28 @@ export default function RouteMarkersMap({
       }
 
       // Draw pickup and dropoff markers on top of the lines
+      // Using bindTooltip instead of bindPopup so info shows on HOVER
       L.marker(pickupCoord, { icon: pickupIcon })
-        .bindPopup(
-          `<b>🚏 ${route.routeName}</b><br/>Pickup: ${route.pickupStop ?? ""}`
+        .bindTooltip(
+          `<b>🚏 ${route.routeName}</b><br/>Pickup: ${route.pickupStop ?? ""}`,
+          {
+            direction: "top",
+            offset: [0, -10],
+            opacity: 0.95,
+          }
         )
         .addTo(layer);
 
       L.marker(dropoffCoord, { icon: dropoffIcon })
-        .bindPopup(
+        .bindTooltip(
           `<b>🏁 ${route.routeName}</b><br/>Drop-off: ${
             route.dropoffStop ?? ""
-          }`
+          }`,
+          {
+            direction: "top",
+            offset: [0, -10],
+            opacity: 0.95,
+          }
         )
         .addTo(layer);
     });
@@ -219,10 +230,15 @@ export default function RouteMarkersMap({
       const coord: [number, number] = [bus.lat, bus.lng];
 
       L.marker(coord, { icon: busIcon })
-        .bindPopup(
+        .bindTooltip(
           `<b>🚌 ${bus.busName}</b><br/>` +
             (bus.routeName ? `Route: ${bus.routeName}<br/>` : "") +
-            (bus.status ? `Status: ${bus.status}` : "")
+            (bus.status ? `Status: ${bus.status}` : ""),
+          {
+            direction: "top",
+            offset: [0, -10],
+            opacity: 0.95,
+          }
         )
         .addTo(layer);
 
