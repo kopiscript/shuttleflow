@@ -6,38 +6,36 @@ import { calculateDistance } from "@/lib/distance";
 import { sendProximityAlert } from "@/lib/notifications";
 
 const PROXIMITY_THRESHOLD = 500; // 500 meters
-const ALERT_COOLDOWN = 120000; // 2 minutes
+const ALERT_COOLDOWN = 300000; // 5 minutes
 
 // Track last alert per route (in-memory)
 const lastAlertSent: Record<number, number> = {};
 
 export async function GET() {
   try {
-    // 1. Get all active routes with coordinates
+    // 1. Get all active routes with PICKUP coordinates
     const routes = await prisma.route.findMany({
-      where: { 
+      where: {
         status: "Active",
-        dropoffLat: { not: null },
-        dropoffLng: { not: null },
+        pickupLat: { not: null },
+        pickupLng: { not: null },
       },
-      include: { 
+      include: {
         busAssignments: {
           where: { endedAt: null },
-          include: { bus: true }
-        }
-      }
+          include: { bus: true },
+        },
+      },
     });
 
     const results = [];
     let alertsSent = 0;
 
     for (const route of routes) {
-      // Skip if no assigned bus
       if (route.busAssignments.length === 0) continue;
 
       const busId = route.busAssignments[0].busId;
 
-      // Get latest location for this bus
       const latestLocation = await prisma.location.findFirst({
         where: { busId },
         orderBy: { recordedAt: "desc" },
@@ -47,24 +45,25 @@ export async function GET() {
 
       const busLat = Number(latestLocation.latitude);
       const busLng = Number(latestLocation.longitude);
-      const destLat = route.dropoffLat!;
-      const destLng = route.dropoffLng!;
+      // use pickup coordinates
+      const pickupLat = route.pickupLat!;
+      const pickupLng = route.pickupLng!;
 
-      const distance = calculateDistance(busLat, busLng, destLat, destLng);
+      const distance = calculateDistance(busLat, busLng, pickupLat, pickupLng);
       const isNear = distance <= PROXIMITY_THRESHOLD;
 
-      // Check cooldown
       const now = Date.now();
       const lastAlert = lastAlertSent[route.id] || 0;
-      const canSendAlert = isNear && (now - lastAlert > ALERT_COOLDOWN);
+      const canSendAlert = isNear && now - lastAlert > ALERT_COOLDOWN;
 
       let alertSent = false;
 
       if (canSendAlert) {
         lastAlertSent[route.id] = now;
+        // pass pickupStop instead of dropoffStop
         await sendProximityAlert(
           route.routeName,
-          route.dropoffStop,
+          route.pickupStop,
           Math.round(distance)
         );
         alertSent = true;
@@ -74,14 +73,16 @@ export async function GET() {
       results.push({
         routeId: route.id,
         routeName: route.routeName,
-        destination: route.dropoffStop,
+        // report pickup info
+        pickupStop: route.pickupStop,
         busId,
-        distance: Math.round(distance),
-        isNear,
+        distanceToPickup: Math.round(distance),
+        isNearPickup: isNear,
         alertSent,
-        cooldownRemaining: isNear && !canSendAlert 
-          ? Math.round((ALERT_COOLDOWN - (now - lastAlert)) / 1000) 
-          : 0,
+        cooldownRemaining:
+          isNear && !canSendAlert
+            ? Math.round((ALERT_COOLDOWN - (now - lastAlert)) / 1000)
+            : 0,
       });
     }
 

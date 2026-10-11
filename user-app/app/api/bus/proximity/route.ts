@@ -5,18 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { calculateDistance } from "@/lib/distance";
 import { sendProximityAlert } from "@/lib/notifications";
 
-// Configuration - adjust as needed
-const PROXIMITY_THRESHOLD = 500; // 500 meters
-const ALERT_COOLDOWN = 120000; // 2 minutes (prevent spam)
+const PROXIMITY_THRESHOLD = 500;   // meters
+const ALERT_COOLDOWN = 120000;     // 2 minutes
 
-// Track last alert sent per route (in-memory, resets on server restart)
-// For production, use a database table or Redis
 const lastAlertSent: Record<number, number> = {};
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const busId = parseInt(searchParams.get("busId") || "1");
     const routeId = parseInt(searchParams.get("routeId") || "0");
 
     if (!routeId) {
@@ -26,7 +22,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // 1. Get the route with destination coordinates
     const route = await prisma.route.findUnique({
       where: { id: routeId },
     });
@@ -38,17 +33,30 @@ export async function GET(request: Request) {
       );
     }
 
-    if (!route.dropoffLat || !route.dropoffLng) {
+    if (!route.pickupLat || !route.pickupLng) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Route does not have destination coordinates. Please update the route." 
+        {
+          success: false,
+          error: "Route does not have pickup coordinates.",
         },
         { status: 400 }
       );
     }
 
-    // 2. Get the latest location for this bus
+    // Derive the assigned bus
+    const assignment = await prisma.busRouteAssignment.findFirst({
+      where: { routeId, endedAt: null },
+    });
+
+    if (!assignment) {
+      return NextResponse.json(
+        { success: false, error: "No bus assigned to this route" },
+        { status: 404 }
+      );
+    }
+
+    const busId = assignment.busId;
+
     const latestLocation = await prisma.location.findFirst({
       where: { busId },
       orderBy: { recordedAt: "desc" },
@@ -63,37 +71,36 @@ export async function GET(request: Request) {
 
     const busLat = Number(latestLocation.latitude);
     const busLng = Number(latestLocation.longitude);
-    const destLat = route.dropoffLat;
-    const destLng = route.dropoffLng;
+    const pickupLat = route.pickupLat;
+    const pickupLng = route.pickupLng;
 
-    // 3. Calculate distance
-    const distance = calculateDistance(busLat, busLng, destLat, destLng);
+    const distance = calculateDistance(busLat, busLng, pickupLat, pickupLng);
     const isNear = distance <= PROXIMITY_THRESHOLD;
 
-    // 4. Check cooldown (prevent spam)
     const now = Date.now();
     const lastAlert = lastAlertSent[routeId] || 0;
-    const canSendAlert = isNear && (now - lastAlert > ALERT_COOLDOWN);
+    const canSendAlert = isNear && now - lastAlert > ALERT_COOLDOWN;
 
-    // 5. Send notification if conditions met
     let alertSent = false;
-    let notificationId = null;
+    let notificationId: number | null = null;
 
     if (canSendAlert) {
-      // Update last alert time
       lastAlertSent[routeId] = now;
 
-      // Send notification
       const notification = await sendProximityAlert(
         route.routeName,
-        route.dropoffStop,
+        route.pickupStop,
         Math.round(distance)
       );
-      
+
       alertSent = true;
       notificationId = notification.id;
 
-      console.log(`🚌 Proximity alert sent for ${route.routeName}: ${Math.round(distance)}m from destination`);
+      console.log(
+        `🚌 Pickup proximity alert sent for ${route.routeName}: ${Math.round(
+          distance
+        )}m from ${route.pickupStop}`
+      );
     }
 
     return NextResponse.json({
@@ -101,26 +108,29 @@ export async function GET(request: Request) {
       data: {
         routeId: route.id,
         routeName: route.routeName,
-        destination: route.dropoffStop,
+        busId,
+        pickupStop: route.pickupStop,
         busLocation: { lat: busLat, lng: busLng },
-        destinationLocation: { lat: destLat, lng: destLng },
-        distanceToDestination: Math.round(distance),
-        isNearDestination: isNear,
+        pickupLocation: { lat: pickupLat, lng: pickupLng },
+        distanceToPickup: Math.round(distance),
+        isNearPickup: isNear,
         threshold: PROXIMITY_THRESHOLD,
         alertSent,
         notificationId,
-        cooldownRemaining: isNear && !canSendAlert 
-          ? Math.round((ALERT_COOLDOWN - (now - lastAlert)) / 1000) 
-          : 0,
-        status: isNear ? "approaching" : "en_route",
+        cooldownRemaining:
+          isNear && !canSendAlert
+            ? Math.round((ALERT_COOLDOWN - (now - lastAlert)) / 1000)
+            : 0,
+        status: isNear ? "approaching_pickup" : "en_route",
       },
     });
   } catch (error) {
     console.error("Proximity check error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Failed to check proximity" 
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to check proximity",
       },
       { status: 500 }
     );

@@ -118,34 +118,34 @@ export async function sendInfo(title: string, message: string) {
   return notification;
 }
 
-/** Send proximity alert when bus is near destination */
+/** Send proximity alert when bus is near the PICKUP point */
 export async function sendProximityAlert(
   routeName: string,
-  destination: string,
+  pickupStop: string,
   distance: number
 ) {
-  const title = `🚌 ${routeName} Approaching!`;
-  const message = `The bus is ${distance} meters from ${destination}. Please prepare to alight.`;
+  const title = `🚌 ${routeName} is arriving!`;
+  const message = `The bus is ${distance} meters from ${pickupStop}. Please be ready at the pickup point.`;
 
-  // Save to database
   const notification = await prisma.notification.create({
     data: {
       type: "alert",
       title: title,
       message: message,
-    }
+    },
   });
 
-  console.log(`📍 Proximity alert saved: ${title}`);
+  console.log(`Pickup proximity alert saved: ${title}`);
 
-  // Broadcast real-time popup via Pusher (works server-side, unlike the old
-  // window-event based trigger which silently no-op'd on the server)
   await broadcastNotification(notification);
 
-  console.log(`🔔 Broadcast sent for: ${title}`);
+  console.log(`Broadcast sent for: ${title}`);
 
-  // 🚀 Send emails to subscribers
-  await sendEmailsToSubscribers(notification.title, notification.message, notification.type);
+  await sendEmailsToSubscribers(
+    notification.title,
+    notification.message,
+    notification.type
+  );
 
   return notification;
 }
