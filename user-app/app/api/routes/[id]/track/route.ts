@@ -11,8 +11,13 @@ export async function GET(
   try {
     const { id } = await params;
     const routeId = parseInt(id);
-    const { searchParams } = new URL(request.url);
-    const busId = parseInt(searchParams.get("busId") || "1");
+
+    if (isNaN(routeId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid route ID" },
+        { status: 400 }
+      );
+    }
 
     const route = await prisma.route.findUnique({
       where: { id: routeId },
@@ -24,6 +29,21 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Find the bus currently assigned to this route
+    const assignment = await prisma.busRouteAssignment.findFirst({
+      where: { routeId, endedAt: null },
+      include: { bus: true },
+    });
+
+    if (!assignment) {
+      return NextResponse.json(
+        { success: false, error: "No bus assigned to this route" },
+        { status: 404 }
+      );
+    }
+
+    const busId = assignment.busId;
 
     const latestLocation = await prisma.location.findFirst({
       where: { busId },
@@ -40,30 +60,34 @@ export async function GET(
     const busLat = Number(latestLocation.latitude);
     const busLng = Number(latestLocation.longitude);
 
-    let distance = null;
+    let distance: number | null = null;
     let isNear = false;
-    let destination = null;
 
-    if (route.dropoffLat && route.dropoffLng) {
-      const destLat = route.dropoffLat;
-      const destLng = route.dropoffLng;
-      distance = calculateDistance(busLat, busLng, destLat, destLng);
+    if (route.pickupLat && route.pickupLng) {
+      distance = calculateDistance(
+        busLat,
+        busLng,
+        route.pickupLat,
+        route.pickupLng
+      );
       isNear = distance <= 500;
-      destination = route.dropoffStop;
     }
 
     return NextResponse.json({
       success: true,
       data: {
         routeName: route.routeName,
-        destination: destination,
+        busId,
+        busName: assignment.bus.busName,
+        pickupStop: route.pickupStop,
         busLocation: { lat: busLat, lng: busLng },
-        destinationLocation: route.dropoffLat && route.dropoffLng
-          ? { lat: route.dropoffLat, lng: route.dropoffLng }
-          : null,
-        distanceToDestination: distance ? Math.round(distance) : null,
-        isNearDestination: isNear,
-        status: isNear ? "approaching" : "en_route",
+        pickupLocation:
+          route.pickupLat && route.pickupLng
+            ? { lat: route.pickupLat, lng: route.pickupLng }
+            : null,
+        distanceToPickup: distance !== null ? Math.round(distance) : null,
+        isNearPickup: isNear,
+        status: isNear ? "approaching_pickup" : "en_route",
       },
     });
   } catch (error) {

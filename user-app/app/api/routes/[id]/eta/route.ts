@@ -10,6 +10,13 @@ export async function GET(
     const { id } = await params;
     const routeId = parseInt(id);
 
+    if (isNaN(routeId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid route ID" },
+        { status: 400 }
+      );
+    }
+
     const route = await prisma.route.findUnique({
       where: { id: routeId },
     });
@@ -21,10 +28,24 @@ export async function GET(
       );
     }
 
-    // Get the latest location
+    // Find the bus currently assigned to this route
+    const assignment = await prisma.busRouteAssignment.findFirst({
+      where: { routeId, endedAt: null },
+      include: { bus: true },
+    });
+
+    if (!assignment) {
+      return NextResponse.json(
+        { success: false, error: "No bus assigned to this route" },
+        { status: 404 }
+      );
+    }
+
+    // Get the latest location for THAT specific bus only
     const busLocation = await prisma.location.findFirst({
-      orderBy: { recordedAt: 'desc' },
-      include: { bus: true }
+      where: { busId: assignment.busId },
+      orderBy: { recordedAt: "desc" },
+      include: { bus: true },
     });
 
     if (!busLocation) {
@@ -47,12 +68,11 @@ export async function GET(
     const busLat = parseFloat(busLocation.latitude.toString());
     const busLng = parseFloat(busLocation.longitude.toString());
 
-    // Check if we have pickup coordinates
     if (!route.pickupLat || !route.pickupLng) {
-      return NextResponse.json({
-        success: false,
-        error: "Route does not have pickup coordinates",
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Route does not have pickup coordinates" },
+        { status: 400 }
+      );
     }
 
     let etaMinutes = 0;
@@ -62,18 +82,21 @@ export async function GET(
     let travelTimeInSeconds = 0;
     let speedKmh = 0;
 
-    // ✅ 1. TRY TOMTOM API FIRST
+    // 1. TRY TOMTOM API FIRST
     const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY;
     let tomtomSuccess = false;
 
     if (TOMTOM_API_KEY) {
       try {
+        console.log("🚌 Bus coords sent to TomTom:", busLat, busLng);
+        console.log("🏁 Pickup coords sent to TomTom:", route.pickupLat, route.pickupLng);
+
         const url = `https://api.tomtom.com/routing/1/calculateRoute/${busLat},${busLng}:${route.pickupLat},${route.pickupLng}/json` +
           `?key=${TOMTOM_API_KEY}` +
           `&traffic=true` +
           `&routeType=fastest`;
 
-        console.log("📍 TomTom API URL:", url);
+        console.log("📍 TomTom URL:", url);
 
         const response = await fetch(url);
         const data = await response.json();
@@ -98,38 +121,37 @@ export async function GET(
       console.log("⚠️ No TomTom API key, using fallback");
     }
 
-    // ✅ 2. FALLBACK: Haversine + GPS Speed (ONLY if TomTom failed)
+    // 2. FALLBACK: Haversine + GPS Speed (ONLY if TomTom failed)
     if (!tomtomSuccess) {
-      // Calculate distance using Haversine
-      distanceKm = calculateDistance(busLat, busLng, route.pickupLat, route.pickupLng);
+      distanceKm = calculateDistance(
+        busLat,
+        busLng,
+        route.pickupLat,
+        route.pickupLng
+      );
 
-      // ✅ Try to get real GPS speed from database
       const rawSpeed = parseFloat(busLocation.speed?.toString() || "0");
 
       if (rawSpeed > 0) {
-        // GPS speed available - use it!
-        // Convert from m/s to km/h if needed (GPS usually gives km/h, but check)
         speedKmh = rawSpeed;
 
-        // If speed is very low (< 10), it might be in m/s
-        // Convert m/s to km/h (multiply by 3.6)
+        // If speed is very low (< 10), it might be in m/s → convert to km/h
         if (rawSpeed < 10 && rawSpeed > 0) {
           speedKmh = rawSpeed * 3.6;
         }
 
-        // If speed is still too low (< 5 km/h), the bus is probably stopped
-        // Use a reasonable default based on distance
         if (speedKmh < 5) {
           if (distanceKm > 30) speedKmh = 60;
           else if (distanceKm > 10) speedKmh = 45;
           else if (distanceKm > 3) speedKmh = 30;
           else speedKmh = 20;
-          console.log(`⚠️ GPS speed too low (${rawSpeed}), using estimated speed: ${speedKmh} km/h`);
+          console.log(
+            `⚠️ GPS speed too low (${rawSpeed}), using estimated speed: ${speedKmh} km/h`
+          );
         } else {
           console.log(`📍 Using GPS speed: ${speedKmh} km/h`);
         }
       } else {
-        // No GPS speed - use estimated speed based on distance
         if (distanceKm > 30) speedKmh = 60;
         else if (distanceKm > 10) speedKmh = 45;
         else if (distanceKm > 3) speedKmh = 30;
@@ -137,23 +159,23 @@ export async function GET(
         console.log(`📍 No GPS speed, using estimated speed: ${speedKmh} km/h`);
       }
 
-      // Calculate ETA
       etaMinutes = Math.round((distanceKm / speedKmh) * 60);
       source = `Haversine (GPS speed: ${speedKmh.toFixed(1)} km/h)`;
 
-      console.log(`📍 Haversine ETA: ${etaMinutes} min, ${distanceKm.toFixed(1)} km`);
+      console.log(
+        `📍 Haversine ETA: ${etaMinutes} min, ${distanceKm.toFixed(1)} km`
+      );
     }
 
     // Calculate arrival time
     const now = new Date();
     const arrivalTime = new Date(now.getTime() + etaMinutes * 60000);
-    const arrivalTimeStr = arrivalTime.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: 'Asia/Kuala_Lumpur',
+    const arrivalTimeStr = arrivalTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Kuala_Lumpur",
     });
 
-    // Format minutes left
     let minutesLeftStr = "";
     if (etaMinutes <= 0) {
       minutesLeftStr = "Arriving now";
@@ -167,7 +189,6 @@ export async function GET(
       minutesLeftStr = `${hours}h ${mins}m away`;
     }
 
-    // Format distance
     let distanceDisplay = "";
     if (distanceKm < 1) {
       distanceDisplay = `${Math.round(distanceKm * 1000)}m`;
@@ -192,28 +213,34 @@ export async function GET(
       },
       routeName: route.routeName,
     });
-
   } catch (error) {
     console.error("ETA API Error:", error);
     return NextResponse.json(
       {
         success: false,
         error: "Failed to calculate ETA",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
 
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function calculateDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
   const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
