@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activityLog";
+import { getDeviceHealth } from "@/lib/deviceHealth";
 
 // GET - list all buses
 export async function GET() {
@@ -55,19 +56,23 @@ export async function GET() {
         // existing nested shapes (kept for backwards compatibility)
         route: activeRoute,
         device: bus.deviceAssignments[0]?.device
-          ? {
-              ...bus.deviceAssignments[0].device,
+          ? (() => {
+            const device = bus.deviceAssignments[0].device;
+            // Derive status from the device's own lastSeen
+            const health = getDeviceHealth(device.lastSeen);
+
+            return {
+              ...device,
+              // override the raw column with the derived status
+              status: health.status,
               lastLat: latestLocation?.latitude
                 ? Number(latestLocation.latitude)
                 : null,
               lastLng: latestLocation?.longitude
                 ? Number(latestLocation.longitude)
                 : null,
-              // Override lastSeen with the actual last GPS signal time
-              lastSeen: latestLocation?.recordedAt
-                ? latestLocation.recordedAt.toISOString()
-                : bus.deviceAssignments[0].device.lastSeen,
-            }
+            };
+          })()
           : null,
       };
     });

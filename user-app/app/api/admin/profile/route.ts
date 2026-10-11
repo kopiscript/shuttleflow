@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 export async function GET() {
   try {
@@ -18,6 +19,7 @@ export async function GET() {
         id: true,
         username: true,
         email: true,
+        pendingEmail: true,
         createdAt: true,
       },
     });
@@ -59,30 +61,55 @@ export async function PUT(request: Request) {
       );
     }
 
-    const duplicate = await prisma.admin.findFirst({
+    // Check if username is already taken by another admin
+    const duplicateUsername = await prisma.admin.findFirst({
       where: {
-        OR: [{ username }, { email }],
+        username,
         NOT: { id: session.adminId },
       },
     });
 
-    if (duplicate) {
+    if (duplicateUsername) {
       return NextResponse.json(
-        { success: false, error: "Username or email already taken" },
+        { success: false, error: "Username already taken" },
         { status: 409 }
       );
     }
 
+    // Get old username for audit comparison
+    const oldAdmin = await prisma.admin.findUnique({
+      where: { id: session.adminId },
+      select: { username: true },
+    });
+
+    // Note: email is NOT updated here (goes through verification flow)
     const admin = await prisma.admin.update({
       where: { id: session.adminId },
-      data: { username, email },
+      data: { username },
       select: {
         id: true,
         username: true,
         email: true,
+        pendingEmail: true,
         createdAt: true,
       },
     });
+
+    // Audit log if username changed
+    if (oldAdmin && oldAdmin.username !== username) {
+      await logAdminAudit({
+        adminId: session.adminId,
+        category: "SETTINGS",
+        action: "USERNAME_CHANGED",
+        targetType: "Admin",
+        targetId: session.adminId,
+        details: {
+          oldUsername: oldAdmin.username,
+          newUsername: username,
+        },
+        req: request,
+      });
+    }
 
     return NextResponse.json({ success: true, admin });
   } catch (error) {

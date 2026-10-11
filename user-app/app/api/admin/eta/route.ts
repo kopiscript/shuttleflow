@@ -1,3 +1,4 @@
+// app/api/admin/eta/route.ts
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     const url =
       `https://api.tomtom.com/routing/1/calculateRoute/` +
       `${originLat},${originLng}:${destLat},${destLng}/json` +
-      `?key=${key}&traffic=true&travelMode=car`;
+      `?key=${key}&traffic=true&travelMode=car&routeRepresentation=polyline`;
 
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
@@ -34,16 +35,33 @@ export async function GET(request: Request) {
     }
 
     const data = await res.json();
-    const summary = data?.routes?.[0]?.summary;
+    const route = data?.routes?.[0];
+    const summary = route?.summary;
+
     if (!summary) {
       return NextResponse.json({ success: false, error: "No route found" }, { status: 404 });
     }
+    
+    const rawPoints =
+      route?.legs?.[0]?.points ??
+      route?.geometry?.points ??
+      null;
+
+    let encodedPolyline: unknown = null;
+
+    if (Array.isArray(rawPoints) && rawPoints.length > 1) {
+      encodedPolyline = rawPoints;
+    } else if (typeof rawPoints === "string" && rawPoints.length > 0) {
+      encodedPolyline = rawPoints;
+    }
+    // -------------------------------------------------------------------------
 
     return NextResponse.json({
       success: true,
       travelTimeSeconds: summary.travelTimeInSeconds,
       distanceMeters: summary.lengthInMeters,
       trafficDelaySeconds: summary.trafficDelayInSeconds ?? 0,
+      encodedPolyline,
     });
   } catch (err) {
     console.error("ETA error:", err);

@@ -208,10 +208,12 @@ export default function RoutePickerMap({
           [dLat, dLng],
         ],
         {
-          color: "#96DDFF",
-          weight: 2,
+          color: "#3b82f6",
+          weight: 3,
           dashArray: "5, 10",
-          opacity: 0.6,
+          opacity: 0.8,
+          lineCap: "round",
+          lineJoin: "round",
         }
       ).addTo(map);
     }

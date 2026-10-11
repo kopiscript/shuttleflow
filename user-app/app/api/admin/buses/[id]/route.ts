@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
 import { logActivity } from "@/lib/activityLog";
+import { getDeviceHealth } from "@/lib/deviceHealth";
 
 // GET - Fetch a single bus
 export async function GET(
@@ -45,6 +46,8 @@ export async function GET(
       );
     }
 
+    const latestLocation = bus.locations[0] ?? null;
+
     const transformedBus = {
       id: bus.id,
       busName: bus.busName,
@@ -54,20 +57,28 @@ export async function GET(
       createdAt: bus.createdAt,
       updatedAt: bus.updatedAt,
       route: bus.routeAssignments[0]?.route || null,
-            device: bus.deviceAssignments[0]?.device
-        ? {
-            ...bus.deviceAssignments[0].device,
-            lastLat: bus.locations[0]?.latitude
-              ? Number(bus.locations[0].latitude)
-              : null,
-            lastLng: bus.locations[0]?.longitude
-              ? Number(bus.locations[0].longitude)
-              : null,
-            // Override lastSeen with the actual last GPS signal time
-            lastSeen: bus.locations[0]?.recordedAt
-              ? bus.locations[0].recordedAt.toISOString()
-              : bus.deviceAssignments[0].device.lastSeen,
-          }
+      device: bus.deviceAssignments[0]?.device
+        ? (() => {
+            const device = bus.deviceAssignments[0].device;
+            // Derive status from the device's own lastSeen, so the
+            // bus endpoints agree with the device endpoints.
+            const health = getDeviceHealth(device.lastSeen);
+
+            return {
+              ...device,
+              // override the raw column with the derived status
+              status: health.status,
+              // location-derived fields (for the map)
+              lastLat: latestLocation?.latitude
+                ? Number(latestLocation.latitude)
+                : null,
+              lastLng: latestLocation?.longitude
+                ? Number(latestLocation.longitude)
+                : null,
+              // NOTE: lastSeen is the device's own lastSeen, not the
+              // location's recordedAt.
+            };
+          })()
         : null,
     };
 

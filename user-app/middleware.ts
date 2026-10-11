@@ -13,6 +13,7 @@ const PUBLIC_ADMIN_ROUTES = [
   "/admin/login",
   "/admin/forgot-password",
   "/admin/reset-password",
+  "/admin/confirm-email",
 ];
 
 export async function middleware(request: NextRequest) {

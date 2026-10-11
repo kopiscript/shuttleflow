@@ -6,6 +6,7 @@ interface AdminProfile {
   id: number;
   username: string;
   email: string;
+  pendingEmail?: string | null;
   createdAt: string;
 }
 
@@ -16,26 +17,44 @@ export default function ProfilePage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showPasswordSection, setShowPasswordSection] = useState(false);
 
+  // Email change state
+  const [newEmail, setNewEmail] = useState("");
+  const [emailChanging, setEmailChanging] = useState(false);
+  const [emailMessage, setEmailMessage] = useState({
+    type: "",
+    text: "",
+  });
+
+  // Password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Password visibility toggles
+  // Password visibility
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setProfile(data.admin);
+  // Fetch profile
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch("/api/admin/profile");
+      const data = await res.json();
+      if (data.success) {
+        setProfile(data.admin);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    } catch {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, []);
 
+  // Save username
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -47,24 +66,56 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: profile?.username,
-          email: profile?.email,
+          email: profile?.email, // send current email (unchanged)
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         setProfile(data.admin);
-        setMessage({ type: "success", text: "Profile updated successfully!" });
+        setMessage({
+          type: "success",
+          text: "Profile updated successfully!",
+        });
       } else {
         setMessage({ type: "error", text: data.error });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Failed to update profile" });
     } finally {
       setSaving(false);
     }
   };
 
+  // Request email change
+  const handleRequestEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailChanging(true);
+    setEmailMessage({ type: "", text: "" });
+
+    try {
+      const res = await fetch("/api/admin/profile/request-email-change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setEmailMessage({ type: "success", text: data.message });
+        setNewEmail("");
+        fetchProfile(); // refresh to show pendingEmail
+      } else {
+        setEmailMessage({ type: "error", text: data.error });
+      }
+    } catch {
+      setEmailMessage({ type: "error", text: "Failed to send verification email" });
+    } finally {
+      setEmailChanging(false);
+    }
+  };
+
+  // Change password
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangingPassword(true);
@@ -83,7 +134,10 @@ export default function ProfilePage() {
 
       const data = await res.json();
       if (data.success) {
-        setMessage({ type: "success", text: "Password changed successfully!" });
+        setMessage({
+          type: "success",
+          text: "Password changed successfully!",
+        });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -91,7 +145,7 @@ export default function ProfilePage() {
       } else {
         setMessage({ type: "error", text: data.error });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Failed to change password" });
     } finally {
       setChangingPassword(false);
@@ -109,7 +163,9 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-[#87888C] font-['Inter'] text-sm">Profile not found</p>
+        <p className="text-[#87888C] font-['Inter'] text-sm">
+          Profile not found
+        </p>
       </div>
     );
   }
@@ -139,11 +195,11 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Profile Information Section */}
+      {/* Username Section */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] mb-6">
         <div className="px-6 py-4 border-b border-[#2C2D33]">
           <h2 className="text-white font-semibold font-['Inter'] text-base">
-            Profile Information
+            Username
           </h2>
         </div>
 
@@ -158,22 +214,7 @@ export default function ProfilePage() {
               onChange={(e) =>
                 setProfile({ ...profile, username: e.target.value })
               }
-              className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={profile.email}
-              onChange={(e) =>
-                setProfile({ ...profile, email: e.target.value })
-              }
-              className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
+              className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
               required
             />
           </div>
@@ -197,14 +238,88 @@ export default function ProfilePage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving..." : "Save Username"}
           </button>
         </form>
       </div>
 
-      {/* Change Password Section */}
+      {/* Email Section */}
+      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] mb-6">
+        <div className="px-6 py-4 border-b border-[#2C2D33]">
+          <h2 className="text-white font-semibold font-['Inter'] text-base">
+            Email
+          </h2>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <div>
+            <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
+              Current Email
+            </label>
+            <input
+              type="email"
+              value={profile.email}
+              disabled
+              className="w-full px-4 py-2.5 bg-[#171821] text-[#87888C] rounded-lg border border-[#2C2D33] font-['Inter'] text-sm cursor-not-allowed"
+            />
+          </div>
+
+          {/* Pending email indicator */}
+          {profile.pendingEmail && (
+            <div className="px-4 py-3 rounded-lg bg-[#FFF4CC]/10 border border-[#FEB002]">
+              <p className="text-[#FEB002] font-['Inter'] text-xs">
+                ⏳ <strong>Pending change:</strong> A verification email was
+                sent to <span className="break-all">{profile.pendingEmail}</span>.
+                Please check your inbox to confirm.
+              </p>
+            </div>
+          )}
+
+          {emailMessage.text && (
+            <div
+              className={`px-4 py-3 rounded-lg font-['Inter'] text-sm border ${
+                emailMessage.type === "success"
+                  ? "bg-[#E1FFDA]/10 border-[#3EB900] text-[#3EB900]"
+                  : "bg-[#FFC0B9]/10 border-[#EA1701] text-[#EA1701]"
+              }`}
+            >
+              {emailMessage.text}
+            </div>
+          )}
+
+          <form onSubmit={handleRequestEmailChange} className="space-y-4">
+            <div>
+              <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
+                New Email
+              </label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
+                placeholder="Enter new email address"
+                required
+              />
+              <p className="text-[#87888C] font-['Inter'] text-xs mt-2">
+                A verification link will be sent to the new email. Your email
+                won't change until you click the link.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={emailChanging}
+              className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50"
+            >
+              {emailChanging ? "Sending..." : "Send Verification Email"}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Password Section */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33]">
         <div className="px-6 py-4 border-b border-[#2C2D33] flex items-center justify-between">
           <h2 className="text-white font-semibold font-['Inter'] text-base">
@@ -225,7 +340,6 @@ export default function ProfilePage() {
             </p>
           ) : (
             <form onSubmit={handleChangePassword} className="space-y-5">
-              {/* Current Password */}
               <div>
                 <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
                   Current Password
@@ -235,14 +349,13 @@ export default function ProfilePage() {
                     type={showCurrentPassword ? "text" : "password"}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
+                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#87888C] hover:text-white transition"
-                    aria-label={showCurrentPassword ? "Hide password" : "Show password"}
                   >
                     {showCurrentPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,7 +371,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* New Password */}
               <div>
                 <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
                   New Password
@@ -268,7 +380,7 @@ export default function ProfilePage() {
                     type={showNewPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
+                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
                     required
                     minLength={8}
                   />
@@ -276,7 +388,6 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#87888C] hover:text-white transition"
-                    aria-label={showNewPassword ? "Hide password" : "Show password"}
                   >
                     {showNewPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +406,6 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Confirm New Password */}
               <div>
                 <label className="block text-[#87888C] font-['Inter'] text-sm mb-2">
                   Confirm New Password
@@ -305,7 +415,7 @@ export default function ProfilePage() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
+                    className="w-full px-4 py-2.5 pr-11 bg-[#1D1E27] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
                     required
                     minLength={8}
                   />
@@ -313,7 +423,6 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[#87888C] hover:text-white transition"
-                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,7 +441,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={changingPassword}
-                className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50"
               >
                 {changingPassword ? "Changing..." : "Change Password"}
               </button>
