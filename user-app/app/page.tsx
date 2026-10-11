@@ -79,58 +79,55 @@ export default function HomePage() {
   }, []);
 
   // Fetch bus location periodically
-  useEffect(() => {
-    const fetchBusLocation = async () => {
-      try {
-        const response = await fetch("/api/locations");
-        const data = await response.json();
-        if (data.success && data.locations && data.locations.length > 0) {
-          const loc = data.locations[0];
-          setBusLocation({
-            lat: parseFloat(loc.latitude),
-            lng: parseFloat(loc.longitude),
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch bus location:", error);
+  // Fetch bus location periodically + check proximity
+useEffect(() => {
+  const fetchBusLocation = async () => {
+    try {
+      const response = await fetch("/api/locations");
+      const data = await response.json();
+      if (data.success && data.locations?.length > 0) {
+        const loc = data.locations[0];
+        setBusLocation({
+          lat: parseFloat(loc.latitude),
+          lng: parseFloat(loc.longitude),
+        });
       }
-    };
-
-    fetchBusLocation();
-    const interval = setInterval(fetchBusLocation, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch proximity data when route is selected
-  useEffect(() => {
-    if (!selectedRoute) {
-      setProximityData(null);
-      return;
+    } catch (error) {
+      console.error("Failed to fetch bus location:", error);
     }
 
-    const fetchProximity = async () => {
+    // ✅ Also check proximity for the selected route — and STORE the result
+    if (selectedRoute) {
       try {
-        const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
-        const data = await response.json();
-        if (data.success) {
+        const res = await fetch(`/api/bus/proximity?routeId=${selectedRoute}`);
+        const data = await res.json();
+
+        if (data.success && data.data) {
           setProximityData({
-            isNear: data.data.isNearDestination,
-            distance: data.data.distanceToDestination,
-            destination: data.data.destination,
+            isNear: data.data.isNearPickup,
+            distance: data.data.distanceToPickup,
+            destination: data.data.pickupStop,
             status: data.data.status,
           });
+        } else {
+          setProximityData(null);
         }
-      } catch (error) {
-        console.error("Failed to fetch proximity:", error);
+      } catch (err) {
+        console.error("Proximity check failed:", err);
+        setProximityData(null);
       }
-    };
+    } else {
+      // No route selected → clear stale proximity data
+      setProximityData(null);
+    }
+  };
 
-    fetchProximity();
-    const interval = setInterval(fetchProximity, 5000);
-    return () => clearInterval(interval);
-  }, [selectedRoute]);
+  fetchBusLocation();
+  const interval = setInterval(fetchBusLocation, 5000);
+  return () => clearInterval(interval);
+}, [selectedRoute]);
 
-  // ✅ FIXED: Fetch ETA with auto-refresh every 10 seconds
+  // Fetch ETA with auto-refresh every 10 seconds
   useEffect(() => {
     if (!selectedRoute) {
       setEtaData(null);
@@ -252,17 +249,11 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Proximity Status */}
-            {proximityData && (
+            {/* Proximity Status — only show when bus is approaching (near), hide otherwise */}
+            {proximityData && proximityData.isNear && (
               <div className="flex items-center gap-2 mt-1.5">
-                <span className={`text-xs font-medium ${
-                  proximityData.isNear
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {proximityData.isNear
-                    ? `🚌 ${proximityData.distance}m from ${proximityData.destination}`
-                    : `${proximityData.distance}m to destination`}
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                  🚌 Approaching {proximityData.destination}!
                 </span>
               </div>
             )}

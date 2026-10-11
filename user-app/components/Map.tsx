@@ -26,13 +26,6 @@ interface Bus {
   status: string;
 }
 
-interface ProximityData {
-  isNear: boolean;
-  distance: number;
-  destination: string;
-  status: string;
-}
-
 interface RouteData {
   id: number;
   routeName: string;
@@ -48,7 +41,7 @@ interface RouteData {
 const createBusIcon = (status: string = 'active') => {
   const color = status === 'active' ? '#99121A' : '#6B7280';
   const isActive = status === 'active';
-  
+
   return L.divIcon({
     className: 'bus-marker',
     html: `
@@ -118,10 +111,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // State for proximity data
-  const [proximityData, setProximityData] = useState<ProximityData | null>(null);
-  const [proximityLoading, setProximityLoading] = useState(false);
-
   // Ref to track if map should auto-fit
   const shouldAutoFitRef = useRef(true);
   const fitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,71 +146,29 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   }, []);
 
   // Fetch route data when selected route changes
-  useEffect(() => {
-    if (!selectedRoute) {
-      setRouteData(null);
-      setProximityData(null);
-      return;
-    }
+useEffect(() => {
+  if (!selectedRoute) {
+    setRouteData(null);
+    return;
+  }
 
-    const fetchRouteData = async () => {
-      try {
-        setIsLoading(true);
-        console.log(`📡 Fetching route data for ID: ${selectedRoute}`);
-        
-        const response = await fetch(`/api/routes/${selectedRoute}`);
-        const data = await response.json();
-        
-        console.log("📡 Route API response:", data);
-        
-        if (data.success) {
-          console.log("✅ Route data received:", data.route);
-          setRouteData(data.route);
-        } else {
-          console.error("❌ Failed to fetch route:", data.error);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching route:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchRouteData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/routes/${selectedRoute}`);
+      const data = await response.json();
+      if (data.success) {
+        setRouteData(data.route);
       }
-    };
-
-    fetchRouteData();
-  }, [selectedRoute]);
-
-  // Fetch proximity data when route changes
-  useEffect(() => {
-    if (!selectedRoute) {
-      setProximityData(null);
-      return;
+    } catch (error) {
+      console.error("Error fetching route:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    const fetchProximity = async () => {
-      try {
-        setProximityLoading(true);
-        const response = await fetch(`/api/routes/${selectedRoute}/track?busId=1`);
-        const data = await response.json();
-
-        if (data.success) {
-          setProximityData({
-            isNear: data.data.isNearDestination || false,
-            distance: data.data.distanceToDestination || 0,
-            destination: data.data.destination || "Destination",
-            status: data.data.status || "en_route",
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch proximity:", error);
-      } finally {
-        setProximityLoading(false);
-      }
-    };
-
-    fetchProximity();
-    const interval = setInterval(fetchProximity, 10000);
-    return () => clearInterval(interval);
-  }, [selectedRoute]);
+  fetchRouteData();
+}, [selectedRoute]);
 
   // Initialize map
   useEffect(() => {
@@ -275,10 +222,10 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
   // Update route markers when route data changes (NO POLYLINE)
   useEffect(() => {
-    console.log("🔄 Route data effect triggered:", { 
-      mapReady, 
-      hasRouteData: !!routeData, 
-      routeData 
+    console.log("🔄 Route data effect triggered:", {
+      mapReady,
+      hasRouteData: !!routeData,
+      routeData
     });
 
     if (!mapRef.current) {
@@ -318,8 +265,8 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     }
 
     // Validate coordinates
-    if (!routeData.pickupLat || !routeData.pickupLng || 
-        !routeData.dropoffLat || !routeData.dropoffLng) {
+    if (!routeData.pickupLat || !routeData.pickupLng ||
+      !routeData.dropoffLat || !routeData.dropoffLng) {
       console.error("❌ Invalid coordinates in route data:", routeData);
       return;
     }
@@ -414,7 +361,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
 
     // Reset auto-fit flag when route changes
     shouldAutoFitRef.current = true;
-    
+
     // Fit map to show both markers
     setTimeout(() => {
       fitMapToBounds();
@@ -506,7 +453,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
       if (fitTimeoutRef.current) {
         clearTimeout(fitTimeoutRef.current);
       }
-      
+
       // Debounce: wait 3 seconds after last bus update before fitting
       fitTimeoutRef.current = setTimeout(() => {
         fitMapToBounds();
@@ -521,7 +468,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
     const handleUserInteraction = () => {
       // User dragged or zoomed the map - disable auto-fit
       shouldAutoFitRef.current = false;
-      
+
       // Re-enable auto-fit after 30 seconds of inactivity
       if (fitTimeoutRef.current) {
         clearTimeout(fitTimeoutRef.current);
@@ -548,7 +495,7 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   useEffect(() => {
     const handleThemeChange = () => {
       if (!mapRef.current || !tileLayerRef.current) return;
-      
+
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
       // Attribution is already set when tile layer is created
@@ -566,13 +513,13 @@ export default function Map({ selectedRoute = "" }: MapProps) {
   return (
     <div className="relative w-full h-full">
       {/* Map Container */}
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-full" 
-        style={{ 
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{
           minHeight: "400px",
           height: "100%"
-        }} 
+        }}
       />
 
       {/* Loading indicator */}
@@ -583,46 +530,6 @@ export default function Map({ selectedRoute = "" }: MapProps) {
               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-sm">Loading route...</span>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Proximity Status Indicator */}
-      {proximityData && selectedRoute && (
-        <div className="absolute top-4 right-4 z-30 max-w-xs animate-slide-right">
-          <div className={`
-            rounded-xl shadow-lg p-3 transition-all duration-300
-            ${proximityData.isNear
-              ? 'bg-green-500 text-white'
-              : 'bg-white dark:bg-gray-800 dark:text-white'
-            }
-          `}>
-            <div className="flex items-center gap-2">
-              <div className={`
-                w-3 h-3 rounded-full animate-pulse
-                ${proximityData.isNear ? 'bg-white' : 'bg-blue-500'}
-              `} />
-              <span className="font-semibold text-sm">
-                {proximityData.isNear ? '🚌 Approaching!' : 'On Route'}
-              </span>
-            </div>
-            <div className="mt-1">
-              <p className={`text-xs ${proximityData.isNear ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}>
-                {proximityData.isNear
-                  ? `${proximityData.distance}m from ${proximityData.destination}`
-                  : `${proximityData.distance}m to destination`
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Loading indicator for proximity */}
-      {proximityLoading && selectedRoute && (
-        <div className="absolute top-4 right-4 z-30">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-2">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         </div>
       )}
