@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Send verification email via Resend
-        await resend.emails.send({
+        const { data, error } = await resend.emails.send({
             from: 'ShuttleFlow <noreply@shuttleflow.azmiproductions.com>',
             to: email,
             subject: 'Confirm Your Subscription to ShuttleFlow Alerts',
@@ -67,7 +67,19 @@ export async function POST(request: NextRequest) {
                     <p style="color: #666; font-size: 12px;">If you didn't request this, you can ignore this email.</p>
                 </div>
             `,
-        });
+        }); if (error) {
+            console.error('Verification email failed:', error);
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Could not send verification email.'
+                },
+                { status: 502 }
+            );
+        }
+
+        console.log('Verification email accepted:', data?.id);
 
         return NextResponse.json({
             success: true,
