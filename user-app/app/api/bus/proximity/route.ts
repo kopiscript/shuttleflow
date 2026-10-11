@@ -5,10 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { calculateDistance } from "@/lib/distance";
 import { sendProximityAlert } from "@/lib/notifications";
 
-const PROXIMITY_THRESHOLD = 500;   // meters
-const ALERT_COOLDOWN = 120000;     // 2 minutes
+const PROXIMITY_THRESHOLD = 500; // meters
 
-const lastAlertSent: Record<number, number> = {};
+// Module-level state: tracks which routes are currently "inside" the
+// 500m radius and have already had an alert sent for this approach.
+// Key = routeId, Value = true means "alert already sent for current entry".
+// Reset to false when the bus leaves the radius, so the next entry fires again.
+const alertedRoutes: Record<number, boolean> = {};
 
 export async function GET(request: Request) {
   try {
@@ -77,15 +80,15 @@ export async function GET(request: Request) {
     const distance = calculateDistance(busLat, busLng, pickupLat, pickupLng);
     const isNear = distance <= PROXIMITY_THRESHOLD;
 
-    const now = Date.now();
-    const lastAlert = lastAlertSent[routeId] || 0;
-    const canSendAlert = isNear && now - lastAlert > ALERT_COOLDOWN;
+    // rising-edge detection
+    const wasAlreadyAlerted = alertedRoutes[routeId] === true;
 
     let alertSent = false;
     let notificationId: number | null = null;
 
-    if (canSendAlert) {
-      lastAlertSent[routeId] = now;
+    if (isNear && !wasAlreadyAlerted) {
+      // Bus just entered the radius → send the alert once
+      alertedRoutes[routeId] = true;
 
       const notification = await sendProximityAlert(
         route.routeName,
@@ -100,6 +103,13 @@ export async function GET(request: Request) {
         `🚌 Pickup proximity alert sent for ${route.routeName}: ${Math.round(
           distance
         )}m from ${route.pickupStop}`
+      );
+    } else if (!isNear && wasAlreadyAlerted) {
+      // Bus left the radius → reset so the next approach fires again
+      alertedRoutes[routeId] = false;
+
+      console.log(
+        `↩️ Route ${route.routeName} left the proximity zone. Ready for next approach.`
       );
     }
 
@@ -117,10 +127,8 @@ export async function GET(request: Request) {
         threshold: PROXIMITY_THRESHOLD,
         alertSent,
         notificationId,
-        cooldownRemaining:
-          isNear && !canSendAlert
-            ? Math.round((ALERT_COOLDOWN - (now - lastAlert)) / 1000)
-            : 0,
+        // Expose whether an alert has already fired for this approach
+        alertedForCurrentApproach: alertedRoutes[routeId] === true,
         status: isNear ? "approaching_pickup" : "en_route",
       },
     });
