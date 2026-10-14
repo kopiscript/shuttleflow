@@ -1,90 +1,102 @@
-// app/admin/(dashboard)/components/mapIcons.tsx
+// components/mapIcons.tsx
+
 import L from "leaflet";
 
 /**
- * @param color  Fill colour of the pin
- * @param ring   Border colour
- * @param label  Single character shown inside the pin head (P/ D)
+ * Pickup stop — teardrop marker with a "P" label and blue tint.
+ * Unchanged from before.
  */
-const createTeardropIcon = (color: string, ring: string, label: string) =>
-  L.divIcon({
-    className: "teardrop-marker",
+export function createPickupIcon() {
+  return L.divIcon({
+    className: "pickup-marker",
     html: `
-      <div style="position: relative; width: 36px; height: 44px;">
-        <!-- Pulse ring behind the pin head -->
-        <div style="
-          position: absolute; top: 8px; left: 50%;
-          transform: translate(-50%, -50%);
-          width: 30px; height: 30px; border-radius: 50%;
-          background: ${color}33;
-          animation: pulseTeardrop 1.6s ease-in-out infinite;
-        "></div>
-
-        <!-- Teardrop / pin shape (SVG) -->
-        <svg width="34" height="44" viewBox="0 0 36 44"
-             style="position: absolute; top: 0; left: 0; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));">
-          <!-- Pin body: circle head + triangle tip -->
-          <path d="M17 1
-                   C 8.16 1 1 8.16 1 17
-                   C 1 29 17 43 17 43
-                   C 17 43 33 29 33 17
-                   C 33 8.16 25.84 1 17 1 Z"
-                fill="${color}" stroke="${ring}" stroke-width="2.5" />
-          <!-- Letter label -->
-          <text x="17" y="20"
-                text-anchor="middle"
-                dominant-baseline="middle"
-                font-family="Inter, sans-serif"
-                font-size="13"
-                font-weight="700"
-                fill="${ring}">${label}</text>
+      <div style="position: relative; width: 40px; height: 50px;">
+        <svg width="40" height="50" viewBox="0 0 45 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="48" rx="14" ry="3" fill="rgba(0,0,0,0.15)"/>
+          <path d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z"
+            fill="#3b82f6"
+            stroke="white"
+            stroke-width="2.5"/>
+          <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
+          <text x="20" y="23"
+            font-family="Inter, sans-serif"
+            font-size="14"
+            font-weight="700"
+            text-anchor="middle"
+            fill="#3b82f6">P</text>
         </svg>
       </div>
     `,
-    iconSize: [34, 44],
-    // Anchor at the pin tip (bottom centre), so the tip sits on the coordinate
-    iconAnchor: [17, 43],
-    popupAnchor: [0, -40],
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -45],
   });
+}
 
 /**
- * Pickup stop: blue upside-down teardrop labelled "P".
+ * Drop-off stop — teardrop marker with a black & white checkered flag.
  */
-export const createPickupIcon = () =>
-  createTeardropIcon("#3b82f6", "#ffffff", "P");
-
-/**
- * Drop-off stop: green upside-down teardrop labelled "D".
- */
-export const createDropoffIcon = () =>
-  createTeardropIcon("#bb0c0c", "#ffffff", "D");
-
-/**
- * Active bus: yellow circular marker with bus emoji
- */
-export const createBusIcon = () =>
-  L.divIcon({
-    className: "bus-marker",
+export function createDropoffIcon() {
+  return L.divIcon({
+    className: "dropoff-marker",
     html: `
-      <div style="position: relative; width: 38px; height: 36px;">
-        <div style="
-          position: absolute; top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          width: 36px; height: 36px; border-radius: 50%;
-          background: rgba(250, 204, 21, 0.25);
-          animation: pulseYellow 1.8s ease-in-out infinite;
-        "></div>
-        <div style="
-          position: absolute; top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          width: 28px; height: 28px; border-radius: 50%;
-          background: #facc15; border: 3px solid white;
-          box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 14px; line-height: 1;
-        ">🚌</div>
+      <div style="position: relative; width: 40px; height: 50px;">
+        <svg width="40" height="50" viewBox="0 0 45 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="48" rx="14" ry="3" fill="rgba(0,0,0,0.15)"/>
+          <!-- Teardrop pin body (dark) -->
+          <path d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z"
+            fill="#1F2937"
+            stroke="white"
+            stroke-width="2.5"/>
+          <!-- White circle behind flag for contrast -->
+          <circle cx="20" cy="18" r="13" fill="white" opacity="0.95"/>
+          <!-- Checkered racing flag (black + white squares) -->
+          <g transform="translate(11, 9)">
+            <!-- Flag pole -->
+            <rect x="0" y="1" width="1.5" height="16" fill="#1F2937"/>
+            <!-- Flag cloth: 6 squares (2 rows x 3 cols) -->
+            <rect x="1.5" y="1" width="5" height="4" fill="#1F2937"/>
+            <rect x="6.5" y="1" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" stroke-width="0.5"/>
+            <rect x="11.5" y="1" width="5" height="4" fill="#1F2937"/>
+            <rect x="1.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" stroke-width="0.5"/>
+            <rect x="6.5" y="5" width="5" height="4" fill="#1F2937"/>
+            <rect x="11.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" stroke-width="0.5"/>
+          </g>
+        </svg>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -45],
   });
+}
+
+/**
+ * Bus marker — bigger teardrop with a bus glyph. Sized up from 40×50 to 52×64.
+ */
+export function createBusIcon() {
+  return L.divIcon({
+    className: "bus-marker",
+    html: `
+      <div style="position: relative; width: 52px; height: 64px;">
+        <svg width="52" height="64" viewBox="0 0 50 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="26" cy="61" rx="18" ry="3.5" fill="rgba(0,0,0,0.18)"/>
+          <!-- Teardrop pin body -->
+          <path d="M26 0C12.5 0 1.5 11 1.5 24.5C1.5 38 26 64 26 64C26 64 50.5 38 50.5 24.5C50.5 11 39.5 0 26 0Z"
+            fill="#FEB002"
+            stroke="white"
+            stroke-width="3"/>
+          <!-- White inner circle -->
+          <circle cx="26" cy="23" r="15" fill="white" opacity="0.95"/>
+          <!-- Bus glyph -->
+          <svg x="14" y="11" width="24" height="24" viewBox="0 0 24 24" fill="#1F2937">
+            <path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>
+          </svg>
+        </svg>
+      </div>
+    `,
+    iconSize: [52, 64],
+    iconAnchor: [26, 64],
+    popupAnchor: [0, -58],
+  });
+}
