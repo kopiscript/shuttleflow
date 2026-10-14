@@ -35,7 +35,6 @@ model Route {
   pickupLng         Float?               @map("pickup_lng")
   dropoffLat        Float?               @map("dropoff_lat")
   dropoffLng        Float?               @map("dropoff_lng")
-  alertedForCurrentApproach Boolean      @default(false) @map("alerted_for_current_approach")
   busAssignments    BusRouteAssignment[]
   views             RouteView[]
 
