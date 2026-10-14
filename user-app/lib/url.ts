@@ -1,10 +1,12 @@
 // lib/url.ts
 export function getBaseUrl() {
-    // If we're on Vercel (production or preview)
-    if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`;
-    }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  }
 
-    // Local development
-    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  return "http://localhost:3000";
 }
