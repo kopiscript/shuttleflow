@@ -26,6 +26,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
   const [deviceId, setDeviceId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     const unwrapParams = async () => {
       const { id } = await params;
@@ -33,6 +34,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
     };
     unwrapParams();
   }, [params]);
+
   useEffect(() => {
     if (!deviceId) return;
     const fetchDeviceDetails = async () => {
@@ -50,6 +52,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
     };
     fetchDeviceDetails();
   }, [deviceId]);
+
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -62,6 +65,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
       hour12: true,
     });
   };
+
   const getStatusBadge = (status: string) => {
     if (status === "Online") {
       return "bg-[#E1FFDA] text-[#3EB900]";
@@ -74,12 +78,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
     }
     return "bg-[#2C2D33] text-[#87888C]";
   };
-  const getStatusText = (status: string) => {
-    if (status === "Online") return "text-[#3EB900]";
-    if (status === "Warning") return "text-[#B8860B]";
-    if (status === "Offline") return "text-[#EA1701]";
-    return "text-[#87888C]";
-  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -101,6 +100,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
       setIsDeleting(false);
     }
   };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -110,6 +110,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
       </div>
     );
   }
+
   if (!device) {
     return (
       <div className="flex items-center justify-center h-64 flex-col gap-4">
@@ -125,6 +126,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
       </div>
     );
   }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -215,18 +217,6 @@ export default function DeviceDetailsPage({ params }: PageProps) {
                   {device.deviceName}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-3 border-b border-[#2C2D33]">
-                <span className="text-[#87888C] font-['Inter'] text-sm">
-                  Status
-                </span>
-                <span
-                  className={`font-['Inter'] text-sm font-semibold ${getStatusText(
-                    device.status
-                  )}`}
-                >
-                  {device.status}
-                </span>
-              </div>
             </div>
             <div className="mt-4 text-right">
               <span className="text-[#87888C] font-['Inter'] text-xs">
@@ -280,7 +270,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
                       <td className="px-6 py-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(
-                            device.status
+                            device.status,
                           )}`}
                         >
                           {device.status}
@@ -313,7 +303,7 @@ export default function DeviceDetailsPage({ params }: PageProps) {
                 </span>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(
-                    device.status
+                    device.status,
                   )}`}
                 >
                   {device.status}
@@ -338,8 +328,8 @@ export default function DeviceDetailsPage({ params }: PageProps) {
             </div>
             <div className="mt-4">
               <p className="text-[#87888C] font-['Inter'] text-xs leading-5">
-                Device health is based on the most recent ping received from
-                the device. Devices that stop reporting will automatically be
+                Device health is based on the most recent ping received from the
+                device. Devices that stop reporting will automatically be
                 flagged as Warning or Offline.
               </p>
             </div>

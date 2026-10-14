@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const { id } = await params;
         const deviceId = parseInt(id);
         const body = await request.json();
-        const { deviceName, busId } = body;
+        const { deviceName} = body;
 
         if (isNaN(deviceId)) {
             return NextResponse.json(
@@ -98,30 +98,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
                 deviceName: deviceName,
             },
         });
-
-        // If busId is provided, assign device to bus
-        if (busId !== undefined && busId !== null) {
-            // End any existing assignment
-            await prisma.busDeviceAssignment.updateMany({
-                where: {
-                    deviceId: deviceId,
-                    endedAt: null,
-                },
-                data: {
-                    endedAt: new Date(),
-                },
-            });
-
-            // Create new assignment if busId is valid
-            if (busId !== null) {
-                await prisma.busDeviceAssignment.create({
-                    data: {
-                        busId: busId,
-                        deviceId: deviceId,
-                    },
-                });
-            }
-        }
 
         return NextResponse.json({
             success: true,

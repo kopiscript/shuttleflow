@@ -1,83 +1,19 @@
 // app/admin/devices/add/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-interface Bus {
-  id: number;
-  busName: string;
-  licensePlate: string;
-}
-
-interface Device {
-  id: number;
-  deviceName: string;
-  busId: number | null;
-}
 
 export default function AddDevicePage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [buses, setBuses] = useState<Bus[]>([]);
-  const [loadingBuses, setLoadingBuses] = useState(true);
   const [formData, setFormData] = useState({
     deviceName: "",
-    busId: "",
-    status: "Offline",
   });
 
-  // Fetch buses and devices (to filter out buses that already have a device)
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoadingBuses(true);
-
-      // Fetch buses and devices in parallel
-      const [busesRes, devicesRes] = await Promise.all([
-        fetch("/api/admin/buses"),
-        fetch("/api/admin/devices"),
-      ]);
-
-      const busesData = await busesRes.json();
-      const devicesData = await devicesRes.json();
-
-      if (busesData.success && devicesData.success) {
-        // Collect bus IDs that already have a device assigned
-        const assignedBusIds = new Set<number>(
-          (devicesData.devices as Device[])
-            .filter((d) => d.busId !== null)
-            .map((d) => d.busId as number)
-        );
-
-        // Only keep buses without a device
-        const availableBuses = (busesData.buses as Bus[]).filter(
-          (bus) => !assignedBusIds.has(bus.id)
-        );
-
-        setBuses(availableBuses);
-      }
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setLoadingBuses(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const toggleStatus = () => {
-    setFormData((prev) => ({
-      ...prev,
-      status: prev.status === "Online" ? "Offline" : "Online",
-    }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ deviceName: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,8 +26,6 @@ export default function AddDevicePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deviceName: formData.deviceName,
-          busId: formData.busId ? parseInt(formData.busId) : null,
-          status: formData.status,
         }),
       });
 
@@ -115,9 +49,22 @@ export default function AddDevicePage() {
     <div>
       {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
-        <Link href="/admin/devices" className="text-white hover:text-[#96DDFF] transition">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <Link
+          href="/admin/devices"
+          className="text-white hover:text-[#96DDFF] transition"
+        >
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -137,13 +84,19 @@ export default function AddDevicePage() {
 
               {/* Device ID - Auto-generated */}
               <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Device ID</span>
-                <span className="text-white font-['Inter'] text-sm">Auto-generated</span>
+                <span className="text-[#87888C] font-['Inter'] text-sm">
+                  Device ID
+                </span>
+                <span className="text-white font-['Inter'] text-sm">
+                  Auto-generated
+                </span>
               </div>
 
               {/* Device Name */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Device Name</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Device Name
+                </label>
                 <input
                   type="text"
                   name="deviceName"
@@ -153,54 +106,6 @@ export default function AddDevicePage() {
                   className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
                   required
                 />
-              </div>
-
-              {/* Assign to Bus */}
-              <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  Assign to Bus <span className="text-[#87888C] text-xs">(optional)</span>
-                </label>
-                <select
-                  name="busId"
-                  value={formData.busId}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                >
-                  <option value="">Unassigned</option>
-                  {loadingBuses ? (
-                    <option disabled>Loading buses...</option>
-                  ) : buses.length === 0 ? (
-                    <option disabled>No available buses</option>
-                  ) : (
-                    buses.map((bus) => (
-                      <option key={bus.id} value={bus.id}>
-                        {bus.busName} ({bus.licensePlate})
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              {/* Status Toggle */}
-              <div className="flex justify-between items-center py-3 border-b border-[#2C2D33] mt-4">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
-                <div className="flex items-center gap-3">
-                  <span className={`font-['Inter'] text-sm ${formData.status === "Online" ? "text-[#3EB900]" : "text-[#EA1701]"
-                    }`}>
-                    {formData.status}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${formData.status === "Online" ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                      }`}
-                  >
-                    <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${formData.status === "Online" ? "right-[3px]" : "left-[3px]"
-                        }`}
-                    />
-                  </button>
-                </div>
               </div>
             </div>
           </div>
