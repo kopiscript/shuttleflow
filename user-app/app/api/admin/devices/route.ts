@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDeviceHealth } from "@/lib/deviceHealth";
-
+import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 export async function GET() {
   try {
@@ -50,7 +51,7 @@ export async function GET() {
     console.error("Error fetching devices:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch devices" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -59,27 +60,21 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { deviceName, busId } = body;
+    const { deviceName } = body;
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
 
     if (!deviceName) {
       return NextResponse.json(
         { success: false, error: "Device name is required" },
-        { status: 400 }
+        { status: 400 },
       );
-    }
-
-    // Server-side guard: reject if the bus already has an active device
-    if (busId) {
-      const existingAssignment = await prisma.busDeviceAssignment.findFirst({
-        where: { busId, endedAt: null },
-      });
-
-      if (existingAssignment) {
-        return NextResponse.json(
-          { success: false, error: "This bus already has a device assigned" },
-          { status: 400 }
-        );
-      }
     }
 
     // Create the device
@@ -91,15 +86,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // If busId is provided, assign device to bus
-    if (busId) {
-      await prisma.busDeviceAssignment.create({
-        data: {
-          busId: busId,
-          deviceId: device.id,
+    // ADD THE AUDIT LOG HERE
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "DEVICE_CREATED",
+      targetType: "Device",
+      targetId: device.id,
+      details: {
+        createdRecord: {
+          id: device.id,
+          deviceName: device.deviceName,
         },
-      });
-    }
+      },
+      req: request,
+    });
 
     return NextResponse.json({
       success: true,
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating device:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create device" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
