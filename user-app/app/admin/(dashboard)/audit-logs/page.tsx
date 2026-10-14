@@ -226,6 +226,30 @@ export default function AuditLogsPage() {
     startIndex + itemsPerPage,
   );
 
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+
+    for (let i = 1; i <= totalPages; i++) {
+      const isFirst = i === 1;
+      const isLast = i === totalPages;
+      const isNearCurrent = Math.abs(i - currentPage) <= 1;
+
+      if (isFirst || isLast || isNearCurrent) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== "...") {
+        pages.push("...");
+      }
+    }
+
+    return pages;
+  };
+
   const exportToCSV = () => {
     if (filteredLogs.length === 0) return;
     const headers = [
@@ -519,46 +543,67 @@ export default function AuditLogsPage() {
           </table>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-[#2C2D33] gap-3">
-          <span className="text-[#87888C] text-xs">
-            Showing {filteredLogs.length === 0 ? 0 : startIndex + 1} to{" "}
-            {Math.min(startIndex + itemsPerPage, filteredLogs.length)} of{" "}
-            {filteredLogs.length} entries
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-2.5 py-1.5 rounded-lg text-xs text-[#87888C] hover:text-white disabled:opacity-30"
-            >
-              First
-            </button>
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg text-sm text-[#87888C] hover:text-white disabled:opacity-30"
-            >
-              Prev
-            </button>
-            <span className="text-white text-sm px-2 font-medium">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg text-sm text-[#87888C] hover:text-white disabled:opacity-30"
-            >
-              Next
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-2.5 py-1.5 rounded-lg text-xs text-[#87888C] hover:text-white disabled:opacity-30"
-            >
-              Last
-            </button>
+        {/* Pagination */}
+        {totalPages > 1 && !loading && !error && (
+          <div className="flex items-center justify-end px-6 py-4 border-t border-[#2C2D33]">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
+                  currentPage === 1
+                    ? "text-[#87888C] cursor-not-allowed"
+                    : "text-[#87888C] hover:text-white"
+                }`}
+              >
+                Previous
+              </button>
+
+              {getPageNumbers().map((page, index) => {
+                if (typeof page === "string") {
+                  return (
+                    <span
+                      key={`ellipsis-${index}`}
+                      className="px-2 text-[#87888C] font-['Inter'] text-sm font-bold"
+                    >
+                      ...
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => goToPage(page)}
+                    aria-current={currentPage === page ? "page" : undefined}
+                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
+                      currentPage === page
+                        ? "bg-[#96DDFF] text-[#171821]"
+                        : "text-[#87888C] hover:text-white"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
+                  currentPage === totalPages
+                    ? "text-[#87888C] cursor-not-allowed"
+                    : "text-[#87888C] hover:text-white"
+                }`}
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* JSON Snapshot Modal */}
