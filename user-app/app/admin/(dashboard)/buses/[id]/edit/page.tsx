@@ -29,6 +29,12 @@ interface RouteOption {
   assignedBusName: string | null;
 }
 
+interface DeviceOption {
+  id: number;
+  deviceName: string;
+  busId: number | null;
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -47,7 +53,7 @@ export default function EditBusPage({ params }: PageProps) {
     deviceId: "",
   });
   const [routes, setRoutes] = useState<RouteOption[]>([]);
-  const [devices, setDevices] = useState<{ id: number; deviceName: string }[]>([]);
+  const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
   const [showRemoveDeviceModal, setShowRemoveDeviceModal] = useState(false);
 
@@ -96,7 +102,9 @@ export default function EditBusPage({ params }: PageProps) {
     fetchData();
   }, [params]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -150,7 +158,9 @@ export default function EditBusPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <span className="text-[#87888C] font-['Inter'] text-sm">Loading bus details...</span>
+        <span className="text-[#87888C] font-['Inter'] text-sm">
+          Loading bus details...
+        </span>
       </div>
     );
   }
@@ -159,13 +169,27 @@ export default function EditBusPage({ params }: PageProps) {
     <div>
       {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
-        <Link href={`/admin/buses/${busId}`} className="text-white hover:text-[#96DDFF] transition">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <Link
+          href={`/admin/buses/${busId}`}
+          className="text-white hover:text-[#96DDFF] transition"
+        >
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
-          Edit Bus – B{String(busId).padStart(3, "0")} ({formData.licensePlate || "N/A"})
+          Edit Bus – B{String(busId).padStart(3, "0")} (
+          {formData.licensePlate || "N/A"})
         </h1>
       </div>
 
@@ -175,17 +199,25 @@ export default function EditBusPage({ params }: PageProps) {
           <div className="p-6 space-y-6">
             {/* Basic Information */}
             <div>
-              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Basic Information</h3>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Basic Information
+              </h3>
 
               {/* Bus ID - Read-only */}
               <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Bus ID</span>
-                <span className="text-white font-['Inter'] text-sm">B{String(busId).padStart(3, "0")}</span>
+                <span className="text-[#87888C] font-['Inter'] text-sm">
+                  Bus ID
+                </span>
+                <span className="text-white font-['Inter'] text-sm">
+                  B{String(busId).padStart(3, "0")}
+                </span>
               </div>
 
               {/* License Plate */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">License Plate</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  License Plate
+                </label>
                 <input
                   type="text"
                   name="licensePlate"
@@ -199,7 +231,9 @@ export default function EditBusPage({ params }: PageProps) {
 
               {/* Bus Model */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Bus Model</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Bus Model
+                </label>
                 <input
                   type="text"
                   name="busName"
@@ -213,7 +247,9 @@ export default function EditBusPage({ params }: PageProps) {
 
               {/* Capacity */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Capacity</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Capacity
+                </label>
                 <input
                   type="number"
                   name="capacity"
@@ -228,29 +264,42 @@ export default function EditBusPage({ params }: PageProps) {
 
               {/* Status Toggle */}
               <div className="flex justify-between items-center py-3 border-b border-[#2C2D33] mt-4">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
+                <span className="text-[#87888C] font-['Inter'] text-sm">
+                  Status
+                </span>
                 <div className="flex items-center gap-3">
-                  <span className="text-white font-['Inter'] text-sm">{formData.status}</span>
+                  <span className="text-white font-['Inter'] text-sm">
+                    {formData.status}
+                  </span>
                   <button
                     type="button"
                     onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${formData.status === "Active" ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                      }`}
+                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
+                      formData.status === "Active"
+                        ? "bg-[#96DDFF]"
+                        : "bg-[#C7C7CC]"
+                    }`}
                   >
                     <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${formData.status === "Active" ? "right-[3px]" : "left-[3px]"
-                        }`}
+                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
+                        formData.status === "Active"
+                          ? "right-[3px]"
+                          : "left-[3px]"
+                      }`}
                     />
                   </button>
 
                   <div className="mt-2 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
                     <p className="text-[#87888C] font-['Inter'] text-xs">
-                      <span className="text-[#96DDFF] font-semibold">Note:</span> Setting this bus
-                      to <span className="text-[#EA1701]">Inactive</span> will also deactivate
-                      its assigned route. The route will not appear in the user app.
+                      <span className="text-[#96DDFF] font-semibold">
+                        Note:
+                      </span>{" "}
+                      Setting this bus to{" "}
+                      <span className="text-[#EA1701]">Inactive</span> will also
+                      deactivate its assigned route. The route will not appear
+                      in the user app.
                     </p>
                   </div>
-                  
                 </div>
               </div>
             </div>
@@ -260,7 +309,9 @@ export default function EditBusPage({ params }: PageProps) {
 
             {/* Assigned Route */}
             <div>
-              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Route</h3>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Route
+              </h3>
               <div className="mt-4 flex gap-2">
                 <div className="relative flex-1">
                   <select
@@ -274,7 +325,8 @@ export default function EditBusPage({ params }: PageProps) {
                       // The route currently assigned to this bus stays selectable.
                       // Routes assigned to a different bus are disabled.
                       const alreadyAssignedToAnotherBus =
-                        route.assignedBusId !== null && route.assignedBusId !== busId;
+                        route.assignedBusId !== null &&
+                        route.assignedBusId !== busId;
 
                       return (
                         <option
@@ -283,14 +335,26 @@ export default function EditBusPage({ params }: PageProps) {
                           disabled={alreadyAssignedToAnotherBus}
                         >
                           {route.routeName}
-                          {alreadyAssignedToAnotherBus ? " (Already assigned)" : ""}
+                          {alreadyAssignedToAnotherBus
+                            ? " (Already assigned)"
+                            : ""}
                         </option>
                       );
                     })}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4 text-[#87888C]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -301,8 +365,18 @@ export default function EditBusPage({ params }: PageProps) {
                     className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
                     title="Remove assigned route"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                     Remove
                   </button>
@@ -315,7 +389,9 @@ export default function EditBusPage({ params }: PageProps) {
 
             {/* Assigned Device */}
             <div>
-              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Device</h3>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Device
+              </h3>
               <div className="mt-4 flex gap-2">
                 <div className="relative flex-1">
                   <select
@@ -325,15 +401,42 @@ export default function EditBusPage({ params }: PageProps) {
                     className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
                   >
                     <option value="">Select device</option>
-                    {devices.map((device) => (
-                      <option key={device.id} value={device.id}>
-                        {device.deviceName}
-                      </option>
-                    ))}
+                    {devices.map((device) => {
+                      const alreadyAssignedToAnotherBus =
+                        device.busId != null && device.busId !== busId;
+
+                      return (
+                        <option
+                          key={device.id}
+                          value={device.id}
+                          disabled={alreadyAssignedToAnotherBus}
+                          style={{
+                            color: alreadyAssignedToAnotherBus
+                              ? "#87888C"
+                              : undefined,
+                          }}
+                        >
+                          {device.deviceName}
+                          {alreadyAssignedToAnotherBus
+                            ? " (Already assigned)"
+                            : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4 text-[#87888C]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -344,8 +447,18 @@ export default function EditBusPage({ params }: PageProps) {
                     className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
                     title="Remove assigned device"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                     Remove
                   </button>
@@ -364,8 +477,8 @@ export default function EditBusPage({ params }: PageProps) {
               title="Remove Route"
               message="Are you sure you want to remove"
               itemName={
-                routes.find((r) => r.id.toString() === formData.routeId)?.routeName ||
-                "this route"
+                routes.find((r) => r.id.toString() === formData.routeId)
+                  ?.routeName || "this route"
               }
               description="This will unassign the route from this bus. The route itself will not be deleted."
               confirmLabel="Remove"
@@ -384,8 +497,8 @@ export default function EditBusPage({ params }: PageProps) {
               title="Remove Device"
               message="Are you sure you want to remove"
               itemName={
-                devices.find((d) => d.id.toString() === formData.deviceId)?.deviceName ||
-                "this device"
+                devices.find((d) => d.id.toString() === formData.deviceId)
+                  ?.deviceName || "this device"
               }
               description="This will unassign the device from this bus. The device itself will not be deleted."
               confirmLabel="Remove"
