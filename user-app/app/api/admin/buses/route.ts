@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activityLog";
 import { getDeviceHealth } from "@/lib/deviceHealth";
+import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 // GET - list all buses
 export async function GET() {
@@ -40,7 +42,9 @@ export async function GET() {
 
         // flat fields for the dashboard map / bus markers
         routeIds: bus.routeAssignments.map((a) => a.routeId),
-        routeNames: bus.routeAssignments.map((a) => a.route?.routeName).filter(Boolean),
+        routeNames: bus.routeAssignments
+          .map((a) => a.route?.routeName)
+          .filter(Boolean),
         routeId: activeRoute?.id ?? null,
         routeName: activeRoute?.routeName ?? null,
         pickupStop: activeRoute?.pickupStop ?? null,
@@ -57,22 +61,22 @@ export async function GET() {
         route: activeRoute,
         device: bus.deviceAssignments[0]?.device
           ? (() => {
-            const device = bus.deviceAssignments[0].device;
-            // Derive status from the device's own lastSeen
-            const health = getDeviceHealth(device.lastSeen);
+              const device = bus.deviceAssignments[0].device;
+              // Derive status from the device's own lastSeen
+              const health = getDeviceHealth(device.lastSeen);
 
-            return {
-              ...device,
-              // override the raw column with the derived status
-              status: health.status,
-              lastLat: latestLocation?.latitude
-                ? Number(latestLocation.latitude)
-                : null,
-              lastLng: latestLocation?.longitude
-                ? Number(latestLocation.longitude)
-                : null,
-            };
-          })()
+              return {
+                ...device,
+                // override the raw column with the derived status
+                status: health.status,
+                lastLat: latestLocation?.latitude
+                  ? Number(latestLocation.latitude)
+                  : null,
+                lastLng: latestLocation?.longitude
+                  ? Number(latestLocation.longitude)
+                  : null,
+              };
+            })()
           : null,
       };
     });
@@ -82,7 +86,7 @@ export async function GET() {
     console.error("Failed to fetch buses:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch buses" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -91,27 +95,38 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { busName, licensePlate, capacity, status, routeId, deviceId } =
-      body;
+    const { busName, licensePlate, capacity, status, routeId, deviceId } = body;
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
 
     if (!busName || !licensePlate) {
       return NextResponse.json(
         { success: false, error: "Bus name and license plate are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Server-side guard: reject if the route is already assigned to another bus
     if (routeId) {
-      const existingRouteAssignment =
-        await prisma.busRouteAssignment.findFirst({
+      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst(
+        {
           where: { routeId: parseInt(routeId), endedAt: null },
-        });
+        },
+      );
 
       if (existingRouteAssignment) {
         return NextResponse.json(
-          { success: false, error: "This route is already assigned to another bus" },
-          { status: 400 }
+          {
+            success: false,
+            error: "This route is already assigned to another bus",
+          },
+          { status: 400 },
         );
       }
     }
@@ -125,8 +140,11 @@ export async function POST(request: Request) {
 
       if (existingDeviceAssignment) {
         return NextResponse.json(
-          { success: false, error: "This device is already assigned to another bus" },
-          { status: 400 }
+          {
+            success: false,
+            error: "This device is already assigned to another bus",
+          },
+          { status: 400 },
         );
       }
     }
@@ -143,7 +161,7 @@ export async function POST(request: Request) {
     await logActivity(
       bus.id,
       "bus_created",
-      `Bus B${String(bus.id).padStart(3, "0")} created`
+      `Bus B${String(bus.id).padStart(3, "0")} created`,
     );
 
     // Assign route if provided
@@ -159,7 +177,7 @@ export async function POST(request: Request) {
       await logActivity(
         bus.id,
         "route_assigned",
-        `Route assigned to Bus B${String(bus.id).padStart(3, "0")}`
+        `Route assigned to Bus B${String(bus.id).padStart(3, "0")}`,
       );
     }
 
@@ -176,16 +194,36 @@ export async function POST(request: Request) {
       await logActivity(
         bus.id,
         "device_assigned",
-        `Device assigned to Bus B${String(bus.id).padStart(3, "0")}`
+        `Device assigned to Bus B${String(bus.id).padStart(3, "0")}`,
       );
     }
+
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "BUS_CREATED",
+      targetType: "Bus",
+      targetId: bus.id,
+      details: {
+        createdRecord: {
+          id: bus.id,
+          busName: bus.busName,
+          licensePlate: bus.licensePlate,
+          capacity: bus.capacity,
+          status: bus.status,
+          routeId: routeId ? Number(routeId) : null,
+          deviceId: deviceId ? Number(deviceId) : null,
+        },
+      },
+      req: request,
+    });
 
     return NextResponse.json({ success: true, bus });
   } catch (error) {
     console.error("Failed to create bus:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create bus" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

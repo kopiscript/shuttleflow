@@ -8,7 +8,7 @@ import { getDeviceHealth } from "@/lib/deviceHealth";
 // GET - Fetch a single bus
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -17,7 +17,7 @@ export async function GET(
     if (isNaN(busId)) {
       return NextResponse.json(
         { success: false, error: "Invalid bus ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,7 +42,7 @@ export async function GET(
     if (!bus) {
       return NextResponse.json(
         { success: false, error: "Bus not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -87,7 +87,7 @@ export async function GET(
     console.error("Failed to fetch bus:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch bus" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -95,18 +95,26 @@ export async function GET(
 // PUT - Update a bus
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const busId = parseInt(id);
     const body = await request.json();
     const { busName, licensePlate, capacity, status, routeId, deviceId } = body;
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
 
     if (isNaN(busId)) {
       return NextResponse.json(
         { success: false, error: "Invalid bus ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -128,7 +136,7 @@ export async function PUT(
     if (!oldBus) {
       return NextResponse.json(
         { success: false, error: "Bus not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -148,7 +156,7 @@ export async function PUT(
       await logActivity(
         busId,
         "status_changed",
-        `Bus status changed from "${oldBus.status}" to "${status}"`
+        `Bus status changed from "${oldBus.status}" to "${status}"`,
       );
     }
 
@@ -174,13 +182,13 @@ export async function PUT(
         await logActivity(
           busId,
           "route_assigned",
-          `Route assigned to Bus B${String(busId).padStart(3, "0")}`
+          `Route assigned to Bus B${String(busId).padStart(3, "0")}`,
         );
       } else {
         await logActivity(
           busId,
           "route_assigned",
-          `Route unassigned from Bus B${String(busId).padStart(3, "0")}`
+          `Route unassigned from Bus B${String(busId).padStart(3, "0")}`,
         );
       }
     }
@@ -207,13 +215,13 @@ export async function PUT(
         await logActivity(
           busId,
           "device_assigned",
-          `Device assigned to Bus B${String(busId).padStart(3, "0")}`
+          `Device assigned to Bus B${String(busId).padStart(3, "0")}`,
         );
       } else {
         await logActivity(
           busId,
           "device_assigned",
-          `Device unassigned from Bus B${String(busId).padStart(3, "0")}`
+          `Device unassigned from Bus B${String(busId).padStart(3, "0")}`,
         );
       }
     }
@@ -221,15 +229,58 @@ export async function PUT(
     await logActivity(
       busId,
       "bus_updated",
-      `Bus B${String(busId).padStart(3, "0")} details updated`
+      `Bus B${String(busId).padStart(3, "0")} details updated`,
     );
+
+    // ADD: Get the final bus details and assignments
+    const updatedBus = await prisma.bus.findUniqueOrThrow({
+      where: { id: busId },
+      include: {
+        routeAssignments: {
+          where: { endedAt: null },
+        },
+        deviceAssignments: {
+          where: { endedAt: null },
+        },
+      },
+    });
+
+    // ADD: Record the edit
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "BUS_UPDATED",
+      targetType: "Bus",
+      targetId: busId,
+      details: {
+        before: {
+          id: oldBus.id,
+          busName: oldBus.busName,
+          licensePlate: oldBus.licensePlate,
+          capacity: oldBus.capacity,
+          status: oldBus.status,
+          routeIds: oldBus.routeAssignments.map((a) => a.routeId),
+          deviceIds: oldBus.deviceAssignments.map((a) => a.deviceId),
+        },
+        after: {
+          id: updatedBus.id,
+          busName: updatedBus.busName,
+          licensePlate: updatedBus.licensePlate,
+          capacity: updatedBus.capacity,
+          status: updatedBus.status,
+          routeIds: updatedBus.routeAssignments.map((a) => a.routeId),
+          deviceIds: updatedBus.deviceAssignments.map((a) => a.deviceId),
+        },
+      },
+      req: request,
+    });
 
     return NextResponse.json({ success: true, bus });
   } catch (error) {
     console.error("Failed to update bus:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update bus" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -237,14 +288,14 @@ export async function PUT(
 // DELETE - Delete a bus
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -254,11 +305,11 @@ export async function DELETE(
     if (isNaN(busId)) {
       return NextResponse.json(
         { success: false, error: "Invalid bus ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // 1. Fetch complete bus state and relationships before deletion
+    // Fetch complete bus state and relationships before deletion
     const busToDelete = await prisma.bus.findUnique({
       where: { id: busId },
       include: {
@@ -276,11 +327,27 @@ export async function DELETE(
     if (!busToDelete) {
       return NextResponse.json(
         { success: false, error: "Bus not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    // 2. Save full snapshot into AdminAuditLog
+    // Clean up active assignments before deleting the bus
+    await prisma.busRouteAssignment.updateMany({
+      where: { busId, endedAt: null },
+      data: { endedAt: new Date() },
+    });
+
+    await prisma.busDeviceAssignment.updateMany({
+      where: { busId, endedAt: null },
+      data: { endedAt: new Date() },
+    });
+
+    // Delete the bus record
+    await prisma.bus.delete({
+      where: { id: busId },
+    });
+
+    // Save full snapshot into AdminAuditLog
     await logAdminAudit({
       adminId: session.adminId,
       category: "FLEET",
@@ -301,28 +368,12 @@ export async function DELETE(
       req: request,
     });
 
-    // 3. Clean up active assignments before deleting the bus
-    await prisma.busRouteAssignment.updateMany({
-      where: { busId, endedAt: null },
-      data: { endedAt: new Date() },
-    });
-
-    await prisma.busDeviceAssignment.updateMany({
-      where: { busId, endedAt: null },
-      data: { endedAt: new Date() },
-    });
-
-    // 4. Delete the bus record
-    await prisma.bus.delete({
-      where: { id: busId },
-    });
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete bus:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete bus" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
