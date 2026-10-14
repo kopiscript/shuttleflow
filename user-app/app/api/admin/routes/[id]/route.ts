@@ -5,9 +5,33 @@ import { deriveRouteStatus, routeStatusInclude } from "@/lib/routeStatus";
 import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
 
+function routeSnapshot(route: {
+  id: number;
+  routeName: string;
+  pickupStop: string;
+  dropoffStop: string;
+  intermediateStops: string[];
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
+}) {
+  return {
+    id: route.id,
+    routeName: route.routeName,
+    pickupStop: route.pickupStop,
+    dropoffStop: route.dropoffStop,
+    intermediateStops: route.intermediateStops,
+    pickupLat: route.pickupLat,
+    pickupLng: route.pickupLng,
+    dropoffLat: route.dropoffLat,
+    dropoffLng: route.dropoffLng,
+  };
+}
+
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -16,7 +40,7 @@ export async function GET(
     if (isNaN(routeId)) {
       return NextResponse.json(
         { success: false, error: "Invalid route ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -32,7 +56,7 @@ export async function GET(
     if (!route) {
       return NextResponse.json(
         { success: false, error: "Route not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -53,7 +77,7 @@ export async function GET(
         .filter((a) => a.endedAt === null)
         .map((assignment) => {
           const activeDevice = (assignment.bus.deviceAssignments ?? []).find(
-            (d) => d.endedAt === null
+            (d) => d.endedAt === null,
           );
           return {
             id: assignment.bus.id,
@@ -63,10 +87,10 @@ export async function GET(
             hasDevice: !!activeDevice,
             device: activeDevice?.device
               ? {
-                id: activeDevice.device.id,
-                deviceName: activeDevice.device.deviceName,
-                status: activeDevice.device.status,
-              }
+                  id: activeDevice.device.id,
+                  deviceName: activeDevice.device.deviceName,
+                  status: activeDevice.device.status,
+                }
               : null,
           };
         }),
@@ -79,14 +103,14 @@ export async function GET(
     console.error("Failed to fetch route:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch route" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -103,10 +127,19 @@ export async function PUT(
       dropoffLng,
     } = body;
 
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
     if (isNaN(routeId)) {
       return NextResponse.json(
         { success: false, error: "Invalid route ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -117,7 +150,7 @@ export async function PUT(
     if (!existingRoute) {
       return NextResponse.json(
         { success: false, error: "Route not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -127,8 +160,7 @@ export async function PUT(
         routeName: routeName ?? existingRoute.routeName,
         pickupStop: pickupStop ?? existingRoute.pickupStop,
         dropoffStop: dropoffStop ?? existingRoute.dropoffStop,
-        intermediateStops:
-          intermediateStops ?? existingRoute.intermediateStops,
+        intermediateStops: intermediateStops ?? existingRoute.intermediateStops,
         pickupLat:
           pickupLat !== undefined && pickupLat !== null
             ? parseFloat(pickupLat)
@@ -150,6 +182,19 @@ export async function PUT(
       include: routeStatusInclude,
     });
 
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "ROUTE_UPDATED",
+      targetType: "Route",
+      targetId: routeId,
+      details: {
+        before: routeSnapshot(existingRoute),
+        after: routeSnapshot(route),
+      },
+      req: request,
+    });
+
     return NextResponse.json({
       success: true,
       route: {
@@ -161,23 +206,31 @@ export async function PUT(
     console.error("Failed to update route:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update route" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const routeId = parseInt(id);
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
 
     if (isNaN(routeId)) {
       return NextResponse.json(
         { success: false, error: "Invalid route ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -194,30 +247,36 @@ export async function DELETE(
           success: false,
           error: `Cannot delete route with ${assignments.length} active bus assignment(s). Please unassign the bus first.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
-
-    const session = await getSession();
 
     const routeToDelete = await prisma.route.findUnique({
       where: { id: routeId },
     });
 
-    if (routeToDelete) {
-      await logAdminAudit({
-        adminId: session?.adminId ?? null,
-        category: "FLEET",
-        action: "ROUTE_DELETED",
-        targetType: "Route",
-        targetId: routeId,
-        details: { deletedRecord: routeToDelete },
-        req: request,
-      });
+    if (!routeToDelete) {
+      return NextResponse.json(
+        { success: false, error: "Route not found" },
+        { status: 404 },
+      );
     }
 
+    // Delete first. Only record Deleted if this succeeds.
     await prisma.route.delete({
       where: { id: routeId },
+    });
+
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "ROUTE_DELETED",
+      targetType: "Route",
+      targetId: routeId,
+      details: {
+        deletedRecord: routeSnapshot(routeToDelete),
+      },
+      req: request,
     });
 
     return NextResponse.json({ success: true });
@@ -225,7 +284,7 @@ export async function DELETE(
     console.error("Failed to delete route:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete route" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

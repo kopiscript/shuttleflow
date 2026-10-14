@@ -2,6 +2,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { deriveRouteStatus, routeStatusInclude } from "@/lib/routeStatus";
+import { getSession } from "@/lib/session";
+import { logAdminAudit } from "@/lib/adminAuditLog";
 
 export async function GET() {
   try {
@@ -18,7 +20,7 @@ export async function GET() {
       // is still open (endedAt === null), regardless of bus/device status.
       // This is intentionally different from derived route Active status.
       const currentRouteAssignment = route.busAssignments.find(
-        (a) => a.endedAt === null
+        (a) => a.endedAt === null,
       );
 
       // Find the assignment that actually satisfies the Active rule:
@@ -70,7 +72,7 @@ export async function GET() {
         error:
           error instanceof Error ? error.message : "Failed to fetch routes",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -78,6 +80,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const session = await getSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
     const {
       routeName,
       pickupStop,
@@ -95,7 +105,7 @@ export async function POST(request: Request) {
           success: false,
           error: "Route name, pickup stop, and drop-off stop are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -125,6 +135,28 @@ export async function POST(request: Request) {
       include: routeStatusInclude,
     });
 
+    await logAdminAudit({
+      adminId: session.adminId,
+      category: "FLEET",
+      action: "ROUTE_CREATED",
+      targetType: "Route",
+      targetId: route.id,
+      details: {
+        createdRecord: {
+          id: route.id,
+          routeName: route.routeName,
+          pickupStop: route.pickupStop,
+          dropoffStop: route.dropoffStop,
+          intermediateStops: route.intermediateStops,
+          pickupLat: route.pickupLat,
+          pickupLng: route.pickupLng,
+          dropoffLat: route.dropoffLat,
+          dropoffLng: route.dropoffLng,
+        },
+      },
+      req: request,
+    });
+
     return NextResponse.json({
       success: true,
       route: {
@@ -136,7 +168,7 @@ export async function POST(request: Request) {
     console.error("Failed to create route:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create route" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
