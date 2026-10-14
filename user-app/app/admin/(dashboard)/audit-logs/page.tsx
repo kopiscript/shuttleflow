@@ -101,6 +101,12 @@ const AUDIT_TABS: { value: AuditTab; label: string }[] = [
   { value: "SETTINGS", label: "Settings" },
 ];
 
+const FLEET_ACTION_OPTIONS = [
+  { label: "Add", suffix: "CREATED" },
+  { label: "Edit", suffix: "UPDATED" },
+  { label: "Delete", suffix: "DELETED" },
+];
+
 function matchesTab(log: AdminAuditLogItem, tab: AuditTab) {
   if (tab === "AUTH" || tab === "SETTINGS") {
     return log.category === tab;
@@ -362,10 +368,17 @@ export default function AuditLogsPage() {
           }}
           options={[
             { label: "All Actions", value: "ALL" },
-            ...uniqueActions.map((action) => ({
-              label: getActionLabel(action),
-              value: action,
-            })),
+            ...(selectedTab === "BUS" ||
+            selectedTab === "ROUTE" ||
+            selectedTab === "DEVICE"
+              ? FLEET_ACTION_OPTIONS.map((action) => ({
+                  label: action.label,
+                  value: `${selectedTab}_${action.suffix}`,
+                }))
+              : uniqueActions.map((action) => ({
+                  label: getActionLabel(action),
+                  value: action,
+                }))),
           ]}
         />
 
@@ -437,7 +450,7 @@ export default function AuditLogsPage() {
                     colSpan={7}
                     className="text-center py-10 text-[#87888C] text-sm"
                   >
-                    No audit records match filters.
+                    No records match.
                   </td>
                 </tr>
               ) : (
