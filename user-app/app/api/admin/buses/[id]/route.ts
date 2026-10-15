@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
 import { logActivity } from "@/lib/activityLog";
 import { getDeviceHealth } from "@/lib/deviceHealth";
+import { sendAlertNotification, sendInfo } from "@/lib/notifications";
 
 // GET - Fetch a single bus
 export async function GET(
@@ -160,17 +161,45 @@ export async function PUT(
       );
     }
 
-    // Handle route assignment
-    // undefined = don't touch, null = unassign, number = assign
+    // ✅ NEW: Auto-fire notifications when status flips
+    if (status !== undefined && status !== oldBus.status) {
+      const activeRoute = oldBus.routeAssignments[0]?.route ?? null;
+      const routeLabel = activeRoute?.routeName ?? "its route";
+
+      // → Breakdown
+      if (status === "Breakdown") {
+        await sendAlertNotification(
+          `${oldBus.busName} Breakdown`,
+          `${oldBus.busName} on ${routeLabel} has broken down. Please take alternative transport.`,
+        );
+        console.log(`🚨 Breakdown notification sent for ${oldBus.busName}`);
+      }
+      // → Delayed (manual status flag)
+      else if (status === "Delayed") {
+        await sendAlertNotification(
+          `${oldBus.busName} Delayed`,
+          `${oldBus.busName} on ${routeLabel} is currently delayed. Expect schedule disruption.`,
+        );
+        console.log(`⚠️ Delay notification sent for ${oldBus.busName}`);
+      }
+      // → Back to Active (recovery)
+      else if (status === "Active" && oldBus.status !== "Active") {
+        await sendInfo(
+          `${oldBus.busName} Back in Service`,
+          `${oldBus.busName} on ${routeLabel} is back on the road. Thank you for your patience.`,
+        );
+        console.log(`✅ Recovery notification sent for ${oldBus.busName}`);
+      }
+    }
+
+    // Handle route assignment (unchanged)
     if (routeId !== undefined) {
-      // End any current active route assignment
       await prisma.busRouteAssignment.updateMany({
         where: { busId, endedAt: null },
         data: { endedAt: new Date() },
       });
 
       if (routeId !== null) {
-        // Assign new route
         await prisma.busRouteAssignment.create({
           data: {
             busId,
@@ -193,17 +222,14 @@ export async function PUT(
       }
     }
 
-    // Handle device assignment
-    // undefined = don't touch, null = unassign, number = assign
+    // Handle device assignment (unchanged)
     if (deviceId !== undefined) {
-      // End any current active device assignment
       await prisma.busDeviceAssignment.updateMany({
         where: { busId, endedAt: null },
         data: { endedAt: new Date() },
       });
 
       if (deviceId !== null) {
-        // Assign new device
         await prisma.busDeviceAssignment.create({
           data: {
             busId,
@@ -232,7 +258,6 @@ export async function PUT(
       `Bus B${String(busId).padStart(3, "0")} details updated`,
     );
 
-    // ADD: Get the final bus details and assignments
     const updatedBus = await prisma.bus.findUniqueOrThrow({
       where: { id: busId },
       include: {
@@ -245,7 +270,6 @@ export async function PUT(
       },
     });
 
-    // ADD: Record the edit
     await logAdminAudit({
       adminId: session.adminId,
       category: "FLEET",
