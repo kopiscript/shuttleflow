@@ -13,6 +13,8 @@ model Bus {
   licensePlate      String                @map("license_plate")
   capacity          Int?
   status            String                @default("Active")
+  driverName        String?               @map("driver_name")
+  driverPhone       String?               @map("driver_phone")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   activity_logs     activity_logs[]
@@ -88,16 +90,22 @@ model Location {
   bus        Bus      @relation(fields: [busId], references: [id])
 
   @@index([busId, recordedAt(sort: Desc)])
-
   @@map("locations")
 }
 
 model Admin {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique
-  passwordHash String   @map("password_hash")
-  email        String   @unique
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                  Int                @id @default(autoincrement())
+  username            String             @unique
+  passwordHash        String             @map("password_hash")
+  email               String             @unique
+  createdAt           DateTime           @default(now()) @map("created_at")
+  role                AdminRole          @default(ADMIN)
+  reset_token         String?
+  reset_token_expiry  DateTime?
+  email_change_expiry DateTime?
+  email_change_token  String?
+  pending_email       String?
+  admin_audit_logs    admin_audit_logs[]
 
   @@map("admins")
 }
@@ -114,14 +122,15 @@ model Notification {
 }
 
 model SupportTicket {
-  id          Int      @id @default(autoincrement())
-  description String
-  status      String   @default("Open")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  email       String
-  fileUrl     String?
-  reportType  String
+  id             Int              @id @default(autoincrement())
+  description    String
+  status         String           @default("Unresolved")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  email          String
+  fileUrl        String?
+  reportType     String
+  ticket_replies ticket_replies[]
 
   @@map("support_tickets")
 }
@@ -154,4 +163,40 @@ model RouteView {
 
   @@index([routeId, viewedAt])
   @@map("route_views")
+}
+
+model admin_audit_logs {
+  id          Int           @id @default(autoincrement())
+  admin_id    Int?
+  category    AuditCategory
+  action      String
+  target_type String?
+  target_id   String?
+  details     Json?
+  ip_address  String?
+  created_at  DateTime      @default(now())
+  admins      Admin?        @relation(fields: [admin_id], references: [id])
+
+  @@index([admin_id])
+  @@index([category, created_at])
+}
+
+model ticket_replies {
+  id              Int           @id @default(autoincrement())
+  ticket_id       Int
+  message         String
+  sent_by         String        @default("admin")
+  sent_at         DateTime      @default(now())
+  support_tickets SupportTicket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum AuditCategory {
+  AUTH
+  FLEET
+  SETTINGS
 }
