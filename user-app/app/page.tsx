@@ -27,7 +27,6 @@ interface Route {
   pickupLng?: number;
 }
 
-// ETA data interface
 interface ETAData {
   minutes: number;
   minutesDisplay: string;
@@ -38,13 +37,93 @@ interface ETAData {
   speed: string | null;
 }
 
-// Proximity data interface
 interface ProximityData {
   isNear: boolean;
   distance: number;
   destination: string;
   status: string;
+  busState: "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
 }
+
+// ---- Polyline helpers ----
+const decodePolyline = (encoded: string): [number, number][] => {
+  const points: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let byte: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    shift = 0;
+    result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+
+  return points;
+};
+
+const isValidCoord = (lat: unknown, lng: unknown): lat is number =>
+  typeof lat === "number" &&
+  typeof lng === "number" &&
+  Number.isFinite(lat) &&
+  Number.isFinite(lng) &&
+  !(lat === 0 && lng === 0) &&
+  Math.abs(lat) <= 90 &&
+  Math.abs(lng) <= 180;
+
+const normalisePolyline = (raw: unknown): [number, number][] | null => {
+  if (!raw) return null;
+
+  if (Array.isArray(raw)) {
+    const out: [number, number][] = [];
+    for (const p of raw) {
+      if (p && typeof p === "object" && "latitude" in p && "longitude" in p) {
+        const lat = (p as any).latitude;
+        const lng = (p as any).longitude;
+        if (isValidCoord(lat, lng)) out.push([lat, lng]);
+        continue;
+      }
+      if (Array.isArray(p) && p.length >= 2) {
+        const lat = p[0];
+        const lng = p[1];
+        if (isValidCoord(lat, lng)) out.push([lat, lng]);
+        continue;
+      }
+    }
+    return out.length > 1 ? out : null;
+  }
+
+  if (typeof raw === "string" && raw.length > 0) {
+    try {
+      const decoded = decodePolyline(raw);
+      const cleaned = decoded.filter(([lat, lng]) => isValidCoord(lat, lng));
+      return cleaned.length > 1 ? cleaned : null;
+    } catch (err) {
+      console.error("Failed to decode polyline:", err);
+      return null;
+    }
+  }
+
+  return null;
+};
 
 export default function HomePage() {
   const { t } = useLanguage();
@@ -57,12 +136,20 @@ export default function HomePage() {
     lng: number;
   } | null>(null);
 
-  // Proximity state
   const [proximityData, setProximityData] = useState<ProximityData | null>(
-    null,
+    null
   );
 
-  // Fetch routes when page loads
+  // ✅ Path state
+  const [pickupPath, setPickupPath] = useState<[number, number][] | null>(null);
+  const [dropoffPath, setDropoffPath] = useState<[number, number][] | null>(
+    null
+  );
+  const [busState, setBusState] = useState<
+    "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done"
+  >("approaching");
+
+  // Fetch routes
   useEffect(() => {
     fetch("/api/routes")
       .then((res) => res.json())
@@ -74,24 +161,15 @@ export default function HomePage() {
             return a.id - b.id;
           });
           setRoutes(sortedRoutes);
-          // Restore the route from the URL if it is still available.
           const url = new URL(window.location.href);
           const savedRouteId = url.searchParams.get("routeId");
-
           const routeExists = sortedRoutes.some(
-            (route: Route) => String(route.id) === savedRouteId,
+            (route: Route) => String(route.id) === savedRouteId
           );
-
           setSelectedRoute(routeExists && savedRouteId ? savedRouteId : "");
-
-          // Remove an unavailable route from the URL.
           if (savedRouteId !== null && !routeExists) {
             url.searchParams.delete("routeId");
-            window.history.replaceState(
-              window.history.state,
-              "",
-              url.toString(),
-            );
+            window.history.replaceState(window.history.state, "", url.toString());
           }
         }
         setLoading(false);
@@ -102,8 +180,7 @@ export default function HomePage() {
       });
   }, []);
 
-  // Fetch bus location periodically
-  // Fetch bus location periodically + check proximity
+  // Bus location + proximity (also stores busState)
   useEffect(() => {
     const fetchBusLocation = async () => {
       try {
@@ -120,12 +197,9 @@ export default function HomePage() {
         console.error("Failed to fetch bus location:", error);
       }
 
-      // ✅ Also check proximity for the selected route — and STORE the result
       if (selectedRoute) {
         try {
-          const res = await fetch(
-            `/api/bus/proximity?routeId=${selectedRoute}`,
-          );
+          const res = await fetch(`/api/bus/proximity?routeId=${selectedRoute}`);
           const data = await res.json();
 
           if (data.success && data.data) {
@@ -134,7 +208,9 @@ export default function HomePage() {
               distance: data.data.distanceToPickup,
               destination: data.data.pickupStop,
               status: data.data.status,
+              busState: data.data.busState,
             });
+            setBusState(data.data.busState);
           } else {
             setProximityData(null);
           }
@@ -143,7 +219,6 @@ export default function HomePage() {
           setProximityData(null);
         }
       } else {
-        // No route selected → clear stale proximity data
         setProximityData(null);
       }
     };
@@ -153,7 +228,7 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
-  // Fetch ETA with auto-refresh every 10 seconds
+  // ETA
   useEffect(() => {
     if (!selectedRoute) {
       setEtaData(null);
@@ -165,7 +240,6 @@ export default function HomePage() {
         const response = await fetch(`/api/routes/${selectedRoute}/eta`);
         const data = await response.json();
         if (data.success) {
-          console.log("✅ ETA updated:", data.eta);
           setEtaData(data.eta);
         } else {
           setEtaData(null);
@@ -176,36 +250,63 @@ export default function HomePage() {
       }
     };
 
-    // Fetch immediately
     fetchEta();
-
-    // 🔄 Auto-refresh every 10 seconds
     const interval = setInterval(fetchEta, 10000);
-
-    // Cleanup
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
-  // Handle route change + log view for analytics
+  // ✅ NEW: Fetch both paths (bus → pickup and bus → dropoff)
+  useEffect(() => {
+    if (!selectedRoute) {
+      setPickupPath(null);
+      setDropoffPath(null);
+      return;
+    }
+
+    const fetchPaths = async () => {
+      try {
+        const [pickupRes, dropoffRes] = await Promise.all([
+          fetch(`/api/routes/${selectedRoute}/eta`),
+          fetch(`/api/routes/${selectedRoute}/eta?to=dropoff`),
+        ]);
+        const pickupData = await pickupRes.json();
+        const dropoffData = await dropoffRes.json();
+
+        if (pickupData.success && pickupData.eta?.encodedPolyline) {
+          setPickupPath(normalisePolyline(pickupData.eta.encodedPolyline));
+        } else {
+          setPickupPath(null);
+        }
+
+        if (dropoffData.success && dropoffData.eta?.encodedPolyline) {
+          setDropoffPath(normalisePolyline(dropoffData.eta.encodedPolyline));
+        } else {
+          setDropoffPath(null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch paths:", err);
+      }
+    };
+
+    fetchPaths();
+    const interval = setInterval(fetchPaths, 10000);
+    return () => clearInterval(interval);
+  }, [selectedRoute]);
+
   const handleRouteChange = (routeId: string) => {
     setSelectedRoute(routeId);
 
-    // Clear the previous route's information while new data loads.
     setEtaData(null);
     setProximityData(null);
+    setPickupPath(null);
+    setDropoffPath(null);
+    setBusState("approaching");
 
-    // Save the selection in the URL without reloading the page.
     const url = new URL(window.location.href);
-
-    if (routeId) {
-      url.searchParams.set("routeId", routeId);
-    } else {
-      url.searchParams.delete("routeId");
-    }
-
+    if (routeId) url.searchParams.set("routeId", routeId);
+    else url.searchParams.delete("routeId");
     window.history.replaceState(window.history.state, "", url.toString());
 
-    // Log the view (fire-and-forget) for most-viewed-routes analytics
     if (routeId) {
       fetch(`/api/routes/${routeId}/view`, {
         method: "POST",
@@ -231,7 +332,6 @@ export default function HomePage() {
       }
     >
       <div className="relative w-full h-full overflow-hidden">
-        {/* Gradient Background Elements */}
         <div
           className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
           style={{
@@ -239,7 +339,6 @@ export default function HomePage() {
             transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)",
           }}
         />
-
         <div
           className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
           style={{
@@ -248,9 +347,14 @@ export default function HomePage() {
           }}
         />
 
-        {/* Map container */}
+        {/* Map */}
         <div className="absolute inset-0 z-0">
-          <Map selectedRoute={selectedRoute} />
+          <Map
+            selectedRoute={selectedRoute}
+            pickupPath={pickupPath}
+            dropoffPath={dropoffPath}
+            busState={busState}
+          />
         </div>
 
         {/* Dropdown */}
@@ -264,10 +368,9 @@ export default function HomePage() {
           />
         </div>
 
-        {/* ETA Card - Auto-refreshes every 10 seconds */}
+        {/* ETA Card */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
-            {/* ETA Display */}
             <div className="flex items-center gap-2">
               {etaData ? (
                 <div className="flex flex-col w-full">
@@ -277,11 +380,6 @@ export default function HomePage() {
                       • Arrive at {etaData.arrivalTime}
                     </span>
                   </span>
-                  {etaData.distance && (
-                    <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
-                      📍 {etaData.distance} from {etaData.pickupStop}
-                    </span>
-                  )}
                 </div>
               ) : (
                 <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
@@ -290,7 +388,6 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Proximity Status — only show when bus is approaching (near), hide otherwise */}
             {proximityData && proximityData.isNear && (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs font-medium text-green-600 dark:text-green-400">
@@ -299,7 +396,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Disclaimer */}
             <div className="flex items-center gap-2 mt-2">
               <svg
                 className="w-4 h-4 text-[#99121A]"
