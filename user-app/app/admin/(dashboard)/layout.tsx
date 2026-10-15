@@ -70,6 +70,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )
     },
     {
+      name: "Send Notification",
+      href: "/admin/notifications",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M15 17H20L18.595 15.595C18.214 15.214 18 14.711 18 14.159V11C18 8.989 16.804 7.301 15 5.659V5C15 3.343 13.657 2 12 2C10.343 2 9 3.343 9 5V5.659C7.196 7.301 6 8.989 6 11V14.159C6 14.711 5.786 15.214 5.405 15.595L4 17H9M15 17V18C15 19.657 13.657 21 12 21C10.343 21 9 19.657 9 18V17M15 17H9"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    },
+    {
       name: "Audit Logs",
       href: "/admin/audit-logs",
       icon: (
