@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import Pusher from "pusher-js";
 import PageShell from "../components/PageShell";
 import CustomDropdown from "../components/CustomDropdown";
 import { useLanguage } from "../context/LanguageContext";
@@ -46,6 +47,16 @@ interface ProximityData {
   status: string;
 }
 
+// Hardware Driver Incident Alert interface
+interface ActiveAlert {
+  busId: number;
+  busName: string;
+  status: "Breakdown" | "Delayed";
+  driverName?: string | null;
+  driverPhone?: string | null;
+  message: string;
+}
+
 export default function HomePage() {
   const { t } = useLanguage();
   const [selectedRoute, setSelectedRoute] = useState("");
@@ -58,9 +69,11 @@ export default function HomePage() {
   } | null>(null);
 
   // Proximity state
-  const [proximityData, setProximityData] = useState<ProximityData | null>(
-    null,
-  );
+  const [proximityData, setProximityData] = useState<ProximityData | null>(null);
+
+  // Active Incident Alert State
+  const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
+  const [showDriverModal, setShowDriverModal] = useState(false);
 
   // Fetch routes when page loads
   useEffect(() => {
@@ -74,6 +87,7 @@ export default function HomePage() {
             return a.id - b.id;
           });
           setRoutes(sortedRoutes);
+
           // Restore the route from the URL if it is still available.
           const url = new URL(window.location.href);
           const savedRouteId = url.searchParams.get("routeId");
@@ -102,10 +116,9 @@ export default function HomePage() {
       });
   }, []);
 
-  // Fetch bus location periodically
-  // Fetch bus location periodically + check proximity
+  // Fetch bus location periodically + check proximity + sync active alert state
   useEffect(() => {
-    const fetchBusLocation = async () => {
+    const fetchBusLocationAndAlerts = async () => {
       try {
         const response = await fetch("/api/locations");
         const data = await response.json();
@@ -115,12 +128,42 @@ export default function HomePage() {
             lat: parseFloat(loc.latitude),
             lng: parseFloat(loc.longitude),
           });
+
+          // Sync active alert status for the selected route
+          if (selectedRoute) {
+            const routeIdNum = parseInt(selectedRoute);
+            const matchingLoc = data.locations.find((l: any) =>
+              l.bus?.routeIds?.includes(routeIdNum)
+            );
+
+            if (
+              matchingLoc &&
+              (matchingLoc.bus?.status === "Breakdown" ||
+                matchingLoc.bus?.status === "Delayed")
+            ) {
+              setActiveAlert({
+                busId: matchingLoc.busId,
+                busName: matchingLoc.bus.busName,
+                status: matchingLoc.bus.status,
+                driverName: matchingLoc.bus.driverName,
+                driverPhone: matchingLoc.bus.driverPhone,
+                message:
+                  matchingLoc.bus.status === "Breakdown"
+                    ? "This bus reported a breakdown. Please take alternative transport."
+                    : "This bus reported a major delay. Expect schedule disruption.",
+              });
+            } else {
+              setActiveAlert(null);
+            }
+          } else {
+            setActiveAlert(null);
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch bus location:", error);
+        console.error("Failed to fetch bus location and alerts:", error);
       }
 
-      // ✅ Also check proximity for the selected route — and STORE the result
+      // Proximity check for the selected route
       if (selectedRoute) {
         try {
           const res = await fetch(
@@ -143,14 +186,49 @@ export default function HomePage() {
           setProximityData(null);
         }
       } else {
-        // No route selected → clear stale proximity data
         setProximityData(null);
       }
     };
 
-    fetchBusLocation();
-    const interval = setInterval(fetchBusLocation, 5000);
+    fetchBusLocationAndAlerts();
+    const interval = setInterval(fetchBusLocationAndAlerts, 5000);
     return () => clearInterval(interval);
+  }, [selectedRoute]);
+
+  // Real-Time Pusher Listener for instant driver hardware alert updates
+  useEffect(() => {
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (!pusherKey || !pusherCluster) return;
+
+    const pusher = new Pusher(pusherKey, { cluster: pusherCluster });
+    const channel = pusher.subscribe("fleet-alerts");
+
+    channel.bind("bus-status-change", (data: any) => {
+      console.log("⚡ Real-time fleet alert received:", data);
+
+      const routeIdNum = parseInt(selectedRoute);
+      if (selectedRoute && data.routeIds && data.routeIds.includes(routeIdNum)) {
+        if (data.status === "Breakdown" || data.status === "Delayed") {
+          setActiveAlert({
+            busId: data.busId,
+            busName: data.busName,
+            status: data.status,
+            driverName: data.driverName,
+            driverPhone: data.driverPhone,
+            message: data.message,
+          });
+        } else if (data.status === "Active") {
+          setActiveAlert(null);
+          setShowDriverModal(false);
+        }
+      }
+    });
+
+    return () => {
+      pusher.unsubscribe("fleet-alerts");
+    };
   }, [selectedRoute]);
 
   // Fetch ETA with auto-refresh every 10 seconds
@@ -176,13 +254,8 @@ export default function HomePage() {
       }
     };
 
-    // Fetch immediately
     fetchEta();
-
-    // 🔄 Auto-refresh every 10 seconds
     const interval = setInterval(fetchEta, 10000);
-
-    // Cleanup
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
@@ -190,22 +263,22 @@ export default function HomePage() {
   const handleRouteChange = (routeId: string) => {
     setSelectedRoute(routeId);
 
-    // Clear the previous route's information while new data loads.
+    // Clear previous route's information while new data loads
     setEtaData(null);
     setProximityData(null);
+    setActiveAlert(null);
+    setShowDriverModal(false);
 
-    // Save the selection in the URL without reloading the page.
+    // Save selection in URL without reloading
     const url = new URL(window.location.href);
-
     if (routeId) {
       url.searchParams.set("routeId", routeId);
     } else {
       url.searchParams.delete("routeId");
     }
-
     window.history.replaceState(window.history.state, "", url.toString());
 
-    // Log the view (fire-and-forget) for most-viewed-routes analytics
+    // Log view (fire-and-forget) for analytics
     if (routeId) {
       fetch(`/api/routes/${routeId}/view`, {
         method: "POST",
@@ -253,7 +326,7 @@ export default function HomePage() {
           <Map selectedRoute={selectedRoute} />
         </div>
 
-        {/* Dropdown */}
+        {/* Route Dropdown */}
         <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
           <CustomDropdown
             options={routes}
@@ -264,8 +337,59 @@ export default function HomePage() {
           />
         </div>
 
-        {/* ETA Card - Auto-refreshes every 10 seconds */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
+        {/* Floating Bottom Panel: Alert Banner & ETA Card */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20 flex flex-col gap-2.5">
+          {/* 🚨 DYNAMIC DRIVER INCIDENT BANNER */}
+          {activeAlert && (
+            <div
+              className={`rounded-2xl p-3.5 shadow-xl text-white transition-all backdrop-blur-md flex flex-col gap-2 ${activeAlert.status === "Breakdown"
+                  ? "bg-red-600/90 border border-red-400"
+                  : "bg-amber-600/90 border border-amber-400"
+                }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className="text-xl">
+                  {activeAlert.status === "Breakdown" ? "🚨" : "⚠️"}
+                </span>
+                <div className="flex-1">
+                  <h4 className="font-bold text-sm leading-tight">
+                    {activeAlert.status === "Breakdown"
+                      ? "Bus Breakdown Alert"
+                      : "Major Route Delay"}
+                  </h4>
+                  <p className="text-xs opacity-95 mt-0.5 leading-snug">
+                    {activeAlert.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Driver Contact Trigger Button */}
+              {activeAlert.driverPhone && (
+                <button
+                  type="button"
+                  onClick={() => setShowDriverModal(true)}
+                  className="w-full mt-1 py-1.5 px-3 bg-black/25 hover:bg-black/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/20 transition cursor-pointer"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
+                  </svg>
+                  Contact Driver ({activeAlert.driverName || "Assigned Driver"})
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Standard ETA Card */}
           <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
             {/* ETA Display */}
             <div className="flex items-center gap-2">
@@ -290,7 +414,7 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Proximity Status — only show when bus is approaching (near), hide otherwise */}
+            {/* Proximity Status — only show when bus is approaching */}
             {proximityData && proximityData.isNear && (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs font-medium text-green-600 dark:text-green-400">
@@ -314,6 +438,48 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* 📞 DRIVER CONTACT MODAL */}
+        {showDriverModal && activeAlert && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#2B2B36] rounded-2xl max-w-xs w-full p-5 shadow-2xl text-center">
+              <div className="w-12 h-12 bg-[#99121A]/10 text-[#99121A] dark:text-[#96DDFF] rounded-full flex items-center justify-center mx-auto text-xl mb-3">
+                👤
+              </div>
+              <h3 className="font-bold text-base text-gray-900 dark:text-white">
+                {activeAlert.driverName || "Shuttle Driver"}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {activeAlert.busName} Operator
+              </p>
+
+              <div className="my-4 p-3 bg-gray-50 dark:bg-[#1D1E27] rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-xs text-gray-500 block mb-1">Direct Contact</span>
+                <span className="font-mono font-bold text-gray-800 dark:text-gray-200 text-sm">
+                  {activeAlert.driverPhone || "Not Available"}
+                </span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDriverModal(false)}
+                  className="flex-1 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition cursor-pointer"
+                >
+                  Close
+                </button>
+                {activeAlert.driverPhone && (
+                  <a
+                    href={`tel:${activeAlert.driverPhone}`}
+                    className="flex-1 py-2 text-xs font-semibold bg-[#99121A] text-white rounded-lg hover:bg-[#7a0e14] transition flex items-center justify-center gap-1"
+                  >
+                    Call Now
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </PageShell>
   );

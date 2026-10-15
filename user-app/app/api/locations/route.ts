@@ -22,7 +22,7 @@ export async function GET() {
     const transformed = locations.map((loc) => {
       // Get ALL active route assignments
       const activeAssignments = loc.bus?.routeAssignments || [];
-      
+
       return {
         busId: loc.busId,
         latitude: loc.latitude,
@@ -31,7 +31,10 @@ export async function GET() {
         recordedAt: loc.recordedAt,
         bus: {
           busName: loc.bus?.busName,
-          status: loc.bus?.status,
+          licensePlate: loc.bus?.licensePlate,
+          status: loc.bus?.status, // "Active" | "Delayed" | "Breakdown"
+          driverName: loc.bus?.driverName || null,
+          driverPhone: loc.bus?.driverPhone || null,
           // Return ALL route IDs so frontend can filter
           routeIds: activeAssignments.map(a => a.routeId),
           routeNames: activeAssignments.map(a => a.route?.routeName),
