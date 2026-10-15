@@ -107,8 +107,17 @@ export default function DeviceManagement() {
       const data = await response.json();
 
       if (data.success) {
-        setDevices((prev) => prev.filter((device) => device.id !== deleteModal.deviceId));
+        const updatedDevices = devices.filter((device) => device.id !== deleteModal.deviceId);
+        setDevices(updatedDevices);
         setDeleteModal(initialDeleteModal);
+
+        // ✅ Fix: adjust current page if the current page becomes empty
+        const newTotalPages = Math.ceil(updatedDevices.length / itemsPerPage);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        } else if (newTotalPages === 0) {
+          setCurrentPage(1);
+        }
       } else {
         alert("Failed to delete device: " + data.error);
         setDeleteModal((prev) => ({ ...prev, isDeleting: false }));

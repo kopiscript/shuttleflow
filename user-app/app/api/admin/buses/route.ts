@@ -94,6 +94,7 @@ async function computeBusState(
 
   return "approaching";
 }
+import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // GET - list all buses
 export async function GET() {
@@ -212,10 +213,57 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!busName || !licensePlate) {
+    // ✅ Server-side field validation
+    const validationErrors = validateBusFields({
+      licensePlate: licensePlate || "",
+      busName: busName || "",
+      capacity: String(capacity ?? ""),
+    });
+
+    if (hasErrors(validationErrors)) {
+      // Return the first error message
+      const firstError = Object.values(validationErrors)[0];
       return NextResponse.json(
         { success: false, error: "Bus name and license plate are required" },
         { status: 400 }
+      );
+    }
+
+    // ✅ Normalize values
+    const normalizedPlate = licensePlate.trim().toUpperCase();
+    const normalizedName = busName.trim();
+
+    // ✅ Server-side guard: reject duplicate license plate
+    const duplicatePlate = await prisma.bus.findFirst({
+      where: { licensePlate: normalizedPlate },
+    });
+
+    if (duplicatePlate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A bus with this license plate already exists",
+        },
+        { status: 409 },
+      );
+    }
+
+    // ✅ Normalize values
+    const normalizedPlate = licensePlate.trim().toUpperCase();
+    const normalizedName = busName.trim();
+
+    // ✅ Server-side guard: reject duplicate license plate
+    const duplicatePlate = await prisma.bus.findFirst({
+      where: { licensePlate: normalizedPlate },
+    });
+
+    if (duplicatePlate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A bus with this license plate already exists",
+        },
+        { status: 409 },
       );
     }
 
@@ -254,8 +302,8 @@ export async function POST(request: Request) {
 
     const bus = await prisma.bus.create({
       data: {
-        busName,
-        licensePlate,
+        busName: normalizedName,
+        licensePlate: normalizedPlate,
         capacity: capacity ? parseInt(capacity) : null,
         status: status || "Active",
       },

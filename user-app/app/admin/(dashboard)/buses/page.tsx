@@ -94,8 +94,17 @@ export default function BusManagement() {
       const data = await response.json();
 
       if (data.success) {
-        setBuses((prev) => prev.filter((bus) => bus.id !== deleteModal.busId));
+        const updatedBuses = buses.filter((bus) => bus.id !== deleteModal.busId);
+        setBuses(updatedBuses);
         setDeleteModal(initialDeleteModal);
+
+        // ✅ Fix: adjust current page if the current page becomes empty
+        const newTotalPages = Math.ceil(updatedBuses.length / itemsPerPage);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        } else if (newTotalPages === 0) {
+          setCurrentPage(1);
+        }
       } else {
         alert("Failed to delete bus: " + data.error);
         setDeleteModal((prev) => ({ ...prev, isDeleting: false }));

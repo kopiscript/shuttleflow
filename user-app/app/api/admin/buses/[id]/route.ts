@@ -6,6 +6,7 @@ import { logAdminAudit } from "@/lib/adminAuditLog";
 import { logActivity } from "@/lib/activityLog";
 import { getDeviceHealth } from "@/lib/deviceHealth";
 import { sendAlertNotification, sendInfo } from "@/lib/notifications";
+import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // GET - Fetch a single bus
 export async function GET(
@@ -114,6 +115,25 @@ export async function PUT(
       );
     }
 
+    // ✅ Server-side field validation
+    const validationErrors = validateBusFields({
+      licensePlate: licensePlate || "",
+      busName: busName || "",
+      capacity: String(capacity ?? ""),
+    });
+
+    if (hasErrors(validationErrors)) {
+      const firstError = Object.values(validationErrors)[0];
+      return NextResponse.json(
+        { success: false, error: firstError },
+        { status: 400 },
+      );
+    }
+
+    // ✅ Normalize values
+    const normalizedPlate = licensePlate.trim().toUpperCase();
+    const normalizedName = busName.trim();
+
     // Get old bus data for comparison
     const oldBus = await prisma.bus.findUnique({
       where: { id: busId },
@@ -136,12 +156,30 @@ export async function PUT(
       );
     }
 
+    // ✅ Server-side guard: reject duplicate license plate (excluding self)
+    const duplicatePlate = await prisma.bus.findFirst({
+      where: {
+        licensePlate: normalizedPlate,
+        NOT: { id: busId },
+      },
+    });
+
+    if (duplicatePlate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A bus with this license plate already exists",
+        },
+        { status: 409 },
+      );
+    }
+
     // Update bus
     const bus = await prisma.bus.update({
       where: { id: busId },
       data: {
-        busName,
-        licensePlate,
+        busName: normalizedName,
+        licensePlate: normalizedPlate,
         capacity: parseInt(capacity),
         status,
       },
@@ -358,7 +396,6 @@ export async function DELETE(
       );
     }
 
-    // Fetch complete bus state and relationships before deletion
     const busToDelete = await prisma.bus.findUnique({
       where: { id: busId },
       include: {
@@ -380,23 +417,16 @@ export async function DELETE(
       );
     }
 
-    // Clean up active assignments before deleting the bus
-    await prisma.busRouteAssignment.updateMany({
-      where: { busId, endedAt: null },
-      data: { endedAt: new Date() },
-    });
+    // Delete all related records first to satisfy FK constraints
+    await prisma.busRouteAssignment.deleteMany({ where: { busId } });
+    await prisma.busDeviceAssignment.deleteMany({ where: { busId } });
+    await prisma.location.deleteMany({ where: { busId } });
+    await prisma.activityLog.deleteMany({ where: { busId } });
 
-    await prisma.busDeviceAssignment.updateMany({
-      where: { busId, endedAt: null },
-      data: { endedAt: new Date() },
-    });
+    // Now delete the bus itself
+    await prisma.bus.delete({ where: { id: busId } });
 
-    // Delete the bus record
-    await prisma.bus.delete({
-      where: { id: busId },
-    });
-
-    // Save full snapshot into AdminAuditLog
+    // Save snapshot into AdminAuditLog
     await logAdminAudit({
       adminId: session.adminId,
       category: "FLEET",
@@ -421,7 +451,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Failed to delete bus:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete bus" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to delete bus",
+      },
       { status: 500 },
     );
   }

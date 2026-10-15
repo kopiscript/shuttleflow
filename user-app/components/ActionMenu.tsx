@@ -13,6 +13,8 @@ interface ActionMenuProps {
   itemIdentifier?: string;
 }
 
+const MENU_HEIGHT = 120; // approximate height of the dropdown (3 items + padding)
+
 export default function ActionMenu({
   id,
   type,
@@ -41,14 +43,43 @@ export default function ActionMenu({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Close menu on scroll to avoid stale positioning
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScroll = () => setIsOpen(false);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, [isOpen]);
+
   const handleToggle = () => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 4,
-        left: rect.right - 169,
-      });
+    if (!buttonRef.current) return;
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // ✅ Determine if there's enough space below or above
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let top: number;
+
+    if (spaceBelow < MENU_HEIGHT && spaceAbove > spaceBelow) {
+      // Open upward: position above the button
+      top = rect.top - MENU_HEIGHT - 4;
+    } else {
+      // Open downward (default)
+      top = rect.bottom + 4;
     }
+
+    // ✅ Keep left within viewport (right-align to button, but clamp to edge)
+    let left = rect.right - 169;
+    if (left < 8) left = 8; // don't go past left edge
+    if (left + 169 > viewportWidth - 8) {
+      left = viewportWidth - 169 - 8;
+    }
+
+    setMenuPosition({ top, left });
     setIsOpen(!isOpen);
   };
 
@@ -91,7 +122,6 @@ export default function ActionMenu({
           <button
             onClick={() => {
               setIsOpen(false);
-              // Hand off to parent — parent opens the shared modal
               onDelete(id, itemName, itemIdentifier);
             }}
             className="block w-full text-left px-6 py-2 text-[#FA2121] hover:bg-[#3C3D44] transition font-['Inter'] text-sm"

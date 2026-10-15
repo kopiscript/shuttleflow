@@ -110,8 +110,17 @@ export default function RouteManagement() {
       const data = await response.json();
 
       if (data.success) {
-        setRoutes((prev) => prev.filter((route) => route.id !== deleteModal.routeId));
+        const updatedRoutes = routes.filter((route) => route.id !== deleteModal.routeId);
+        setRoutes(updatedRoutes);
         setDeleteModal(initialDeleteModal);
+
+        // ✅ Fix: adjust current page if the current page becomes empty
+        const newTotalPages = Math.ceil(updatedRoutes.length / itemsPerPage);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages);
+        } else if (newTotalPages === 0) {
+          setCurrentPage(1);
+        }
       } else {
         alert("Failed to delete route: " + data.error);
         setDeleteModal((prev) => ({ ...prev, isDeleting: false }));
@@ -312,7 +321,6 @@ export default function RouteManagement() {
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {route.dropoffStop}
                     </td>
-                    {/* display status as a read-only badge (derived from bus assignment) */}
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${route.status === "Active"

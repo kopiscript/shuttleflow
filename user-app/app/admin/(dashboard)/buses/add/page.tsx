@@ -4,6 +4,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  validateBusFields,
+  hasErrors,
+  BusValidationErrors,
+} from "@/lib/validation";
 
 interface Bus {
   id: number;
@@ -21,7 +26,7 @@ interface Route {
 interface Device {
   id: number;
   deviceName: string;
-  busId: number | null; // null/undefined = unassigned, available to pick
+  busId: number | null;
 }
 
 export default function AddBusPage() {
@@ -30,6 +35,7 @@ export default function AddBusPage() {
   const [nextBusId, setNextBusId] = useState(1);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
+  const [errors, setErrors] = useState<BusValidationErrors>({});
   const [formData, setFormData] = useState({
     busName: "",
     licensePlate: "",
@@ -56,10 +62,7 @@ export default function AddBusPage() {
     fetchBuses();
   }, []);
 
-  // Fetch routes for dropdown — use the ADMIN endpoint so routes that
-  // aren't Active yet (no bus/device assigned) still show up. The
-  // public /api/routes endpoint only returns already-Active routes,
-  // which would make it impossible to ever assign a bus to a new route.
+  // Fetch routes for dropdown
   useEffect(() => {
     const fetchRoutes = async () => {
       try {
@@ -91,9 +94,21 @@ export default function AddBusPage() {
     fetchDevices();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Auto-uppercase license plate as user types
+    const finalValue =
+      name === "licensePlate" ? value.toUpperCase() : value;
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
+
+    // Clear error for this field when user starts typing
+    if (errors[name as keyof BusValidationErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const toggleStatus = () => {
@@ -105,6 +120,20 @@ export default function AddBusPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✅ Client-side validation
+    const validationErrors = validateBusFields({
+      licensePlate: formData.licensePlate,
+      busName: formData.busName,
+      capacity: formData.capacity,
+    });
+
+    if (hasErrors(validationErrors)) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setErrors({});
     setIsSubmitting(true);
 
     try {
@@ -112,8 +141,8 @@ export default function AddBusPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          busName: formData.busName,
-          licensePlate: formData.licensePlate,
+          busName: formData.busName.trim(),
+          licensePlate: formData.licensePlate.trim().toUpperCase(),
           capacity: parseInt(formData.capacity),
           status: formData.status,
           routeId: formData.routeId ? parseInt(formData.routeId) : null,
@@ -129,6 +158,7 @@ export default function AddBusPage() {
       }
     } catch (error) {
       console.error("Error adding bus:", error);
+      alert("An error occurred while adding the bus.");
     } finally {
       setIsSubmitting(false);
     }
@@ -138,9 +168,22 @@ export default function AddBusPage() {
     <div>
       {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
-        <Link href="/admin/buses" className="text-white hover:text-[#96DDFF] transition">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        <Link
+          href="/admin/buses"
+          className="text-white hover:text-[#96DDFF] transition"
+        >
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
@@ -150,7 +193,7 @@ export default function AddBusPage() {
 
       {/* Form Card */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-2xl">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="p-6 space-y-6">
             {/* Basic Information */}
             <div>
@@ -160,7 +203,9 @@ export default function AddBusPage() {
 
               {/* Bus ID */}
               <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Bus ID</span>
+                <span className="text-[#87888C] font-['Inter'] text-sm">
+                  Bus ID
+                </span>
                 <span className="text-white font-['Inter'] text-sm">
                   B{String(nextBusId).padStart(3, "0")}
                 </span>
@@ -168,66 +213,118 @@ export default function AddBusPage() {
 
               {/* License Plate */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">License Plate</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  License Plate <span className="text-[#EA1701]">*</span>
+                </label>
                 <input
                   type="text"
                   name="licensePlate"
                   value={formData.licensePlate}
                   onChange={handleInputChange}
-                  placeholder="Enter license plate"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  placeholder="e.g., VJL3738"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.licensePlate
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.licensePlate && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.licensePlate}
+                  </p>
+                )}
               </div>
 
               {/* Bus Model */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Bus Model</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Bus Model <span className="text-[#EA1701]">*</span>
+                </label>
                 <input
                   type="text"
                   name="busName"
                   value={formData.busName}
                   onChange={handleInputChange}
                   placeholder="Enter model"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.busName
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.busName && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.busName}
+                  </p>
+                )}
               </div>
 
               {/* Capacity */}
               <div className="mt-4">
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">Capacity</label>
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Capacity <span className="text-[#EA1701]">*</span>
+                </label>
                 <input
                   type="number"
                   name="capacity"
                   value={formData.capacity}
                   onChange={handleInputChange}
                   placeholder="Enter passenger capacity"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.capacity
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                   min="1"
+                  max="100"
                 />
+                {errors.capacity && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.capacity}
+                  </p>
+                )}
               </div>
 
-              {/* Status Toggle */}
-              <div className="flex justify-between items-center py-3 border-b border-[#2C2D33] mt-4">
-                <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-white font-['Inter'] text-sm">{formData.status}</span>
+              {/* Status */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Status
+                </label>
+                <div className="w-full px-4 py-3 bg-[#171821] rounded-lg border border-[#2C2D33] flex items-center justify-between">
+                  <span className="text-white font-['Inter'] text-sm">
+                    {formData.status}
+                  </span>
                   <button
                     type="button"
                     onClick={toggleStatus}
                     className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
-                      formData.status === "Active" ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
+                      formData.status === "Active"
+                        ? "bg-[#96DDFF]"
+                        : "bg-[#C7C7CC]"
                     }`}
                   >
                     <div
                       className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                        formData.status === "Active" ? "right-[3px]" : "left-[3px]"
+                        formData.status === "Active"
+                          ? "right-[3px]"
+                          : "left-[3px]"
                       }`}
                     />
                   </button>
                 </div>
+              </div>
+
+              {/* Note */}
+              <div className="mt-3 w-full p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
+                  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                  Setting this bus to{" "}
+                  <span className="text-[#EA1701] font-semibold">
+                    Inactive
+                  </span>{" "}
+                  will also deactivate its assigned route. The route will not
+                  appear in the user app.
+                </p>
               </div>
             </div>
 
@@ -235,7 +332,9 @@ export default function AddBusPage() {
 
             {/* Assigned Route */}
             <div>
-              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Route</h3>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Route
+              </h3>
               <div className="mt-4">
                 <div className="relative">
                   <select
@@ -267,8 +366,18 @@ export default function AddBusPage() {
                     )}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4 text-[#87888C]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>
@@ -279,7 +388,9 @@ export default function AddBusPage() {
 
             {/* Assigned Device */}
             <div>
-              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Assigned Device</h3>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Device
+              </h3>
               <div className="mt-4">
                 <div className="relative">
                   <select
@@ -294,17 +405,34 @@ export default function AddBusPage() {
                         No devices available
                       </option>
                     ) : (
-                      devices.map((device) => (
-                        <option key={device.id} value={device.id.toString()}>
-                          {device.deviceName}
-                          {device.busId ? " (already assigned)" : ""}
-                        </option>
-                      ))
+                      devices.map((device) => {
+                        const alreadyAssigned = device.busId != null;
+                        return (
+                          <option
+                            key={device.id}
+                            value={device.id.toString()}
+                            disabled={alreadyAssigned}
+                          >
+                            {device.deviceName}
+                            {alreadyAssigned ? " (already assigned)" : ""}
+                          </option>
+                        );
+                      })
                     )}
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4 text-[#87888C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-4 h-4 text-[#87888C]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </div>
                 </div>

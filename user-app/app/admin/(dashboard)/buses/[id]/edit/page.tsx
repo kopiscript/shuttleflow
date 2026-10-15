@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import { validateBusFields, hasErrors, BusValidationErrors } from "@/lib/validation";
 
 interface Bus {
   id: number;
@@ -52,6 +53,7 @@ export default function EditBusPage({ params }: PageProps) {
     routeId: "",
     deviceId: "",
   });
+  const [errors, setErrors] = useState<BusValidationErrors>({});
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
@@ -81,15 +83,11 @@ export default function EditBusPage({ params }: PageProps) {
 
         const routesRes = await fetch("/api/admin/routes");
         const routesData = await routesRes.json();
-        if (routesData.success) {
-          setRoutes(routesData.routes);
-        }
+        if (routesData.success) setRoutes(routesData.routes);
 
         const devicesRes = await fetch("/api/admin/devices");
         const devicesData = await devicesRes.json();
-        if (devicesData.success) {
-          setDevices(devicesData.devices);
-        }
+        if (devicesData.success) setDevices(devicesData.devices);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -103,7 +101,17 @@ export default function EditBusPage({ params }: PageProps) {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Auto-uppercase license plate as user types
+    const finalValue =
+      name === "licensePlate" ? value.toUpperCase() : value;
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
+
+    // Clear error for this field when user starts typing
+    if (errors[name as keyof BusValidationErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleRemoveRoute = () => {
@@ -116,6 +124,20 @@ export default function EditBusPage({ params }: PageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✅ Client-side validation
+    const validationErrors = validateBusFields({
+      licensePlate: formData.licensePlate,
+      busName: formData.busName,
+      capacity: formData.capacity,
+    });
+
+    if (hasErrors(validationErrors)) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setErrors({});
     setSaving(true);
 
     try {
@@ -123,8 +145,8 @@ export default function EditBusPage({ params }: PageProps) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          busName: formData.busName,
-          licensePlate: formData.licensePlate,
+          busName: formData.busName.trim(),
+          licensePlate: formData.licensePlate.trim().toUpperCase(),
           capacity: parseInt(formData.capacity),
           status: formData.status,
           routeId: formData.routeId ? parseInt(formData.routeId) : null,
@@ -136,10 +158,12 @@ export default function EditBusPage({ params }: PageProps) {
       if (data.success) {
         router.push(`/admin/buses/${busId}`);
       } else {
+        // Show server-side error (e.g., duplicate plate)
         alert(data.error || "Failed to update bus");
       }
     } catch (error) {
       console.error("Error updating bus:", error);
+      alert("An error occurred while saving.");
     } finally {
       setSaving(false);
     }
@@ -199,7 +223,7 @@ export default function EditBusPage({ params }: PageProps) {
       </div>
 
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-2xl">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="p-6 space-y-6">
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
@@ -217,22 +241,30 @@ export default function EditBusPage({ params }: PageProps) {
 
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  License Plate
+                  License Plate <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
                   type="text"
                   name="licensePlate"
                   value={formData.licensePlate}
                   onChange={handleInputChange}
-                  placeholder="Enter license plate"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  placeholder="e.g., VJL3738"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.licensePlate
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.licensePlate && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.licensePlate}
+                  </p>
+                )}
               </div>
 
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  Bus Model
+                  Bus Model <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
                   type="text"
@@ -240,14 +272,22 @@ export default function EditBusPage({ params }: PageProps) {
                   value={formData.busName}
                   onChange={handleInputChange}
                   placeholder="Enter model"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.busName
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.busName && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.busName}
+                  </p>
+                )}
               </div>
 
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  Capacity
+                  Capacity <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
                   type="number"
@@ -255,10 +295,19 @@ export default function EditBusPage({ params }: PageProps) {
                   value={formData.capacity}
                   onChange={handleInputChange}
                   placeholder="Enter passenger capacity"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#2B2B36]"
-                  required
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.capacity
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                   min="1"
+                  max="100"
                 />
+                {errors.capacity && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.capacity}
+                  </p>
+                )}
               </div>
 
               {/* ✅ NEW: Status dropdown replacing the Active/Inactive toggle */}
@@ -311,6 +360,19 @@ export default function EditBusPage({ params }: PageProps) {
   scheduled time are automatically flagged as delayed.
 </p>
                 </div>
+              </div>
+
+              {/* Note */}
+              <div className="mt-3 w-full p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
+                  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                  Setting this bus to{" "}
+                  <span className="text-[#EA1701] font-semibold">
+                    Inactive
+                  </span>{" "}
+                  will also deactivate its assigned route. The route will not
+                  appear in the user app.
+                </p>
               </div>
             </div>
 
@@ -369,7 +431,6 @@ export default function EditBusPage({ params }: PageProps) {
                     type="button"
                     onClick={() => setShowRemoveRouteModal(true)}
                     className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
-                    title="Remove assigned route"
                   >
                     <svg
                       className="w-4 h-4"
@@ -414,11 +475,6 @@ export default function EditBusPage({ params }: PageProps) {
                           key={device.id}
                           value={device.id}
                           disabled={alreadyAssignedToAnotherBus}
-                          style={{
-                            color: alreadyAssignedToAnotherBus
-                              ? "#87888C"
-                              : undefined,
-                          }}
                         >
                           {device.deviceName}
                           {alreadyAssignedToAnotherBus
@@ -449,7 +505,6 @@ export default function EditBusPage({ params }: PageProps) {
                     type="button"
                     onClick={() => setShowRemoveDeviceModal(true)}
                     className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
-                    title="Remove assigned device"
                   >
                     <svg
                       className="w-4 h-4"
@@ -470,6 +525,7 @@ export default function EditBusPage({ params }: PageProps) {
               </div>
             </div>
 
+            {/* Remove Route Confirmation Modal */}
             <DeleteConfirmModal
               isOpen={showRemoveRouteModal}
               onClose={() => setShowRemoveRouteModal(false)}
