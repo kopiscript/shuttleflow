@@ -535,6 +535,11 @@ export default function HomePage() {
                       • Arrive at {etaData.arrivalTime}
                     </span>
                   </span>
+                  {etaData.distance && (
+                    <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
+                      📍 {etaData.distance} from {etaData.pickupStop}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
