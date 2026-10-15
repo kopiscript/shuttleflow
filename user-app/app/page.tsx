@@ -52,10 +52,15 @@ export default function HomePage() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [etaData, setEtaData] = useState<ETAData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busLocation, setBusLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [busLocation, setBusLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   // Proximity state
-  const [proximityData, setProximityData] = useState<ProximityData | null>(null);
+  const [proximityData, setProximityData] = useState<ProximityData | null>(
+    null,
+  );
 
   // Fetch routes when page loads
   useEffect(() => {
@@ -69,6 +74,25 @@ export default function HomePage() {
             return a.id - b.id;
           });
           setRoutes(sortedRoutes);
+          // Restore the route from the URL if it is still available.
+          const url = new URL(window.location.href);
+          const savedRouteId = url.searchParams.get("routeId");
+
+          const routeExists = sortedRoutes.some(
+            (route: Route) => String(route.id) === savedRouteId,
+          );
+
+          setSelectedRoute(routeExists && savedRouteId ? savedRouteId : "");
+
+          // Remove an unavailable route from the URL.
+          if (savedRouteId !== null && !routeExists) {
+            url.searchParams.delete("routeId");
+            window.history.replaceState(
+              window.history.state,
+              "",
+              url.toString(),
+            );
+          }
         }
         setLoading(false);
       })
@@ -80,52 +104,54 @@ export default function HomePage() {
 
   // Fetch bus location periodically
   // Fetch bus location periodically + check proximity
-useEffect(() => {
-  const fetchBusLocation = async () => {
-    try {
-      const response = await fetch("/api/locations");
-      const data = await response.json();
-      if (data.success && data.locations?.length > 0) {
-        const loc = data.locations[0];
-        setBusLocation({
-          lat: parseFloat(loc.latitude),
-          lng: parseFloat(loc.longitude),
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch bus location:", error);
-    }
-
-    // ✅ Also check proximity for the selected route — and STORE the result
-    if (selectedRoute) {
+  useEffect(() => {
+    const fetchBusLocation = async () => {
       try {
-        const res = await fetch(`/api/bus/proximity?routeId=${selectedRoute}`);
-        const data = await res.json();
-
-        if (data.success && data.data) {
-          setProximityData({
-            isNear: data.data.isNearPickup,
-            distance: data.data.distanceToPickup,
-            destination: data.data.pickupStop,
-            status: data.data.status,
+        const response = await fetch("/api/locations");
+        const data = await response.json();
+        if (data.success && data.locations?.length > 0) {
+          const loc = data.locations[0];
+          setBusLocation({
+            lat: parseFloat(loc.latitude),
+            lng: parseFloat(loc.longitude),
           });
-        } else {
+        }
+      } catch (error) {
+        console.error("Failed to fetch bus location:", error);
+      }
+
+      // ✅ Also check proximity for the selected route — and STORE the result
+      if (selectedRoute) {
+        try {
+          const res = await fetch(
+            `/api/bus/proximity?routeId=${selectedRoute}`,
+          );
+          const data = await res.json();
+
+          if (data.success && data.data) {
+            setProximityData({
+              isNear: data.data.isNearPickup,
+              distance: data.data.distanceToPickup,
+              destination: data.data.pickupStop,
+              status: data.data.status,
+            });
+          } else {
+            setProximityData(null);
+          }
+        } catch (err) {
+          console.error("Proximity check failed:", err);
           setProximityData(null);
         }
-      } catch (err) {
-        console.error("Proximity check failed:", err);
+      } else {
+        // No route selected → clear stale proximity data
         setProximityData(null);
       }
-    } else {
-      // No route selected → clear stale proximity data
-      setProximityData(null);
-    }
-  };
+    };
 
-  fetchBusLocation();
-  const interval = setInterval(fetchBusLocation, 5000);
-  return () => clearInterval(interval);
-}, [selectedRoute]);
+    fetchBusLocation();
+    const interval = setInterval(fetchBusLocation, 5000);
+    return () => clearInterval(interval);
+  }, [selectedRoute]);
 
   // Fetch ETA with auto-refresh every 10 seconds
   useEffect(() => {
@@ -160,9 +186,24 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
-  // ✅ Handle route change + log view for analytics
+  // Handle route change + log view for analytics
   const handleRouteChange = (routeId: string) => {
     setSelectedRoute(routeId);
+
+    // Clear the previous route's information while new data loads.
+    setEtaData(null);
+    setProximityData(null);
+
+    // Save the selection in the URL without reloading the page.
+    const url = new URL(window.location.href);
+
+    if (routeId) {
+      url.searchParams.set("routeId", routeId);
+    } else {
+      url.searchParams.delete("routeId");
+    }
+
+    window.history.replaceState(window.history.state, "", url.toString());
 
     // Log the view (fire-and-forget) for most-viewed-routes analytics
     if (routeId) {
@@ -195,7 +236,7 @@ useEffect(() => {
           className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
           style={{
             left: "calc(50% - 568.85px/2 - 280px)",
-            transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)"
+            transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)",
           }}
         />
 
@@ -203,7 +244,7 @@ useEffect(() => {
           className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
           style={{
             left: "calc(50% - 604px/2 + 31.5px)",
-            transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)"
+            transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)",
           }}
         />
 
@@ -260,7 +301,11 @@ useEffect(() => {
 
             {/* Disclaimer */}
             <div className="flex items-center gap-2 mt-2">
-              <svg className="w-4 h-4 text-[#99121A]" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="w-4 h-4 text-[#99121A]"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
               <span className="font-['Inter'] text-(--disclaimer-text) text-xs">
