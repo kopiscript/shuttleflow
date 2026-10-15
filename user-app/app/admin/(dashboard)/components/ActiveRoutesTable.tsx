@@ -3,6 +3,12 @@
 import { useEffect, useState, useMemo } from "react";
 import SmallDropdown from "./SmallDropdown";
 
+export type BusState =
+  | "approaching"
+  | "at_pickup"
+  | "en_route_to_dropoff"
+  | "trip_done";
+
 interface BusRow {
   id: number;
   routeId: number | null;
@@ -17,6 +23,7 @@ interface BusRow {
   lng: number | null;
   lastSeen: string | null;
   deviceStatus: string | null;
+  busState: BusState;   // ← NEW
 }
 
 interface EtaResult {
@@ -31,6 +38,7 @@ interface EtaResult {
 interface ActiveRoutesTableProps {
   onEtaUpdate?: (etas: Record<number, EtaResult | null>) => void;
   selectedRouteId?: number | null;
+  onBusStateUpdate?: (state: BusState) => void;   // ← NEW
 }
 
 const STALE_MINUTES = 10;
@@ -220,6 +228,7 @@ const getStatusBadge = (
 export default function ActiveRoutesTable({
   onEtaUpdate,
   selectedRouteId = null,
+  onBusStateUpdate,   // ← NEW
 }: ActiveRoutesTableProps) {
   const [buses, setBuses] = useState<BusRow[]>([]);
   const [etas, setEtas] = useState<Record<number, EtaResult | null>>({});
@@ -231,6 +240,9 @@ export default function ActiveRoutesTable({
 
   const onEtaUpdateRef = useState(() => ({ current: onEtaUpdate }))[0];
   onEtaUpdateRef.current = onEtaUpdate;
+
+  const onBusStateUpdateRef = useState(() => ({ current: onBusStateUpdate }))[0];
+  onBusStateUpdateRef.current = onBusStateUpdate;
 
   const selectedRouteIdRef = useState<{
     current: number | null;
@@ -249,6 +261,7 @@ export default function ActiveRoutesTable({
             .map((b: any) => ({
               ...b,
               deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
+              busState: (b.busState ?? "approaching") as BusState,   // ← NEW
             }));
           setBuses(withRoutes);
         }
@@ -266,6 +279,18 @@ export default function ActiveRoutesTable({
       clearInterval(tick);
     };
   }, []);
+
+  // Report the currently selected bus's state to the parent
+  useEffect(() => {
+    if (selectedRouteId == null) {
+      onBusStateUpdateRef.current?.("approaching");
+      return;
+    }
+    const selectedBus = buses.find(
+      (b) => Number(b.routeId) === Number(selectedRouteId)
+    );
+    onBusStateUpdateRef.current?.(selectedBus?.busState ?? "approaching");
+  }, [buses, selectedRouteId]);
 
   // Compute ETAs (bus → pickup always; bus → dropoff only for selected route)
   useEffect(() => {
@@ -479,7 +504,6 @@ export default function ActiveRoutesTable({
 
   return (
     <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-white font-bold font-['Inter'] text-base">
@@ -517,7 +541,6 @@ export default function ActiveRoutesTable({
         </div>
       </div>
 
-      {/* Table — no overflow wrapper, just natural height */}
       {filteredBuses.length === 0 ? (
         <div className="h-[150px] flex items-center justify-center">
           <p className="text-[#87888C] font-['Inter'] text-sm">
