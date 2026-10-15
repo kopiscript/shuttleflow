@@ -1,4 +1,4 @@
-// user-app/app/admin/buses/[id]/edit/page.tsx
+// app/admin/buses/[id]/edit/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -65,7 +65,6 @@ export default function EditBusPage({ params }: PageProps) {
         const busIdNum = parseInt(id);
         setBusId(busIdNum);
 
-        // Fetch bus details
         const busRes = await fetch(`/api/admin/buses/${busIdNum}`);
         const busData = await busRes.json();
         if (busData.success) {
@@ -80,14 +79,12 @@ export default function EditBusPage({ params }: PageProps) {
           });
         }
 
-        // Fetch routes for dropdown
         const routesRes = await fetch("/api/admin/routes");
         const routesData = await routesRes.json();
         if (routesData.success) {
           setRoutes(routesData.routes);
         }
 
-        // Fetch devices for dropdown
         const devicesRes = await fetch("/api/admin/devices");
         const devicesData = await devicesRes.json();
         if (devicesData.success) {
@@ -107,13 +104,6 @@ export default function EditBusPage({ params }: PageProps) {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const toggleStatus = () => {
-    setFormData((prev) => ({
-      ...prev,
-      status: prev.status === "Active" ? "Inactive" : "Active",
-    }));
   };
 
   const handleRemoveRoute = () => {
@@ -165,9 +155,24 @@ export default function EditBusPage({ params }: PageProps) {
     );
   }
 
+  // Status helper for the badge preview
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-[#E1FFDA] text-[#3EB900]";
+      case "Delayed":
+        return "bg-[#FFF4CC] text-[#B8860B]";
+      case "Breakdown":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      case "Inactive":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      default:
+        return "bg-[#2C2D33] text-[#87888C]";
+    }
+  };
+
   return (
     <div>
-      {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
         <Link
           href={`/admin/buses/${busId}`}
@@ -193,17 +198,14 @@ export default function EditBusPage({ params }: PageProps) {
         </h1>
       </div>
 
-      {/* Form Card */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-2xl">
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6">
-            {/* Basic Information */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Basic Information
               </h3>
 
-              {/* Bus ID - Read-only */}
               <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
                 <span className="text-[#87888C] font-['Inter'] text-sm">
                   Bus ID
@@ -213,7 +215,6 @@ export default function EditBusPage({ params }: PageProps) {
                 </span>
               </div>
 
-              {/* License Plate */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   License Plate
@@ -229,7 +230,6 @@ export default function EditBusPage({ params }: PageProps) {
                 />
               </div>
 
-              {/* Bus Model */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Bus Model
@@ -245,7 +245,6 @@ export default function EditBusPage({ params }: PageProps) {
                 />
               </div>
 
-              {/* Capacity */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Capacity
@@ -262,52 +261,64 @@ export default function EditBusPage({ params }: PageProps) {
                 />
               </div>
 
-              {/* Status Toggle */}
-              <div className="flex justify-between items-center py-3 border-b border-[#2C2D33] mt-4">
-                <span className="text-[#87888C] font-['Inter'] text-sm">
+              {/* ✅ NEW: Status dropdown replacing the Active/Inactive toggle */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Status
-                </span>
+                </label>
                 <div className="flex items-center gap-3">
-                  <span className="text-white font-['Inter'] text-sm">
+                  <div className="relative flex-1">
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
+                    >
+                      <option value="Active">Active (running normally)</option>
+                      <option value="Delayed">Delayed (schedule disruption)</option>
+                      <option value="Breakdown">Breakdown (out of service)</option>
+                      <option value="Inactive">Inactive (not in use)</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg
+                        className="w-4 h-4 text-[#87888C]"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusStyle(formData.status)}`}
+                  >
                     {formData.status}
                   </span>
-                  <button
-                    type="button"
-                    onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
-                      formData.status === "Active"
-                        ? "bg-[#96DDFF]"
-                        : "bg-[#C7C7CC]"
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                        formData.status === "Active"
-                          ? "right-[3px]"
-                          : "left-[3px]"
-                      }`}
-                    />
-                  </button>
+                </div>
 
-                  <div className="mt-2 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
-                    <p className="text-[#87888C] font-['Inter'] text-xs">
-                      <span className="text-[#96DDFF] font-semibold">
-                        Note:
-                      </span>{" "}
-                      Setting this bus to{" "}
-                      <span className="text-[#EA1701]">Inactive</span> will also
-                      deactivate its assigned route. The route will not appear
-                      in the user app.
-                    </p>
-                  </div>
+                <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                  <p className="text-[#87888C] font-['Inter'] text-xs">
+                    <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                    Setting this bus to{" "}
+                    <span className="text-[#B8860B]">Delayed</span> or{" "}
+                    <span className="text-[#EA1701]">Breakdown</span> will
+                    automatically notify all users. Setting to{" "}
+                    <span className="text-[#6E6E7E]">Inactive</span> will
+                    deactivate its assigned route. The route will not appear in
+                    the user app.
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Divider */}
             <div className="border-t border-[#2C2D33]" />
 
-            {/* Assigned Route */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Assigned Route
@@ -322,8 +333,6 @@ export default function EditBusPage({ params }: PageProps) {
                   >
                     <option value="">Select route</option>
                     {routes.map((route) => {
-                      // The route currently assigned to this bus stays selectable.
-                      // Routes assigned to a different bus are disabled.
                       const alreadyAssignedToAnotherBus =
                         route.assignedBusId !== null &&
                         route.assignedBusId !== busId;
@@ -384,10 +393,8 @@ export default function EditBusPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Divider */}
             <div className="border-t border-[#2C2D33]" />
 
-            {/* Assigned Device */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Assigned Device
@@ -466,7 +473,6 @@ export default function EditBusPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Remove Route Confirmation Modal */}
             <DeleteConfirmModal
               isOpen={showRemoveRouteModal}
               onClose={() => setShowRemoveRouteModal(false)}
@@ -486,7 +492,6 @@ export default function EditBusPage({ params }: PageProps) {
               variant="warning"
             />
 
-            {/* Remove Device Confirmation Modal */}
             <DeleteConfirmModal
               isOpen={showRemoveDeviceModal}
               onClose={() => setShowRemoveDeviceModal(false)}
@@ -507,7 +512,6 @@ export default function EditBusPage({ params }: PageProps) {
             />
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2C2D33]">
             <Link
               href={`/admin/buses/${busId}`}
