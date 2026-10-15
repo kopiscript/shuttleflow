@@ -352,27 +352,14 @@ export default function EditBusPage({ params }: PageProps) {
 
                 <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
                   <p className="text-[#87888C] font-['Inter'] text-xs">
-  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-  Setting this bus to{" "}
-  <span className="text-[#EA1701]">Breakdown</span> will notify users of the
-  disruption. Setting to <span className="text-[#6E6E7E]">Inactive</span> will
-  also deactivate its assigned route. Routes with live ETAs beyond the
-  scheduled time are automatically flagged as delayed.
-</p>
+                    <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                    Setting this bus to{" "}
+                    <span className="text-[#EA1701]">Breakdown</span> will notify users of the
+                    disruption. Setting to <span className="text-[#6E6E7E]">Inactive</span> will
+                    also deactivate its assigned route. Routes with live ETAs beyond the
+                    scheduled time are automatically flagged as delayed.
+                  </p>
                 </div>
-              </div>
-
-              {/* Note */}
-              <div className="mt-3 w-full p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
-                <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
-                  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-                  Setting this bus to{" "}
-                  <span className="text-[#EA1701] font-semibold">
-                    Inactive
-                  </span>{" "}
-                  will also deactivate its assigned route. The route will not
-                  appear in the user app.
-                </p>
               </div>
             </div>
 

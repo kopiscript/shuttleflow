@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/activityLog";
 import { getDeviceHealth } from "@/lib/deviceHealth";
 import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
+import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // ---- Bus state machine constants ----
 const AT_PICKUP_RADIUS = 50;          // meters — bus is "at" the pickup
@@ -94,7 +95,6 @@ async function computeBusState(
 
   return "approaching";
 }
-import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // GET - list all buses
 export async function GET() {
@@ -221,19 +221,18 @@ export async function POST(request: Request) {
     });
 
     if (hasErrors(validationErrors)) {
-      // Return the first error message
       const firstError = Object.values(validationErrors)[0];
       return NextResponse.json(
-        { success: false, error: "Bus name and license plate are required" },
+        { success: false, error: firstError },
         { status: 400 }
       );
     }
 
-    // ✅ Normalize values
+    // ✅ Normalize values (ONCE)
     const normalizedPlate = licensePlate.trim().toUpperCase();
     const normalizedName = busName.trim();
 
-    // ✅ Server-side guard: reject duplicate license plate
+    // ✅ Server-side guard: reject duplicate license plate (ONCE)
     const duplicatePlate = await prisma.bus.findFirst({
       where: { licensePlate: normalizedPlate },
     });
@@ -244,33 +243,17 @@ export async function POST(request: Request) {
           success: false,
           error: "A bus with this license plate already exists",
         },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
-    // ✅ Normalize values
-    const normalizedPlate = licensePlate.trim().toUpperCase();
-    const normalizedName = busName.trim();
-
-    // ✅ Server-side guard: reject duplicate license plate
-    const duplicatePlate = await prisma.bus.findFirst({
-      where: { licensePlate: normalizedPlate },
-    });
-
-    if (duplicatePlate) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "A bus with this license plate already exists",
-        },
-        { status: 409 },
-      );
-    }
-
+    // Server-side guard: reject if the route is already assigned to another bus
     if (routeId) {
-      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst({
-        where: { routeId: parseInt(routeId), endedAt: null },
-      });
+      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst(
+        {
+          where: { routeId: parseInt(routeId), endedAt: null },
+        }
+      );
 
       if (existingRouteAssignment) {
         return NextResponse.json(
@@ -283,6 +266,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // Server-side guard: reject if the device is already assigned to another bus
     if (deviceId) {
       const existingDeviceAssignment =
         await prisma.busDeviceAssignment.findFirst({

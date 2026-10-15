@@ -1,7 +1,7 @@
-// app/admin/buses/[id]/page.tsx
+// app/admin/(dashboard)/buses/[id]/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -114,9 +114,6 @@ export default function BusDetailsPage({ params }: PageProps) {
     fetchLogs();
   }, [busId]);
 
-  // Note: toggleStatus function has been removed — status is now read-only on this page.
-  // Admins can change status from the Edit page.
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "No signal";
     const date = new Date(dateString);
@@ -130,7 +127,7 @@ export default function BusDetailsPage({ params }: PageProps) {
     });
   };
 
-  // ✅ NEW: Bus status badge style helper
+  // ✅ Status badge style helper
   const getBusStatusStyle = (status: string) => {
     switch (status) {
       case "Active":
@@ -247,22 +244,15 @@ export default function BusDetailsPage({ params }: PageProps) {
               <span className="text-[#87888C] font-['Inter'] text-sm">Capacity</span>
               <span className="text-white font-['Inter'] text-sm">{bus.capacity}</span>
             </div>
+
+            {/* ✅ Read-only status badge */}
             <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
-              <div className="flex items-center gap-3">
-                <span className="text-white font-['Inter'] text-sm">{isActive ? "Active" : "Inactive"}</span>
-                <button
-                  type="button"
-                  onClick={toggleStatus}
-                  className={`relative w-[46px] h-[23px] rounded-full transition-colors ${isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                    }`}
-                >
-                  <div
-                    className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${isActive ? "right-[3px]" : "left-[3px]"
-                      }`}
-                  />
-                </button>
-              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getBusStatusStyle(bus.status)}`}
+              >
+                {bus.status || "Unknown"}
+              </span>
             </div>
           </div>
 
