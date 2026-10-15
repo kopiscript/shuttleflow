@@ -14,6 +14,8 @@ model Bus {
   status            String                @default("Active")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
+  driver_name       String?
+  driver_phone      String?
   activityLogs      ActivityLog[]
   deviceAssignments BusDeviceAssignment[]
   routeAssignments  BusRouteAssignment[]
@@ -23,23 +25,23 @@ model Bus {
 }
 
 model Route {
-  id                         Int                  @id @default(autoincrement())
-  routeName                  String               @map("route_name")
-  pickupStop                 String               @map("pickup_stop")
-  dropoffStop                String               @map("dropoff_stop")
-  intermediateStops          String[]             @map("intermediate_stops")
-  status                     String               @default("Active")
-  createdAt                  DateTime             @default(now()) @map("created_at")
-  updatedAt                  DateTime             @updatedAt @map("updated_at")
-  pickupLat                  Float?               @map("pickup_lat")
-  pickupLng                  Float?               @map("pickup_lng")
-  dropoffLat                 Float?               @map("dropoff_lat")
-  dropoffLng                 Float?               @map("dropoff_lng")
-  alertedForCurrentApproach  Boolean              @default(false) @map("alerted_for_current_approach")
+  id                        Int                  @id @default(autoincrement())
+  routeName                 String               @map("route_name")
+  pickupStop                String               @map("pickup_stop")
+  dropoffStop               String               @map("dropoff_stop")
+  intermediateStops         String[]             @map("intermediate_stops")
+  status                    String               @default("Active")
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  updatedAt                 DateTime             @updatedAt @map("updated_at")
+  pickupLat                 Float?               @map("pickup_lat")
+  pickupLng                 Float?               @map("pickup_lng")
+  dropoffLat                Float?               @map("dropoff_lat")
+  dropoffLng                Float?               @map("dropoff_lng")
+  alertedForCurrentApproach Boolean              @default(false) @map("alerted_for_current_approach")
   arrivedAtPickupAt         DateTime?            @map("arrived_at_pickup_at")
-  expectedTripMinutes Int? @map("expected_trip_minutes")
-  busAssignments             BusRouteAssignment[]
-  views                      RouteView[]
+  expectedTripMinutes       Int?                 @map("expected_trip_minutes")
+  busAssignments            BusRouteAssignment[]
+  views                     RouteView[]
 
   @@map("routes")
 }
@@ -94,18 +96,18 @@ model Location {
 }
 
 model Admin {
-  id                  Int             @id @default(autoincrement())
-  username            String          @unique
-  passwordHash        String          @map("password_hash")
-  email               String          @unique
-  role                AdminRole       @default(ADMIN)
-  createdAt           DateTime        @default(now()) @map("created_at")
-  resetToken          String?         @map("reset_token")
-  resetTokenExpiry    DateTime?       @map("reset_token_expiry")
-  pendingEmail        String?         @map("pending_email")
-  emailChangeToken    String?         @map("email_change_token")
-  emailChangeExpiry   DateTime?       @map("email_change_expiry")
-  adminAuditLogs      AdminAuditLog[]
+  id                Int             @id @default(autoincrement())
+  username          String          @unique
+  passwordHash      String          @map("password_hash")
+  email             String          @unique
+  createdAt         DateTime        @default(now()) @map("created_at")
+  role              AdminRole       @default(ADMIN)
+  resetToken        String?         @map("reset_token")
+  resetTokenExpiry  DateTime?       @map("reset_token_expiry")
+  emailChangeExpiry DateTime?       @map("email_change_expiry")
+  emailChangeToken  String?         @map("email_change_token")
+  pendingEmail      String?         @map("pending_email")
+  adminAuditLogs    AdminAuditLog[]
 
   @@map("admins")
 }
@@ -125,12 +127,12 @@ model SupportTicket {
 }
 
 model TicketReply {
-  id        Int           @id @default(autoincrement())
-  ticketId  Int           @map("ticket_id")
-  message   String
-  sentBy    String        @default("admin") @map("sent_by")
-  sentAt    DateTime      @default(now()) @map("sent_at")
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id       Int           @id @default(autoincrement())
+  ticketId Int           @map("ticket_id")
+  message  String
+  sentBy   String        @default("admin") @map("sent_by")
+  sentAt   DateTime      @default(now()) @map("sent_at")
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("ticket_replies")
 }
@@ -166,28 +168,17 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-enum AdminRole {
-  SUPER_ADMIN
-  ADMIN
-}
-
-enum AuditCategory {
-  AUTH
-  FLEET
-  SETTINGS
-}
-
 model AdminAuditLog {
   id         Int           @id @default(autoincrement())
   adminId    Int?          @map("admin_id")
-  admin      Admin?        @relation(fields: [adminId], references: [id], onDelete: SetNull)
   category   AuditCategory
-  action     String        // e.g., "LOGIN_SUCCESS", "LOGIN_FAILED", "PASSWORD_CHANGED", "BUS_DELETED"
-  targetType String?       @map("target_type") // e.g., "Bus", "Route", "Device", "Admin"
-  targetId   String?       @map("target_id")   // e.g., "B001", "R002"
-  details    Json?         // Stores snapshots of deleted entities or metadata
+  action     String
+  targetType String?       @map("target_type")
+  targetId   String?       @map("target_id")
+  details    Json?
   ipAddress  String?       @map("ip_address")
   createdAt  DateTime      @default(now()) @map("created_at")
+  admin      Admin?        @relation(fields: [adminId], references: [id])
 
   @@index([category, createdAt])
   @@index([adminId])
@@ -202,4 +193,15 @@ model RouteView {
 
   @@index([routeId, viewedAt])
   @@map("route_views")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+enum AuditCategory {
+  AUTH
+  FLEET
+  SETTINGS
 }
