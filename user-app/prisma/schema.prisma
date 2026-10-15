@@ -24,20 +24,21 @@ model Bus {
 }
 
 model Route {
-  id                Int                  @id @default(autoincrement())
-  routeName         String               @map("route_name")
-  pickupStop        String               @map("pickup_stop")
-  dropoffStop       String               @map("dropoff_stop")
-  intermediateStops String[]             @map("intermediate_stops")
-  status            String               @default("Active")
-  createdAt         DateTime             @default(now()) @map("created_at")
-  updatedAt         DateTime             @updatedAt @map("updated_at")
-  pickupLat         Float?               @map("pickup_lat")
-  pickupLng         Float?               @map("pickup_lng")
-  dropoffLat        Float?               @map("dropoff_lat")
-  dropoffLng        Float?               @map("dropoff_lng")
-  busAssignments    BusRouteAssignment[]
-  views             RouteView[]
+  id                         Int                  @id @default(autoincrement())
+  routeName                  String               @map("route_name")
+  pickupStop                 String               @map("pickup_stop")
+  dropoffStop                String               @map("dropoff_stop")
+  intermediateStops          String[]             @map("intermediate_stops")
+  status                     String               @default("Active")
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  updatedAt                  DateTime             @updatedAt @map("updated_at")
+  pickupLat                  Float?               @map("pickup_lat")
+  pickupLng                  Float?               @map("pickup_lng")
+  dropoffLat                 Float?               @map("dropoff_lat")
+  dropoffLng                 Float?               @map("dropoff_lng")
+  alertedForCurrentApproach  Boolean              @default(false) @map("alerted_for_current_approach")
+  busAssignments             BusRouteAssignment[]
+  views                      RouteView[]
 
   @@map("routes")
 }
