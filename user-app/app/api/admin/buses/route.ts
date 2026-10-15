@@ -6,6 +6,95 @@ import { getDeviceHealth } from "@/lib/deviceHealth";
 import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
 
+// ---- Bus state machine constants ----
+const AT_PICKUP_RADIUS = 50;          // meters — bus is "at" the pickup
+const AT_PICKUP_DWELL_MS = 15_000;    // 15 seconds — must wait this long
+const PROXIMITY_ALERT_RADIUS = 500;   // meters — for resetting state
+const TRIP_DONE_RADIUS = 500;         // meters — how close to dropoff counts as "done"
+
+type BusState = "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
+
+// Haversine distance in meters
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Compute the current state of a bus on its route. Also persists
+ * `arrivedAtPickupAt` when the bus first enters the pickup radius, and
+ * clears it when the bus leaves after having visited.
+ */
+async function computeBusState(
+  route: {
+    id: number;
+    pickupLat: number | null;
+    pickupLng: number | null;
+    dropoffLat: number | null;
+    dropoffLng: number | null;
+    arrivedAtPickupAt: Date | null;
+  },
+  busLat: number,
+  busLng: number
+): Promise<BusState> {
+  if (!route.pickupLat || !route.pickupLng) return "approaching";
+
+  const distanceToPickup = calculateDistance(
+    busLat,
+    busLng,
+    route.pickupLat,
+    route.pickupLng
+  );
+  const isAtPickup = distanceToPickup <= AT_PICKUP_RADIUS;
+  const isWithinAlertZone = distanceToPickup <= PROXIMITY_ALERT_RADIUS;
+
+  let arrivedAtPickupAt = route.arrivedAtPickupAt;
+
+  if (isAtPickup) {
+    if (!arrivedAtPickupAt) {
+      arrivedAtPickupAt = new Date();
+      await prisma.route.update({
+        where: { id: route.id },
+        data: { arrivedAtPickupAt },
+      });
+    }
+    const dwellMs = Date.now() - new Date(arrivedAtPickupAt).getTime();
+    return dwellMs >= AT_PICKUP_DWELL_MS ? "at_pickup" : "approaching";
+  }
+
+  if (isWithinAlertZone) {
+    return arrivedAtPickupAt ? "en_route_to_dropoff" : "approaching";
+  }
+
+  // Outside 500m from pickup
+  if (arrivedAtPickupAt) {
+    // Trip cycle finished → reset for next approach
+    await prisma.route.update({
+      where: { id: route.id },
+      data: {
+        arrivedAtPickupAt: null,
+        alertedForCurrentApproach: false,
+      },
+    });
+    return "trip_done";
+  }
+
+  return "approaching";
+}
+
 // GET - list all buses
 export async function GET() {
   try {
@@ -27,66 +116,84 @@ export async function GET() {
       },
     });
 
-    const transformed = buses.map((bus) => {
-      const activeRoute = bus.routeAssignments[0]?.route ?? null;
-      const latestLocation = bus.locations[0] ?? null;
+    const transformed = await Promise.all(
+      buses.map(async (bus) => {
+        const activeRoute = bus.routeAssignments[0]?.route ?? null;
+        const latestLocation = bus.locations[0] ?? null;
+        const busLat = latestLocation ? Number(latestLocation.latitude) : null;
+        const busLng = latestLocation ? Number(latestLocation.longitude) : null;
 
-      return {
-        id: bus.id,
-        busName: bus.busName,
-        licensePlate: bus.licensePlate,
-        capacity: bus.capacity,
-        status: bus.status,
-        createdAt: bus.createdAt,
-        updatedAt: bus.updatedAt,
+        // ✅ Compute bus state (needs both a route and a current location)
+        let busState: BusState = "approaching";
+        if (activeRoute && busLat !== null && busLng !== null) {
+          busState = await computeBusState(
+            {
+              id: activeRoute.id,
+              pickupLat: activeRoute.pickupLat,
+              pickupLng: activeRoute.pickupLng,
+              dropoffLat: activeRoute.dropoffLat,
+              dropoffLng: activeRoute.dropoffLng,
+              arrivedAtPickupAt: activeRoute.arrivedAtPickupAt,
+            },
+            busLat,
+            busLng
+          );
+        }
 
-        // flat fields for the dashboard map / bus markers
-        routeIds: bus.routeAssignments.map((a) => a.routeId),
-        routeNames: bus.routeAssignments
-          .map((a) => a.route?.routeName)
-          .filter(Boolean),
-        routeId: activeRoute?.id ?? null,
-        routeName: activeRoute?.routeName ?? null,
-        pickupStop: activeRoute?.pickupStop ?? null,
-        dropoffStop: activeRoute?.dropoffStop ?? null,
-        pickupLat: activeRoute?.pickupLat ?? null,
-        pickupLng: activeRoute?.pickupLng ?? null,
-        dropoffLat: activeRoute?.dropoffLat ?? null,
-        dropoffLng: activeRoute?.dropoffLng ?? null,
-        lat: latestLocation ? Number(latestLocation.latitude) : null,
-        lng: latestLocation ? Number(latestLocation.longitude) : null,
-        lastSeen: latestLocation?.recordedAt ?? null,
+        return {
+          id: bus.id,
+          busName: bus.busName,
+          licensePlate: bus.licensePlate,
+          capacity: bus.capacity,
+          status: bus.status,
+          createdAt: bus.createdAt,
+          updatedAt: bus.updatedAt,
 
-        // existing nested shapes (kept for backwards compatibility)
-        route: activeRoute,
-        device: bus.deviceAssignments[0]?.device
-          ? (() => {
-              const device = bus.deviceAssignments[0].device;
-              // Derive status from the device's own lastSeen
-              const health = getDeviceHealth(device.lastSeen);
+          // flat fields for the dashboard map / bus markers
+          routeIds: bus.routeAssignments.map((a) => a.routeId),
+          routeNames: bus.routeAssignments
+            .map((a) => a.route?.routeName)
+            .filter(Boolean),
+          routeId: activeRoute?.id ?? null,
+          routeName: activeRoute?.routeName ?? null,
+          pickupStop: activeRoute?.pickupStop ?? null,
+          dropoffStop: activeRoute?.dropoffStop ?? null,
+          pickupLat: activeRoute?.pickupLat ?? null,
+          pickupLng: activeRoute?.pickupLng ?? null,
+          dropoffLat: activeRoute?.dropoffLat ?? null,
+          dropoffLng: activeRoute?.dropoffLng ?? null,
+          lat: busLat,
+          lng: busLng,
+          lastSeen: latestLocation?.recordedAt ?? null,
 
-              return {
-                ...device,
-                // override the raw column with the derived status
-                status: health.status,
-                lastLat: latestLocation?.latitude
-                  ? Number(latestLocation.latitude)
-                  : null,
-                lastLng: latestLocation?.longitude
-                  ? Number(latestLocation.longitude)
-                  : null,
-              };
-            })()
-          : null,
-      };
-    });
+          // ✅ NEW — the bus state machine result
+          busState,
+
+          // existing nested shapes (kept for backwards compatibility)
+          route: activeRoute,
+          device: bus.deviceAssignments[0]?.device
+            ? (() => {
+                const device = bus.deviceAssignments[0].device;
+                const health = getDeviceHealth(device.lastSeen);
+
+                return {
+                  ...device,
+                  status: health.status,
+                  lastLat: busLat,
+                  lastLng: busLng,
+                };
+              })()
+            : null,
+        };
+      })
+    );
 
     return NextResponse.json({ success: true, buses: transformed });
   } catch (error) {
     console.error("Failed to fetch buses:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch buses" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -101,24 +208,21 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
     if (!busName || !licensePlate) {
       return NextResponse.json(
         { success: false, error: "Bus name and license plate are required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    // Server-side guard: reject if the route is already assigned to another bus
     if (routeId) {
-      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst(
-        {
-          where: { routeId: parseInt(routeId), endedAt: null },
-        },
-      );
+      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst({
+        where: { routeId: parseInt(routeId), endedAt: null },
+      });
 
       if (existingRouteAssignment) {
         return NextResponse.json(
@@ -126,12 +230,11 @@ export async function POST(request: Request) {
             success: false,
             error: "This route is already assigned to another bus",
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
     }
 
-    // Server-side guard: reject if the device is already assigned to another bus
     if (deviceId) {
       const existingDeviceAssignment =
         await prisma.busDeviceAssignment.findFirst({
@@ -144,7 +247,7 @@ export async function POST(request: Request) {
             success: false,
             error: "This device is already assigned to another bus",
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
     }
@@ -161,10 +264,9 @@ export async function POST(request: Request) {
     await logActivity(
       bus.id,
       "bus_created",
-      `Bus B${String(bus.id).padStart(3, "0")} created`,
+      `Bus B${String(bus.id).padStart(3, "0")} created`
     );
 
-    // Assign route if provided
     if (routeId) {
       await prisma.busRouteAssignment.create({
         data: {
@@ -177,11 +279,10 @@ export async function POST(request: Request) {
       await logActivity(
         bus.id,
         "route_assigned",
-        `Route assigned to Bus B${String(bus.id).padStart(3, "0")}`,
+        `Route assigned to Bus B${String(bus.id).padStart(3, "0")}`
       );
     }
 
-    // Assign device if provided
     if (deviceId) {
       await prisma.busDeviceAssignment.create({
         data: {
@@ -194,7 +295,7 @@ export async function POST(request: Request) {
       await logActivity(
         bus.id,
         "device_assigned",
-        `Device assigned to Bus B${String(bus.id).padStart(3, "0")}`,
+        `Device assigned to Bus B${String(bus.id).padStart(3, "0")}`
       );
     }
 
@@ -223,7 +324,7 @@ export async function POST(request: Request) {
     console.error("Failed to create bus:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create bus" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
