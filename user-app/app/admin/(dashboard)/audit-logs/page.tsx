@@ -435,25 +435,25 @@ export default function AuditLogsPage() {
           <table className="w-full">
             <thead className="bg-[#2B2B36]">
               <tr>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Log ID
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Admin
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Category
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Action
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Target
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Snapshot
                 </th>
-                <th className="text-left px-6 py-4 text-white font-semibold text-sm">
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">
                   Timestamp
                 </th>
               </tr>
