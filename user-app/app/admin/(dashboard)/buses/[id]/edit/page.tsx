@@ -275,7 +275,6 @@ export default function EditBusPage({ params }: PageProps) {
                       className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
                     >
                       <option value="Active">Active (running normally)</option>
-                      <option value="Delayed">Delayed (schedule disruption)</option>
                       <option value="Breakdown">Breakdown (out of service)</option>
                       <option value="Inactive">Inactive (not in use)</option>
                     </select>
@@ -304,15 +303,13 @@ export default function EditBusPage({ params }: PageProps) {
 
                 <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
                   <p className="text-[#87888C] font-['Inter'] text-xs">
-                    <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-                    Setting this bus to{" "}
-                    <span className="text-[#B8860B]">Delayed</span> or{" "}
-                    <span className="text-[#EA1701]">Breakdown</span> will
-                    automatically notify all users. Setting to{" "}
-                    <span className="text-[#6E6E7E]">Inactive</span> will
-                    deactivate its assigned route. The route will not appear in
-                    the user app.
-                  </p>
+  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+  Setting this bus to{" "}
+  <span className="text-[#EA1701]">Breakdown</span> will notify users of the
+  disruption. Setting to <span className="text-[#6E6E7E]">Inactive</span> will
+  also deactivate its assigned route. Routes with live ETAs beyond the
+  scheduled time are automatically flagged as delayed.
+</p>
                 </div>
               </div>
             </div>

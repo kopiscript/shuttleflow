@@ -1,3 +1,4 @@
+// app/api/admin/buses/[id]/route.ts
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
@@ -61,23 +62,17 @@ export async function GET(
       device: bus.deviceAssignments[0]?.device
         ? (() => {
             const device = bus.deviceAssignments[0].device;
-            // Derive status from the device's own lastSeen, so the
-            // bus endpoints agree with the device endpoints.
             const health = getDeviceHealth(device.lastSeen);
 
             return {
               ...device,
-              // override the raw column with the derived status
               status: health.status,
-              // location-derived fields (for the map)
               lastLat: latestLocation?.latitude
                 ? Number(latestLocation.latitude)
                 : null,
               lastLng: latestLocation?.longitude
                 ? Number(latestLocation.longitude)
                 : null,
-              // NOTE: lastSeen is the device's own lastSeen, not the
-              // location's recordedAt.
             };
           })()
         : null,
@@ -161,12 +156,14 @@ export async function PUT(
       );
     }
 
-    // ✅ NEW: Auto-fire notifications when status flips
+    // ✅ Notifications + route status sync on status transitions
     if (status !== undefined && status !== oldBus.status) {
       const activeRoute = oldBus.routeAssignments[0]?.route ?? null;
       const routeLabel = activeRoute?.routeName ?? "its route";
 
-      // → Breakdown
+      // → Breakdown: notify users, but do NOT change route status.
+      //   The bus is momentarily out of service; the route is still
+      //   operational once the issue is resolved.
       if (status === "Breakdown") {
         await sendAlertNotification(
           `${oldBus.busName} Breakdown`,
@@ -174,25 +171,53 @@ export async function PUT(
         );
         console.log(`🚨 Breakdown notification sent for ${oldBus.busName}`);
       }
-      // → Delayed (manual status flag)
-      else if (status === "Delayed") {
-        await sendAlertNotification(
-          `${oldBus.busName} Delayed`,
-          `${oldBus.busName} on ${routeLabel} is currently delayed. Expect schedule disruption.`,
-        );
-        console.log(`⚠️ Delay notification sent for ${oldBus.busName}`);
-      }
-      // → Back to Active (recovery)
+
+      // → Back to Active: recovery notification (only if coming from
+      //   a non-Active state). Also reactivate the route if it was
+      //   previously deactivated by an Inactive transition.
       else if (status === "Active" && oldBus.status !== "Active") {
         await sendInfo(
           `${oldBus.busName} Back in Service`,
           `${oldBus.busName} on ${routeLabel} is back on the road. Thank you for your patience.`,
         );
         console.log(`✅ Recovery notification sent for ${oldBus.busName}`);
+
+        // Reactivate the route if the bus was previously Inactive
+        if (oldBus.status === "Inactive" && activeRoute) {
+          await prisma.route.update({
+            where: { id: activeRoute.id },
+            data: { status: "Active" },
+          });
+          await logActivity(
+            busId,
+            "status_changed",
+            `Route "${routeLabel}" reactivated because bus is now Active`,
+          );
+        }
+      }
+
+      // → Inactive: silence the route (hide it from the user app).
+      //   No notification — the route disappearing is the signal.
+      else if (status === "Inactive") {
+        if (activeRoute) {
+          await prisma.route.update({
+            where: { id: activeRoute.id },
+            data: { status: "Inactive" },
+          });
+          await logActivity(
+            busId,
+            "status_changed",
+            `Route "${routeLabel}" deactivated because bus is Inactive`,
+          );
+          console.log(
+            `🔇 Route ${routeLabel} deactivated — bus ${oldBus.busName} is Inactive`,
+          );
+        }
       }
     }
 
-    // Handle route assignment (unchanged)
+    // Handle route assignment
+    // undefined = don't touch, null = unassign, number = assign
     if (routeId !== undefined) {
       await prisma.busRouteAssignment.updateMany({
         where: { busId, endedAt: null },
@@ -222,7 +247,7 @@ export async function PUT(
       }
     }
 
-    // Handle device assignment (unchanged)
+    // Handle device assignment
     if (deviceId !== undefined) {
       await prisma.busDeviceAssignment.updateMany({
         where: { busId, endedAt: null },
