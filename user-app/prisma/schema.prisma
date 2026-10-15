@@ -12,6 +12,8 @@ model Bus {
   licensePlate      String                @map("license_plate")
   capacity          Int?
   status            String                @default("Active")
+  driverName        String?               @map("driver_name")
+  driverPhone       String?               @map("driver_phone")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
   activityLogs      ActivityLog[]
