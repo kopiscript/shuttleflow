@@ -3,13 +3,14 @@
 
 import { useState } from "react";
 
-type NotificationType = "alert" | "delay" | "announcement" | "info";
+type NotificationType = "alert" | "announcement" | "info";
 
 interface TypeOption {
   value: NotificationType;
   label: string;
   emoji: string;
   description: string;
+  accent: string;
 }
 
 const TYPE_OPTIONS: TypeOption[] = [
@@ -18,24 +19,21 @@ const TYPE_OPTIONS: TypeOption[] = [
     label: "Info",
     emoji: "🔔",
     description: "General information for users",
+    accent: "border-[#96DDFF] bg-[#96DDFF]/10",
   },
   {
     value: "announcement",
     label: "Announcement",
     emoji: "📢",
     description: "Important updates like schedule changes",
-  },
-  {
-    value: "delay",
-    label: "Delay",
-    emoji: "🚌",
-    description: "Route delay notices",
+    accent: "border-[#FEB002] bg-[#FEB002]/10",
   },
   {
     value: "alert",
     label: "Alert",
     emoji: "⚠️",
     description: "Urgent issues like breakdowns or disruptions",
+    accent: "border-[#EA1701] bg-[#EA1701]/10",
   },
 ];
 
@@ -66,8 +64,7 @@ export default function SendNotificationPage() {
         setStatus("sent");
         setTitle("");
         setMessage("");
-        // Auto-hide the success message after 4 seconds
-        setTimeout(() => setStatus("idle"), 4000);
+        setTimeout(() => setStatus("idle"), 5000);
       } else {
         setStatus("error");
         setErrorMsg(data.error || "Failed to send notification");
@@ -85,7 +82,7 @@ export default function SendNotificationPage() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
           Send Notification
@@ -97,8 +94,26 @@ export default function SendNotificationPage() {
         </p>
       </div>
 
+      {/* Success / Error Banner */}
+      {status === "sent" && (
+        <div className="mb-6 p-4 bg-[#E1FFDA]/10 border border-[#3EB900] rounded-lg flex items-center gap-3 max-w-5xl">
+          <span className="text-[#3EB900] text-lg">✅</span>
+          <p className="text-[#3EB900] font-['Inter'] text-sm font-medium">
+            Notification sent to all connected users
+          </p>
+        </div>
+      )}
+      {status === "error" && (
+        <div className="mb-6 p-4 bg-[#CD0000]/20 border border-[#CD0000] rounded-lg flex items-center gap-3 max-w-5xl">
+          <span className="text-[#EA1701] text-lg">❌</span>
+          <p className="text-[#EA1701] font-['Inter'] text-sm font-medium">
+            {errorMsg}
+          </p>
+        </div>
+      )}
+
       {/* Form Card */}
-      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-2xl">
+      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-5xl">
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6">
             {/* Type selector */}
@@ -106,7 +121,7 @@ export default function SendNotificationPage() {
               <label className="text-white font-bold font-['Inter'] text-base mb-3 block">
                 Notification Type
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {TYPE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -114,7 +129,7 @@ export default function SendNotificationPage() {
                     onClick={() => setType(opt.value)}
                     className={`text-left p-4 rounded-xl border transition ${
                       type === opt.value
-                        ? "border-[#96DDFF] bg-[#96DDFF]/10"
+                        ? opt.accent
                         : "border-[#2C2D33] bg-[#171821] hover:border-[#87888C]"
                     }`}
                   >
@@ -124,7 +139,7 @@ export default function SendNotificationPage() {
                         {opt.label}
                       </span>
                     </div>
-                    <p className="text-[#87888C] font-['Inter'] text-xs">
+                    <p className="text-[#87888C] font-['Inter'] text-xs leading-snug">
                       {opt.description}
                     </p>
                   </button>
@@ -146,8 +161,8 @@ export default function SendNotificationPage() {
                 placeholder="e.g., Route A Delayed"
                 className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
               />
-              <p className="text-[#87888C] font-['Inter'] text-xs mt-1">
-                {title.length}/200 characters
+              <p className="text-[#87888C] font-['Inter'] text-xs mt-1 text-right">
+                {title.length}/200
               </p>
             </div>
 
@@ -175,11 +190,11 @@ export default function SendNotificationPage() {
                 <div className="p-4 rounded-xl bg-[#171821] border border-[#2C2D33]">
                   <div className="flex items-start gap-3">
                     <span className="text-xl">{selectedType.emoji}</span>
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold font-['Inter'] text-sm">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white font-semibold font-['Inter'] text-sm truncate">
                         {title || "(no title)"}
                       </h4>
-                      <p className="text-[#87888C] font-['Inter'] text-sm mt-1">
+                      <p className="text-[#87888C] font-['Inter'] text-sm mt-1 break-words">
                         {message || "(no message)"}
                       </p>
                     </div>
@@ -190,19 +205,7 @@ export default function SendNotificationPage() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-[#2C2D33]">
-            <div className="flex-1">
-              {status === "sent" && (
-                <p className="text-[#3EB900] font-['Inter'] text-sm">
-                  ✅ Notification sent to all connected users
-                </p>
-              )}
-              {status === "error" && (
-                <p className="text-[#EA1701] font-['Inter'] text-sm">
-                  ❌ {errorMsg}
-                </p>
-              )}
-            </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2C2D33]">
             <button
               type="submit"
               disabled={sending || !title || !message}
