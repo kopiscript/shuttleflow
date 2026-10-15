@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
-import ActiveRoutesTable from "./components/ActiveRoutesTable";
+import ActiveRoutesTable, { type BusState } from "./components/ActiveRoutesTable";
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
 
@@ -78,6 +78,9 @@ export default function AdminDashboard() {
 
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
 
+  // the currently selected bus's state, fed by ActiveRoutesTable
+  const [busState, setBusState] = useState<BusState>("approaching");
+
   const [unresolvedTickets, setUnresolvedTickets] = useState(0);
   const [unresolvedTicketList, setUnresolvedTicketList] = useState<TicketPreview[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -88,6 +91,8 @@ export default function AdminDashboard() {
   const [dropoffPaths, setDropoffPaths] = useState<
     Record<number, [number, number][] | null>
   >({});
+
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -191,6 +196,7 @@ export default function AdminDashboard() {
                 selectedRouteId={numericRouteId}
                 routePaths={routePaths}
                 dropoffPaths={dropoffPaths}
+                busState={busState}
               />
             )}
           </div>
@@ -329,6 +335,7 @@ export default function AdminDashboard() {
               setRoutePaths(pickup);
               setDropoffPaths(dropoff);
             }}
+            onBusStateUpdate={setBusState}
           />
         </div>
 
