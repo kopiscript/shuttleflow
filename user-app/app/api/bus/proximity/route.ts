@@ -5,6 +5,63 @@ import { calculateDistance } from "@/lib/distance";
 import { sendProximityAlert } from "@/lib/notifications";
 
 const PROXIMITY_THRESHOLD = 500; // meters
+const AT_PICKUP_RADIUS = 50;          // meters
+const AT_PICKUP_DWELL_MS = 15_000;    // 15 seconds
+const TRIP_DONE_RADIUS = 500;
+
+type BusState = "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
+
+async function computeBusState(
+  route: {
+    id: number;
+    pickupLat: number | null;
+    pickupLng: number | null;
+    dropoffLat: number | null;
+    dropoffLng: number | null;
+    arrivedAtPickupAt: Date | null;
+  },
+  busLat: number,
+  busLng: number
+): Promise<BusState> {
+  if (!route.pickupLat || !route.pickupLng) return "approaching";
+
+  const distanceToPickup = calculateDistance(
+    busLat, busLng, route.pickupLat, route.pickupLng
+  );
+  const isAtPickup = distanceToPickup <= AT_PICKUP_RADIUS;
+  const isWithinAlertZone = distanceToPickup <= PROXIMITY_THRESHOLD;
+
+  let arrivedAtPickupAt = route.arrivedAtPickupAt;
+
+  if (isAtPickup) {
+    if (!arrivedAtPickupAt) {
+      arrivedAtPickupAt = new Date();
+      await prisma.route.update({
+        where: { id: route.id },
+        data: { arrivedAtPickupAt },
+      });
+    }
+    const dwellMs = Date.now() - new Date(arrivedAtPickupAt).getTime();
+    return dwellMs >= AT_PICKUP_DWELL_MS ? "at_pickup" : "approaching";
+  }
+
+  if (isWithinAlertZone) {
+    return arrivedAtPickupAt ? "en_route_to_dropoff" : "approaching";
+  }
+
+  if (arrivedAtPickupAt) {
+    await prisma.route.update({
+      where: { id: route.id },
+      data: {
+        arrivedAtPickupAt: null,
+        alertedForCurrentApproach: false,
+      },
+    });
+    return "trip_done";
+  }
+
+  return "approaching";
+}
 
 export async function GET(request: Request) {
   try {
@@ -119,6 +176,20 @@ export async function GET(request: Request) {
       );
     }
 
+    // ✅ Compute bus state for the path-visibility rules
+    const busState = await computeBusState(
+      {
+        id: route.id,
+        pickupLat: route.pickupLat,
+        pickupLng: route.pickupLng,
+        dropoffLat: route.dropoffLat,
+        dropoffLng: route.dropoffLng,
+        arrivedAtPickupAt: route.arrivedAtPickupAt,
+      },
+      busLat,
+      busLng
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -134,6 +205,7 @@ export async function GET(request: Request) {
         alertSent,
         notificationId,
         alertedForCurrentApproach: alertedNow,
+        busState,   // ← NEW
         status: isNear ? "approaching_pickup" : "en_route",
       },
     });
