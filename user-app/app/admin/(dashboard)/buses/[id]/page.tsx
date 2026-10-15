@@ -1,4 +1,4 @@
-// user-app/app/admin/buses/[id]/page.tsx
+// app/admin/buses/[id]/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// Dynamically import the map component with SSR disabled
 const MapComponent = dynamic(() => import("./MapComponent"), {
   ssr: false,
   loading: () => (
@@ -55,7 +54,6 @@ export default function BusDetailsPage({ params }: PageProps) {
   const router = useRouter();
   const [bus, setBus] = useState<Bus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isActive, setIsActive] = useState(true);
   const [busId, setBusId] = useState<number | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
@@ -82,7 +80,6 @@ export default function BusDetailsPage({ params }: PageProps) {
         const data = await response.json();
         if (data.success) {
           setBus(data.bus);
-          setIsActive(data.bus.status === "Active");
           setMapReady(true);
         }
       } catch (error) {
@@ -92,16 +89,12 @@ export default function BusDetailsPage({ params }: PageProps) {
       }
     };
 
-    // Fetch immediately on page load
     fetchBusDetails();
-
-    // Auto-refresh every 5 seconds
     const interval = setInterval(fetchBusDetails, 5000);
-
     return () => clearInterval(interval);
   }, [busId]);
 
-  // Fetch activity logs (once when busId loads)
+  // Fetch activity logs
   useEffect(() => {
     if (!busId) return;
 
@@ -121,11 +114,6 @@ export default function BusDetailsPage({ params }: PageProps) {
     fetchLogs();
   }, [busId]);
 
-  const toggleStatus = () => {
-    setIsActive(!isActive);
-    // Here you would call an API to update the status
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "No signal";
     const date = new Date(dateString);
@@ -137,6 +125,22 @@ export default function BusDetailsPage({ params }: PageProps) {
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  // ✅ NEW: Bus status badge style helper
+  const getBusStatusStyle = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-[#E1FFDA] text-[#3EB900]";
+      case "Delayed":
+        return "bg-[#FFF4CC] text-[#B8860B]";
+      case "Breakdown":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      case "Inactive":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      default:
+        return "bg-[#2C2D33] text-[#87888C]";
+    }
   };
 
   const handleDelete = async () => {
@@ -218,7 +222,6 @@ export default function BusDetailsPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Two-column layout */}
       <div className="grid grid-cols-2 gap-6">
         {/* Left Column - Details Card */}
         <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
@@ -241,22 +244,15 @@ export default function BusDetailsPage({ params }: PageProps) {
               <span className="text-[#87888C] font-['Inter'] text-sm">Capacity</span>
               <span className="text-white font-['Inter'] text-sm">{bus.capacity}</span>
             </div>
+
+            {/* ✅ Read-only status badge */}
             <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Status</span>
-              <div className="flex items-center gap-3">
-                <span className="text-white font-['Inter'] text-sm">{isActive ? "Active" : "Inactive"}</span>
-                <button
-                  type="button"
-                  onClick={toggleStatus}
-                  className={`relative w-[46px] h-[23px] rounded-full transition-colors ${isActive ? "bg-[#96DDFF]" : "bg-[#C7C7CC]"
-                    }`}
-                >
-                  <div
-                    className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${isActive ? "right-[3px]" : "left-[3px]"
-                      }`}
-                  />
-                </button>
-              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getBusStatusStyle(bus.status)}`}
+              >
+                {bus.status || "Unknown"}
+              </span>
             </div>
           </div>
 
@@ -317,7 +313,7 @@ export default function BusDetailsPage({ params }: PageProps) {
 
         {/* Right Column */}
         <div className="space-y-6">
-          {/* Live Tracking Card with Leaflet Map */}
+          {/* Live Tracking Card */}
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
             <h3 className="text-white font-bold font-['Inter'] text-base mb-4">Live Tracking</h3>
             <div className="bg-[#171821] rounded-xl overflow-hidden" style={{ height: "250px" }}>
@@ -326,14 +322,12 @@ export default function BusDetailsPage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Last Updated - below map on the right */}
             <div className="mt-3 text-right">
               <span className="text-[#87888C] font-['Inter'] text-xs">
                 Last updated: {bus.device?.lastSeen ? formatDate(bus.device.lastSeen) : "No signal"}
               </span>
             </div>
 
-            {/* View Full Map Button - right aligned, text centered */}
             <div className="mt-3 flex justify-end">
               <Link
                 href={`/admin/buses/${bus.id}/map`}
@@ -381,7 +375,6 @@ export default function BusDetailsPage({ params }: PageProps) {
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center">
           <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6 max-w-md w-full mx-4">
-            {/* Modal Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white font-['Bai_Jamjuree']">
                 Delete Bus
@@ -396,7 +389,6 @@ export default function BusDetailsPage({ params }: PageProps) {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="mb-6">
               <div className="flex items-center justify-center mb-4">
                 <div className="w-16 h-16 rounded-full bg-[#CD0000]/20 flex items-center justify-center">
@@ -417,7 +409,6 @@ export default function BusDetailsPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
