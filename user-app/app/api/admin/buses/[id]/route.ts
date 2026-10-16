@@ -255,6 +255,15 @@ export async function PUT(
       //   No notification — the route disappearing is the signal.
       else if (status === "Inactive") {
         if (activeRoute) {
+          // Create a generic info notification before deactivating.
+          await prisma.notification.create({
+            data: {
+              type: "announcement",
+              title: `Service Disruption: ${activeRoute.routeName}`,
+              message: `The route "${activeRoute.routeName}" is now inactive and no longer being tracked. Please plan your journey accordingly.`,
+            },
+          });
+
           await prisma.route.update({
             where: { id: activeRoute.id },
             data: { status: "Inactive" },
@@ -262,10 +271,10 @@ export async function PUT(
           await logActivity(
             busId,
             "status_changed",
-            `Route "${routeLabel}" deactivated because bus is Inactive`,
+            `Route "${routeLabel}" deactivated because bus is Inactive`
           );
           console.log(
-            `🔇 Route ${routeLabel} deactivated — bus ${oldBus.busName} is Inactive`,
+            `🔇 Route ${routeLabel} deactivated — bus ${oldBus.busName} is Inactive`
           );
         }
       }
