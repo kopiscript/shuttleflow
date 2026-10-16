@@ -6,7 +6,10 @@ export async function GET(request: Request) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -16,12 +19,18 @@ export async function GET(request: Request) {
     const destLng = searchParams.get("destLng");
 
     if (!originLat || !originLng || !destLat || !destLng) {
-      return NextResponse.json({ success: false, error: "Missing coordinates" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing coordinates" },
+        { status: 400 }
+      );
     }
 
     const key = process.env.TOMTOM_API_KEY;
     if (!key) {
-      return NextResponse.json({ success: false, error: "TomTom key not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "TomTom key not configured" },
+        { status: 500 }
+      );
     }
 
     const url =
@@ -31,7 +40,10 @@ export async function GET(request: Request) {
 
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
-      return NextResponse.json({ success: false, error: "TomTom request failed" }, { status: 502 });
+      return NextResponse.json(
+        { success: false, error: "TomTom request failed" },
+        { status: 502 }
+      );
     }
 
     const data = await res.json();
@@ -39,13 +51,14 @@ export async function GET(request: Request) {
     const summary = route?.summary;
 
     if (!summary) {
-      return NextResponse.json({ success: false, error: "No route found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "No route found" },
+        { status: 404 }
+      );
     }
-    
+
     const rawPoints =
-      route?.legs?.[0]?.points ??
-      route?.geometry?.points ??
-      null;
+      route?.legs?.[0]?.points ?? route?.geometry?.points ?? null;
 
     let encodedPolyline: unknown = null;
 
@@ -54,17 +67,27 @@ export async function GET(request: Request) {
     } else if (typeof rawPoints === "string" && rawPoints.length > 0) {
       encodedPolyline = rawPoints;
     }
-    // -------------------------------------------------------------------------
+
+    // TomTom always returns `noTrafficTravelTimeInSeconds` when
+    // `traffic=true` is set. This is the time the same route would take
+    // with NO traffic at all — the ideal "free-flow" baseline.
+    const travelTimeSeconds = summary.travelTimeInSeconds ?? 0;
+    const noTrafficTravelTimeSeconds =
+      summary.noTrafficTravelTimeInSeconds ?? travelTimeSeconds;
 
     return NextResponse.json({
       success: true,
-      travelTimeSeconds: summary.travelTimeInSeconds,
-      distanceMeters: summary.lengthInMeters,
+      travelTimeSeconds,
+      noTrafficTravelTimeSeconds,
+      distanceMeters: summary.lengthInMeters ?? 0,
       trafficDelaySeconds: summary.trafficDelayInSeconds ?? 0,
       encodedPolyline,
     });
   } catch (err) {
     console.error("ETA error:", err);
-    return NextResponse.json({ success: false, error: "Failed to fetch ETA" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch ETA" },
+      { status: 500 }
+    );
   }
 }

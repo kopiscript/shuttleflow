@@ -1,3 +1,4 @@
+// app/admin/(dashboard)/components/ActiveRoutesTable.tsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -23,11 +24,21 @@ interface BusRow {
   lng: number | null;
   lastSeen: string | null;
   deviceStatus: string | null;
-  busState: BusState;   // ← NEW
+  busState: BusState;
+  device?: {
+    id: number;
+    deviceName: string;
+    status: string;
+    lastSeen: string | null;
+    lastLat?: number | null;
+    lastLng?: number | null;
+  } | null;
 }
 
+// ✅ ADDED: noTrafficTravelTimeSeconds
 interface EtaResult {
   travelTimeSeconds: number;
+  noTrafficTravelTimeSeconds: number;
   distanceMeters: number;
   trafficDelaySeconds: number;
   source: "tomtom" | "fallback";
@@ -38,11 +49,16 @@ interface EtaResult {
 interface ActiveRoutesTableProps {
   onEtaUpdate?: (etas: Record<number, EtaResult | null>) => void;
   selectedRouteId?: number | null;
-  onBusStateUpdate?: (state: BusState) => void;   // ← NEW
+  onBusStateUpdate?: (state: BusState) => void;
 }
 
 const STALE_MINUTES = 10;
 const ETA_CACHE_MS = 2 * 60 * 1000; // 2 minutes
+
+// Delay threshold — must match the one in /api/monitor-delays
+const DELAY_RATIO = 1.7;
+const MIN_FREE_FLOW_MINUTES = 3;
+const MIN_DELAY_MINUTES = 4;
 
 const formatRelativeTime = (dateString: string | null): string => {
   if (!dateString) return "No signal";
@@ -105,6 +121,7 @@ const fallbackEta = (
   const seconds = (km / FALLBACK_SPEED_KMH) * 3600;
   return {
     travelTimeSeconds: seconds,
+    noTrafficTravelTimeSeconds: seconds, // no traffic info in fallback
     distanceMeters: km * 1000,
     trafficDelaySeconds: 0,
     source: "fallback",
@@ -167,12 +184,7 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
     const out: [number, number][] = [];
 
     for (const p of raw) {
-      if (
-        p &&
-        typeof p === "object" &&
-        "latitude" in p &&
-        "longitude" in p
-      ) {
+      if (p && typeof p === "object" && "latitude" in p && "longitude" in p) {
         const lat = (p as any).latitude;
         const lng = (p as any).longitude;
         if (isValidCoord(lat, lng)) out.push([lat, lng]);
@@ -204,31 +216,59 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
   return null;
 };
 
+// traffic-ratio based badge
 const getStatusBadge = (
   eta: EtaResult | null,
-  lastSeen: string | null,
+  locationLastSeen: string | null,   // bus.lastSeen (locations.recorded_at)
+  deviceLastSeen: string | null,     // bus.device?.lastSeen (devices.last_seen)
   deviceStatus: string | null,
 ) => {
-  if (deviceStatus === "Offline") {
+  // Offline/never-connected short-circuit
+  if (
+    deviceStatus === "Offline" ||
+    deviceStatus === "Never Connected"
+  ) {
     return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
   }
-  if (!lastSeen) {
+
+  if (!locationLastSeen && !deviceLastSeen) {
     return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
   }
-  const ageMin = (Date.now() - new Date(lastSeen).getTime()) / 60000;
-  if (ageMin > STALE_MINUTES) {
-    return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
+
+  const deviceAgeMin = deviceLastSeen
+    ? (Date.now() - new Date(deviceLastSeen).getTime()) / 60000
+    : Infinity;
+
+  const locationAgeMin = locationLastSeen
+    ? (Date.now() - new Date(locationLastSeen).getTime()) / 60000
+    : Infinity;
+
+  // If either timestamp is stale, we don't have reliable info
+  if (deviceAgeMin > STALE_MINUTES || locationAgeMin > STALE_MINUTES) {
+    return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
   }
-  if (eta && eta.source === "tomtom" && eta.trafficDelaySeconds > 300) {
-    return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
+
+  // Fresh data: check traffic
+  if (eta && eta.source === "tomtom") {
+    const freeMin = eta.noTrafficTravelTimeSeconds / 60;
+    const realMin = eta.travelTimeSeconds / 60;
+    const delayMin = realMin - freeMin;
+
+    if (freeMin >= MIN_FREE_FLOW_MINUTES) {
+      const ratio = realMin / Math.max(freeMin, 0.01);
+      if (ratio >= DELAY_RATIO && delayMin >= MIN_DELAY_MINUTES) {
+        return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
+      }
+    }
   }
+
   return { label: "On Time", classes: "bg-[#E1FFDA] text-[#3EB900]" };
 };
 
 export default function ActiveRoutesTable({
   onEtaUpdate,
   selectedRouteId = null,
-  onBusStateUpdate,   // ← NEW
+  onBusStateUpdate,
 }: ActiveRoutesTableProps) {
   const [buses, setBuses] = useState<BusRow[]>([]);
   const [etas, setEtas] = useState<Record<number, EtaResult | null>>({});
@@ -261,7 +301,7 @@ export default function ActiveRoutesTable({
             .map((b: any) => ({
               ...b,
               deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
-              busState: (b.busState ?? "approaching") as BusState,   // ← NEW
+              busState: (b.busState ?? "approaching") as BusState,
             }));
           setBuses(withRoutes);
         }
@@ -287,12 +327,12 @@ export default function ActiveRoutesTable({
       return;
     }
     const selectedBus = buses.find(
-      (b) => Number(b.routeId) === Number(selectedRouteId)
+      (b) => Number(b.routeId) === Number(selectedRouteId),
     );
     onBusStateUpdateRef.current?.(selectedBus?.busState ?? "approaching");
   }, [buses, selectedRouteId]);
 
-  // Compute ETAs (bus → pickup always; bus → dropoff only for selected route)
+  // Compute ETAs
   useEffect(() => {
     const lastFetched: Record<string, number> = {};
     let cancelled = false;
@@ -328,8 +368,7 @@ export default function ActiveRoutesTable({
         const dropoffKey = `dropoff:${bus.id}`;
 
         const pickupCached =
-          lastFetched[pickupKey] &&
-          now - lastFetched[pickupKey] < ETA_CACHE_MS;
+          lastFetched[pickupKey] && now - lastFetched[pickupKey] < ETA_CACHE_MS;
 
         const dropoffCached =
           lastFetched[dropoffKey] &&
@@ -343,17 +382,19 @@ export default function ActiveRoutesTable({
         const pickupPromise = pickupCached
           ? Promise.resolve(null)
           : fetch(
-              `/api/admin/eta?${new URLSearchParams({
-                originLat: String(bus.lat),
-                originLng: String(bus.lng),
-                destLat: String(bus.pickupLat),
-                destLng: String(bus.pickupLng),
-              })}`,
-            ).then((r) => r.json());
+            `/api/admin/eta?${new URLSearchParams({
+              originLat: String(bus.lat),
+              originLng: String(bus.lng),
+              destLat: String(bus.pickupLat),
+              destLng: String(bus.pickupLng),
+            })}`,
+          ).then((r) => r.json());
 
         const dropoffPromise =
           wantDropoff && !dropoffCached
-            ? fetch(
+            ? Promise.resolve(null)
+            : wantDropoff
+              ? fetch(
                 `/api/admin/eta?${new URLSearchParams({
                   originLat: String(bus.lat),
                   originLng: String(bus.lng),
@@ -361,7 +402,7 @@ export default function ActiveRoutesTable({
                   destLng: String(bus.dropoffLng!),
                 })}`,
               ).then((r) => r.json())
-            : Promise.resolve(null);
+              : Promise.resolve(null);
 
         if (!pickupCached) lastFetched[pickupKey] = now;
         if (wantDropoff && !dropoffCached) lastFetched[dropoffKey] = now;
@@ -378,6 +419,8 @@ export default function ActiveRoutesTable({
 
           let routePath = previous?.routePath ?? null;
           let travelTimeSeconds = previous?.travelTimeSeconds ?? 0;
+          let noTrafficTravelTimeSeconds =
+            previous?.noTrafficTravelTimeSeconds ?? 0; // ✅
           let distanceMeters = previous?.distanceMeters ?? 0;
           let trafficDelaySeconds = previous?.trafficDelaySeconds ?? 0;
           let source: "tomtom" | "fallback" = previous?.source ?? "fallback";
@@ -386,6 +429,9 @@ export default function ActiveRoutesTable({
             if (pickupData.success) {
               routePath = normalisePolyline(pickupData.encodedPolyline);
               travelTimeSeconds = pickupData.travelTimeSeconds;
+              noTrafficTravelTimeSeconds =
+                pickupData.noTrafficTravelTimeSeconds ??
+                pickupData.travelTimeSeconds; // ✅ fallback
               distanceMeters = pickupData.distanceMeters;
               trafficDelaySeconds = pickupData.trafficDelaySeconds;
               source = "tomtom";
@@ -398,6 +444,7 @@ export default function ActiveRoutesTable({
               );
               routePath = null;
               travelTimeSeconds = fb.travelTimeSeconds;
+              noTrafficTravelTimeSeconds = fb.noTrafficTravelTimeSeconds;
               distanceMeters = fb.distanceMeters;
               trafficDelaySeconds = fb.trafficDelaySeconds;
               source = "fallback";
@@ -410,6 +457,7 @@ export default function ActiveRoutesTable({
               bus.pickupLng,
             );
             travelTimeSeconds = fb.travelTimeSeconds;
+            noTrafficTravelTimeSeconds = fb.noTrafficTravelTimeSeconds;
             distanceMeters = fb.distanceMeters;
             trafficDelaySeconds = fb.trafficDelaySeconds;
             source = "fallback";
@@ -429,6 +477,7 @@ export default function ActiveRoutesTable({
 
           nextEtas[bus.id] = {
             travelTimeSeconds,
+            noTrafficTravelTimeSeconds,
             distanceMeters,
             trafficDelaySeconds,
             source,
@@ -484,7 +533,12 @@ export default function ActiveRoutesTable({
 
       if (statusFilter !== "all") {
         const eta = etas[bus.id] ?? null;
-        const badge = getStatusBadge(eta, bus.lastSeen, bus.deviceStatus);
+        const badge = getStatusBadge(
+          eta,
+          bus.lastSeen,
+          bus.device?.lastSeen ?? null,
+          bus.deviceStatus,
+        );
         const normalized = badge.label.toLowerCase().replace(/\s+/g, "-");
         if (normalized !== statusFilter) return false;
       }
@@ -552,17 +606,20 @@ export default function ActiveRoutesTable({
           <tbody>
             {filteredBuses.map((bus, i) => {
               const eta = etas[bus.id] ?? null;
-              const badge = getStatusBadge(eta, bus.lastSeen, bus.deviceStatus);
-
+              const badge = getStatusBadge(
+                eta,
+                bus.lastSeen,
+                bus.device?.lastSeen ?? null,
+                bus.deviceStatus,
+              );
               const isOffline = bus.deviceStatus === "Offline";
               const showEta = !isOffline && eta !== null;
 
               return (
                 <tr
                   key={bus.id}
-                  className={`border-t border-[#2C2D33] ${
-                    i % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                  }`}
+                  className={`border-t border-[#2C2D33] ${i % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
+                    }`}
                 >
                   <td className="py-4 pl-4 pr-4 align-middle whitespace-nowrap">
                     <span className="inline-block px-3 py-1 rounded-md text-sm font-bold font-['Inter'] bg-[#96DDFF] text-[#171821]">
@@ -592,7 +649,8 @@ export default function ActiveRoutesTable({
                         {bus.dropoffStop || "Unknown"}
                       </span>
                       <span className="text-[#87888C] font-['Inter'] text-xs ml-2">
-                        ETA {showEta && eta ? formatEta(eta.travelTimeSeconds) : "—"}
+                        ETA{" "}
+                        {showEta && eta ? formatEta(eta.travelTimeSeconds) : "—"}
                       </span>
                     </div>
                   </td>
