@@ -92,7 +92,24 @@ export default function AdminDashboard() {
     Record<number, [number, number][] | null>
   >({});
 
-  
+  useEffect(() => {
+    const monitorDelays = async () => {
+      try {
+        console.log("Checking for delays...");
+        await fetch("/api/monitor-delays");
+      } catch (error) {
+        console.error("Failed to run delay monitor:", error);
+      }
+    };
+
+    // Run every 5 minutes
+    const interval = setInterval(monitorDelays, 5 * 60 * 1000);
+    
+    // Also run once on initial load
+    monitorDelays();
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
