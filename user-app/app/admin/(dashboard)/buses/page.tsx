@@ -13,6 +13,8 @@ interface Bus {
   licensePlate: string;
   capacity: number;
   status: string;
+  driverName?: string | null;
+  driverPhone?: string | null;
   route?: {
     id: number;
     routeName: string;
@@ -132,7 +134,7 @@ export default function BusManagement() {
     }
   };
 
-  // Filter buses by multiple search fields including formatted ID
+  // Filter buses by multiple search fields including formatted ID and driver info
   const filteredBuses = buses.filter((bus) => {
     const searchTermLower = searchTerm.toLowerCase().trim();
     if (!searchTermLower) return true;
@@ -144,6 +146,8 @@ export default function BusManagement() {
       formattedId.toLowerCase(),
       bus.busName?.toLowerCase() || "",
       bus.licensePlate?.toLowerCase() || "",
+      bus.driverName?.toLowerCase() || "",
+      bus.driverPhone?.toLowerCase() || "",
       bus.route?.routeName?.toLowerCase() || "",
       bus.route?.id?.toString() || "",
       bus.device?.deviceName?.toLowerCase() || "",
@@ -194,6 +198,10 @@ export default function BusManagement() {
       return "bg-[#FFC0B9] text-[#EA1701]";
     } else if (status === "Active") {
       return "bg-[#D6E4FF] text-[#1A4B9B]";
+    } else if (status === "Delayed") {
+      return "bg-[#FFF4CE] text-[#B76E00]";
+    } else if (status === "Breakdown") {
+      return "bg-[#FFC0B9] text-[#EA1701] animate-pulse";
     } else if (status === "Inactive") {
       return "bg-[#E5E5EA] text-[#6E6E7E]";
     }
@@ -208,7 +216,7 @@ export default function BusManagement() {
           Shuttle Management
         </h1>
         <p className="text-[#87888C] mt-2 font-['Inter'] text-sm">
-          Create and manage all buses in the system. For each bus, you can assign a specific route and link the hardware device installed on it.
+          Create and manage all buses in the system. For each bus, you can assign a driver, a specific route, and link the hardware device installed on it.
         </p>
       </div>
 
@@ -217,7 +225,7 @@ export default function BusManagement() {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search by ID, Name, License Plate, Route, Device..."
+            placeholder="Search by ID, Name, License Plate, Driver, Route, Device..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
@@ -246,7 +254,9 @@ export default function BusManagement() {
               <tr className="bg-[#2B2B36]">
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus ID</th>
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">License Plate</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Driver</th>
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route</th>
+                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus Status</th>
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device</th>
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Status</th>
                 <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
@@ -255,13 +265,13 @@ export default function BusManagement() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
+                  <td colSpan={8} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
                     Loading buses...
                   </td>
                 </tr>
               ) : paginatedBuses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
+                  <td colSpan={8} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
                     {searchTerm
                       ? "No buses match your search."
                       : "No buses added yet. Click 'Add Shuttle' to create one."}
@@ -276,9 +286,8 @@ export default function BusManagement() {
                     aria-label={`View details for bus B${String(bus.id).padStart(3, "0")}`}
                     onClick={() => handleRowClick(bus.id)}
                     onKeyDown={(e) => handleRowKeyDown(e, bus.id)}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${
-                      index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                    }`}
+                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
+                      }`}
                   >
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       B{String(bus.id).padStart(3, "0")}
@@ -286,8 +295,27 @@ export default function BusManagement() {
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {bus.licensePlate}
                     </td>
+                    <td className="px-6 py-4 font-['Inter'] text-sm">
+                      {bus.driverName ? (
+                        <div>
+                          <div className="text-white font-medium">{bus.driverName}</div>
+                          {bus.driverPhone && (
+                            <div className="text-[#87888C] text-xs">{bus.driverPhone}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[#87888C]">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {bus.route?.routeName || "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.status || "Active")}`}
+                      >
+                        {bus.status || "Active"}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-white font-['Inter'] text-sm">
                       {bus.device?.deviceName || "—"}
@@ -326,11 +354,10 @@ export default function BusManagement() {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === 1
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === 1
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Previous
               </button>
@@ -350,11 +377,10 @@ export default function BusManagement() {
                   <button
                     key={page}
                     onClick={() => goToPage(page as number)}
-                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                      currentPage === page
+                    className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === page
                         ? "bg-[#96DDFF] text-[#171821]"
                         : "text-[#87888C] hover:text-white"
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
@@ -364,11 +390,10 @@ export default function BusManagement() {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${
-                  currentPage === totalPages
+                className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === totalPages
                     ? "text-[#87888C] cursor-not-allowed"
                     : "text-[#87888C] hover:text-white"
-                }`}
+                  }`}
               >
                 Next
               </button>

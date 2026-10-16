@@ -1,13 +1,16 @@
 // lib/activityLog.ts
 import { prisma } from "./prisma";
 
-type EventType =
+export type EventType =
   | "bus_created"
   | "bus_updated"
   | "status_changed"
   | "route_assigned"
   | "device_assigned"
-  | "bus_deleted";
+  | "bus_deleted"
+  | "BREAKDOWN"
+  | "DELAY"
+  | "RESOLVED";
 
 export async function logActivity(
   busId: number,
