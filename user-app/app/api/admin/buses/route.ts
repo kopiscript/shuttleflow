@@ -111,6 +111,14 @@ export async function GET() {
           include: { device: true },
         },
         locations: {
+          where: {
+            NOT: {
+              AND: [
+                { latitude: 0 },
+                { longitude: 0 },
+              ],
+            },
+          },
           orderBy: { recordedAt: "desc" },
           take: 1,
         },
@@ -169,23 +177,23 @@ export async function GET() {
           lng: busLng,
           lastSeen: latestLocation?.recordedAt ?? null,
 
-          // ✅ NEW — the bus state machine result
+          // the bus state machine result
           busState,
 
           // existing nested shapes (kept for backwards compatibility)
           route: activeRoute,
           device: bus.deviceAssignments[0]?.device
             ? (() => {
-                const device = bus.deviceAssignments[0].device;
-                const health = getDeviceHealth(device.lastSeen);
+              const device = bus.deviceAssignments[0].device;
+              const health = getDeviceHealth(device.lastSeen);
 
-                return {
-                  ...device,
-                  status: health.status,
-                  lastLat: busLat,
-                  lastLng: busLng,
-                };
-              })()
+              return {
+                ...device,
+                status: health.status,
+                lastLat: busLat,
+                lastLng: busLng,
+              };
+            })()
             : null,
         };
       })
