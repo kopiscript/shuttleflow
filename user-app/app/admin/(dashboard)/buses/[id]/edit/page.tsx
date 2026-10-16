@@ -13,6 +13,8 @@ interface Bus {
   licensePlate: string;
   capacity: number;
   status: string;
+  driverName?: string | null;
+  driverPhone?: string | null;
   route?: {
     id: number;
     routeName: string;
@@ -50,6 +52,8 @@ export default function EditBusPage({ params }: PageProps) {
     licensePlate: "",
     capacity: "",
     status: "Active",
+    driverName: "",
+    driverPhone: "",
     routeId: "",
     deviceId: "",
   });
@@ -76,6 +80,8 @@ export default function EditBusPage({ params }: PageProps) {
             licensePlate: bus.licensePlate || "",
             capacity: bus.capacity?.toString() || "",
             status: bus.status || "Active",
+            driverName: bus.driverName || "",
+            driverPhone: bus.driverPhone || "",
             routeId: bus.route?.id?.toString() || "",
             deviceId: bus.device?.id?.toString() || "",
           });
@@ -130,6 +136,8 @@ export default function EditBusPage({ params }: PageProps) {
       licensePlate: formData.licensePlate,
       busName: formData.busName,
       capacity: formData.capacity,
+      driverName: formData.driverName,
+      driverPhone: formData.driverPhone,
     });
 
     if (hasErrors(validationErrors)) {
@@ -149,6 +157,8 @@ export default function EditBusPage({ params }: PageProps) {
           licensePlate: formData.licensePlate.trim().toUpperCase(),
           capacity: parseInt(formData.capacity),
           status: formData.status,
+          driverName: formData.driverName.trim() || null,
+          driverPhone: formData.driverPhone.trim() || null,
           routeId: formData.routeId ? parseInt(formData.routeId) : null,
           deviceId: formData.deviceId ? parseInt(formData.deviceId) : null,
         }),
@@ -310,7 +320,7 @@ export default function EditBusPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* ✅ NEW: Status dropdown replacing the Active/Inactive toggle */}
+              {/* ✅ Status dropdown */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Status
@@ -360,6 +370,63 @@ export default function EditBusPage({ params }: PageProps) {
                     scheduled time are automatically flagged as delayed.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#2C2D33]" />
+
+            {/* Driver Information */}
+            <div>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Driver Information
+              </h3>
+
+              {/* Driver Name */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Driver Name
+                </label>
+                <input
+                  type="text"
+                  name="driverName"
+                  value={formData.driverName}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Ahmad bin Abdullah"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.driverName
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
+                />
+                {errors.driverName && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.driverName}
+                  </p>
+                )}
+              </div>
+
+              {/* Driver Phone */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  name="driverPhone"
+                  value={formData.driverPhone}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 012-3456789"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.driverPhone
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
+                />
+                {errors.driverPhone && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.driverPhone}
+                  </p>
+                )}
               </div>
             </div>
 

@@ -41,6 +41,8 @@ export default function AddBusPage() {
     licensePlate: "",
     capacity: "",
     status: "Active",
+    driverName: "",
+    driverPhone: "",
     routeId: "",
     deviceId: "",
   });
@@ -111,13 +113,6 @@ export default function AddBusPage() {
     }
   };
 
-  const toggleStatus = () => {
-    setFormData((prev) => ({
-      ...prev,
-      status: prev.status === "Active" ? "Inactive" : "Active",
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -126,6 +121,8 @@ export default function AddBusPage() {
       licensePlate: formData.licensePlate,
       busName: formData.busName,
       capacity: formData.capacity,
+      driverName: formData.driverName,
+      driverPhone: formData.driverPhone,
     });
 
     if (hasErrors(validationErrors)) {
@@ -145,6 +142,8 @@ export default function AddBusPage() {
           licensePlate: formData.licensePlate.trim().toUpperCase(),
           capacity: parseInt(formData.capacity),
           status: formData.status,
+          driverName: formData.driverName.trim() || null,
+          driverPhone: formData.driverPhone.trim() || null,
           routeId: formData.routeId ? parseInt(formData.routeId) : null,
           deviceId: formData.deviceId ? parseInt(formData.deviceId) : null,
         }),
@@ -290,40 +289,119 @@ export default function AddBusPage() {
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Status
                 </label>
-                <div className="w-full px-4 py-3 bg-[#171821] rounded-lg border border-[#2C2D33] flex items-center justify-between">
-                  <span className="text-white font-['Inter'] text-sm">
-                    {formData.status}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={toggleStatus}
-                    className={`relative w-[46px] h-[23px] rounded-full transition-colors ${
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
+                    >
+                      <option value="Active">Active (running normally)</option>
+                      <option value="Inactive">Inactive (not in use)</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg
+                        className="w-4 h-4 text-[#87888C]"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${
                       formData.status === "Active"
-                        ? "bg-[#96DDFF]"
-                        : "bg-[#C7C7CC]"
+                        ? "bg-[#E1FFDA] text-[#3EB900]"
+                        : "bg-[#FFC0B9] text-[#EA1701]"
                     }`}
                   >
-                    <div
-                      className={`absolute top-[3px] w-[17px] h-[17px] bg-white rounded-full shadow-md transition-all ${
-                        formData.status === "Active"
-                          ? "right-[3px]"
-                          : "left-[3px]"
-                      }`}
-                    />
-                  </button>
+                    {formData.status}
+                  </span>
+                </div>
+
+                <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                  <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
+                    <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                    Setting this bus to{" "}
+                    <span className="text-[#EA1701] font-semibold">
+                      Inactive
+                    </span>{" "}
+                    will also deactivate its assigned route. The route will not
+                    appear in the user app.
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Note */}
-              <div className="mt-3 w-full p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+            <div className="border-t border-[#2C2D33]" />
+
+            {/* Driver Information */}
+            <div>
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Driver Information
+              </h3>
+
+              {/* Driver Name */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Driver Name
+                </label>
+                <input
+                  type="text"
+                  name="driverName"
+                  value={formData.driverName}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Ahmad bin Abdullah"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.driverName
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
+                />
+                {errors.driverName && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.driverName}
+                  </p>
+                )}
+              </div>
+
+              {/* Driver Phone */}
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  name="driverPhone"
+                  value={formData.driverPhone}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 012-3456789"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.driverPhone
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
+                />
+                {errors.driverPhone && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.driverPhone}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
                 <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
                   <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-                  Setting this bus to{" "}
-                  <span className="text-[#EA1701] font-semibold">
-                    Inactive
-                  </span>{" "}
-                  will also deactivate its assigned route. The route will not
-                  appear in the user app.
+                  Driver information is optional and can be added later from
+                  the bus edit page.
                 </p>
               </div>
             </div>

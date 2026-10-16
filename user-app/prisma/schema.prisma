@@ -16,8 +16,6 @@ model Bus {
   driverPhone       String?               @map("driver_phone")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
-  driver_name       String?
-  driver_phone      String?
   activityLogs      ActivityLog[]
   deviceAssignments BusDeviceAssignment[]
   routeAssignments  BusRouteAssignment[]

@@ -147,6 +147,8 @@ export async function GET() {
           licensePlate: bus.licensePlate,
           capacity: bus.capacity,
           status: bus.status,
+          driverName: bus.driverName,
+          driverPhone: bus.driverPhone,
           createdAt: bus.createdAt,
           updatedAt: bus.updatedAt,
 
@@ -203,7 +205,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { busName, licensePlate, capacity, status, routeId, deviceId } = body;
+    const {
+      busName,
+      licensePlate,
+      capacity,
+      status,
+      routeId,
+      deviceId,
+      driverName,
+      driverPhone,
+    } = body;
     const session = await getSession();
 
     if (!session) {
@@ -218,6 +229,8 @@ export async function POST(request: Request) {
       licensePlate: licensePlate || "",
       busName: busName || "",
       capacity: String(capacity ?? ""),
+      driverName: driverName ?? "",
+      driverPhone: driverPhone ?? "",
     });
 
     if (hasErrors(validationErrors)) {
@@ -231,6 +244,8 @@ export async function POST(request: Request) {
     // ✅ Normalize values (ONCE)
     const normalizedPlate = licensePlate.trim().toUpperCase();
     const normalizedName = busName.trim();
+    const normalizedDriverName = driverName?.trim() || null;
+    const normalizedDriverPhone = driverPhone?.trim() || null;
 
     // ✅ Server-side guard: reject duplicate license plate (ONCE)
     const duplicatePlate = await prisma.bus.findFirst({
@@ -290,6 +305,8 @@ export async function POST(request: Request) {
         licensePlate: normalizedPlate,
         capacity: capacity ? parseInt(capacity) : null,
         status: status || "Active",
+        driverName: normalizedDriverName,
+        driverPhone: normalizedDriverPhone,
       },
     });
 
@@ -344,6 +361,8 @@ export async function POST(request: Request) {
           licensePlate: bus.licensePlate,
           capacity: bus.capacity,
           status: bus.status,
+          driverName: bus.driverName,
+          driverPhone: bus.driverPhone,
           routeId: routeId ? Number(routeId) : null,
           deviceId: deviceId ? Number(deviceId) : null,
         },

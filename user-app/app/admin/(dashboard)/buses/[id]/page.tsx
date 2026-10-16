@@ -21,6 +21,8 @@ interface Bus {
   licensePlate: string;
   capacity: number;
   status: string;
+  driverName?: string | null;
+  driverPhone?: string | null;
   route?: {
     id: number;
     routeName: string;
@@ -243,6 +245,14 @@ export default function BusDetailsPage({ params }: PageProps) {
             <div className="flex justify-between items-center">
               <span className="text-[#87888C] font-['Inter'] text-sm">Capacity</span>
               <span className="text-white font-['Inter'] text-sm">{bus.capacity}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[#87888C] font-['Inter'] text-sm">Driver Name</span>
+              <span className="text-white font-['Inter'] text-sm">{bus.driverName || "—"}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[#87888C] font-['Inter'] text-sm">Contact Number</span>
+              <span className="text-white font-['Inter'] text-sm">{bus.driverPhone || "—"}</span>
             </div>
 
             {/* ✅ Read-only status badge */}

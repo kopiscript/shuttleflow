@@ -57,6 +57,8 @@ export async function GET(
       licensePlate: bus.licensePlate,
       capacity: bus.capacity,
       status: bus.status,
+      driverName: bus.driverName,
+      driverPhone: bus.driverPhone,
       createdAt: bus.createdAt,
       updatedAt: bus.updatedAt,
       route: bus.routeAssignments[0]?.route || null,
@@ -98,7 +100,16 @@ export async function PUT(
     const { id } = await params;
     const busId = parseInt(id);
     const body = await request.json();
-    const { busName, licensePlate, capacity, status, routeId, deviceId } = body;
+    const {
+      busName,
+      licensePlate,
+      capacity,
+      status,
+      routeId,
+      deviceId,
+      driverName,
+      driverPhone,
+    } = body;
     const session = await getSession();
 
     if (!session) {
@@ -120,6 +131,8 @@ export async function PUT(
       licensePlate: licensePlate || "",
       busName: busName || "",
       capacity: String(capacity ?? ""),
+      driverName: driverName ?? "",
+      driverPhone: driverPhone ?? "",
     });
 
     if (hasErrors(validationErrors)) {
@@ -133,6 +146,8 @@ export async function PUT(
     // ✅ Normalize values
     const normalizedPlate = licensePlate.trim().toUpperCase();
     const normalizedName = busName.trim();
+    const normalizedDriverName = driverName?.trim() || null;
+    const normalizedDriverPhone = driverPhone?.trim() || null;
 
     // Get old bus data for comparison
     const oldBus = await prisma.bus.findUnique({
@@ -182,6 +197,8 @@ export async function PUT(
         licensePlate: normalizedPlate,
         capacity: parseInt(capacity),
         status,
+        driverName: normalizedDriverName,
+        driverPhone: normalizedDriverPhone,
       },
     });
 
@@ -346,6 +363,8 @@ export async function PUT(
           licensePlate: oldBus.licensePlate,
           capacity: oldBus.capacity,
           status: oldBus.status,
+          driverName: oldBus.driverName,
+          driverPhone: oldBus.driverPhone,
           routeIds: oldBus.routeAssignments.map((a) => a.routeId),
           deviceIds: oldBus.deviceAssignments.map((a) => a.deviceId),
         },
@@ -355,6 +374,8 @@ export async function PUT(
           licensePlate: updatedBus.licensePlate,
           capacity: updatedBus.capacity,
           status: updatedBus.status,
+          driverName: updatedBus.driverName,
+          driverPhone: updatedBus.driverPhone,
           routeIds: updatedBus.routeAssignments.map((a) => a.routeId),
           deviceIds: updatedBus.deviceAssignments.map((a) => a.deviceId),
         },
@@ -440,6 +461,8 @@ export async function DELETE(
           licensePlate: busToDelete.licensePlate,
           capacity: busToDelete.capacity,
           status: busToDelete.status,
+          driverName: busToDelete.driverName,
+          driverPhone: busToDelete.driverPhone,
           assignedRoute: busToDelete.routeAssignments[0]?.route || null,
           assignedDevice: busToDelete.deviceAssignments[0]?.device || null,
         },
