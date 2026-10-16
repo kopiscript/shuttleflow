@@ -1,3 +1,25 @@
+// lib/validation.ts
+
+// ─── Centralized error messages ────────────────────────────────────────────
+export const FORM_ERRORS = {
+  required: (field: string) => `${field} is required`,
+  minLength: (field: string, min: number) =>
+    `${field} must be at least ${min} characters`,
+  maxLength: (field: string, max: number) =>
+    `${field} must be at most ${max} characters`,
+  invalidFormat: (field: string) => `Enter a valid ${field.toLowerCase()}`,
+  mustBeNumber: (field: string) => `${field} must be a number`,
+  mustBeAtLeast: (field: string, min: number) =>
+    `${field} must be at least ${min}`,
+  mustBeAtMost: (field: string, max: number) =>
+    `${field} must be at most ${max}`,
+  coordinates: (field: string) =>
+    `${field} must be a valid number between ${field === "Latitude" ? "-90 and 90" : "-180 and 180"}`,
+  bothCoordinatesRequired: (lat: string, lng: string) =>
+    `Both ${lat} and ${lng} must be provided together`,
+};
+
+// Bus validation
 export interface BusValidationErrors {
   licensePlate?: string;
   busName?: string;
@@ -77,6 +99,131 @@ export function validateBusFields(fields: {
   return errors;
 }
 
-export function hasErrors(errors: BusValidationErrors): boolean {
+// Route validation
+export interface RouteValidationErrors {
+  routeName?: string;
+  pickupStop?: string;
+  pickupLat?: string;
+  pickupLng?: string;
+  dropoffStop?: string;
+  dropoffLat?: string;
+  dropoffLng?: string;
+  intermediateStops?: string;
+}
+
+export function validateRouteFields(fields: {
+  routeName: string;
+  pickupStop: string;
+  pickupLat?: string;
+  pickupLng?: string;
+  dropoffStop: string;
+  dropoffLat?: string;
+  dropoffLng?: string;
+  intermediateStops?: string;
+}): RouteValidationErrors {
+  const errors: RouteValidationErrors = {};
+
+  // Route Name — required, 2–100 chars
+  const name = fields.routeName.trim();
+  if (!name) {
+    errors.routeName = FORM_ERRORS.required("Route name");
+  } else if (name.length < 2) {
+    errors.routeName = FORM_ERRORS.minLength("Route name", 2);
+  } else if (name.length > 100) {
+    errors.routeName = FORM_ERRORS.maxLength("Route name", 100);
+  }
+
+  // Pickup Stop — required
+  const pickupStop = fields.pickupStop.trim();
+  if (!pickupStop) {
+    errors.pickupStop = FORM_ERRORS.required("Pickup stop");
+  } else if (pickupStop.length < 2) {
+    errors.pickupStop = FORM_ERRORS.minLength("Pickup stop", 2);
+  } else if (pickupStop.length > 120) {
+    errors.pickupStop = FORM_ERRORS.maxLength("Pickup stop", 120);
+  }
+
+  // Drop-off Stop — required
+  const dropoffStop = fields.dropoffStop.trim();
+  if (!dropoffStop) {
+    errors.dropoffStop = FORM_ERRORS.required("Drop-off stop");
+  } else if (dropoffStop.length < 2) {
+    errors.dropoffStop = FORM_ERRORS.minLength("Drop-off stop", 2);
+  } else if (dropoffStop.length > 120) {
+    errors.dropoffStop = FORM_ERRORS.maxLength("Drop-off stop", 120);
+  }
+
+  // Pickup Coordinates — must be provided together, in valid range
+  const pickupLatStr = (fields.pickupLat ?? "").trim();
+  const pickupLngStr = (fields.pickupLng ?? "").trim();
+
+  const hasPickupLat = pickupLatStr.length > 0;
+  const hasPickupLng = pickupLngStr.length > 0;
+
+  if (hasPickupLat !== hasPickupLng) {
+    // One is filled, the other isn't
+    if (!hasPickupLat) {
+      errors.pickupLat = FORM_ERRORS.required("Pickup latitude");
+    }
+    if (!hasPickupLng) {
+      errors.pickupLng = FORM_ERRORS.required("Pickup longitude");
+    }
+  } else if (hasPickupLat && hasPickupLng) {
+    const lat = parseFloat(pickupLatStr);
+    const lng = parseFloat(pickupLngStr);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      errors.pickupLat = FORM_ERRORS.coordinates("Latitude");
+    }
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      errors.pickupLng = FORM_ERRORS.coordinates("Longitude");
+    }
+  }
+  // If both are empty → skip (server-side handles the "route needs coordinates" case)
+  // Drop-off Coordinates
+  const dropoffLatStr = (fields.dropoffLat ?? "").trim();
+  const dropoffLngStr = (fields.dropoffLng ?? "").trim();
+
+  const hasDropoffLat = dropoffLatStr.length > 0;
+  const hasDropoffLng = dropoffLngStr.length > 0;
+
+  if (hasDropoffLat !== hasDropoffLng) {
+    if (!hasDropoffLat) {
+      errors.dropoffLat = FORM_ERRORS.required("Drop-off latitude");
+    }
+    if (!hasDropoffLng) {
+      errors.dropoffLng = FORM_ERRORS.required("Drop-off longitude");
+    }
+  } else if (hasDropoffLat && hasDropoffLng) {
+    const lat = parseFloat(dropoffLatStr);
+    const lng = parseFloat(dropoffLngStr);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      errors.dropoffLat = FORM_ERRORS.coordinates("Latitude");
+    }
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      errors.dropoffLng = FORM_ERRORS.coordinates("Longitude");
+    }
+  }
+
+  // Intermediate Stops — optional, comma-separated list
+  // Only validate length limits, not format. Malformed entries are silently
+  // trimmed by the caller
+  const intermediate = (fields.intermediateStops ?? "").trim();
+  if (intermediate.length > 500) {
+    errors.intermediateStops = FORM_ERRORS.maxLength(
+      "Intermediate stops",
+      500,
+    );
+  }
+
+  return errors;
+}
+
+// Generic helpers
+
+export function hasErrors(
+  errors: BusValidationErrors | RouteValidationErrors,
+): boolean {
   return Object.keys(errors).length > 0;
 }

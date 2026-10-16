@@ -1,9 +1,15 @@
+// app/admin/(dashboard)/routes/add/page.tsx
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import {
+  validateRouteFields,
+  hasErrors,
+  RouteValidationErrors,
+} from "@/lib/validation";
 
 const RoutePickerMap = dynamic(
   () => import("../../components/RoutePickerMap"),
@@ -16,12 +22,13 @@ const RoutePickerMap = dynamic(
         </span>
       </div>
     ),
-  }
+  },
 );
 
 export default function AddRoutePage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<RouteValidationErrors>({});
   const [formData, setFormData] = useState({
     routeName: "",
     pickupStop: "",
@@ -33,24 +40,109 @@ export default function AddRoutePage() {
     intermediateStops: "",
   });
 
+  // Refs for scroll-to-error
+  const routeNameRef = useRef<HTMLInputElement>(null);
+  const pickupStopRef = useRef<HTMLInputElement>(null);
+  const pickupLatRef = useRef<HTMLInputElement>(null);
+  const pickupLngRef = useRef<HTMLInputElement>(null);
+  const dropoffStopRef = useRef<HTMLInputElement>(null);
+  const dropoffLatRef = useRef<HTMLInputElement>(null);
+  const dropoffLngRef = useRef<HTMLInputElement>(null);
+  const intermediateStopsRef = useRef<HTMLTextAreaElement>(null);
+
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error for this field when user starts typing
+    if (errors[name as keyof RouteValidationErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   // Stable callbacks for the map component
   const handlePickupChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, pickupLat: lat, pickupLng: lng }));
+    // Clear pickup coord errors when the map updates them
+    setErrors((prev) => ({
+      ...prev,
+      pickupLat: undefined,
+      pickupLng: undefined,
+    }));
   }, []);
 
   const handleDropoffChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, dropoffLat: lat, dropoffLng: lng }));
+    setErrors((prev) => ({
+      ...prev,
+      dropoffLat: undefined,
+      dropoffLng: undefined,
+    }));
   }, []);
+
+  // Helper: scroll + focus the first field that has an error
+  const scrollToFirstError = (validationErrors: RouteValidationErrors) => {
+    const fieldOrder: (keyof RouteValidationErrors)[] = [
+      "routeName",
+      "pickupStop",
+      "pickupLat",
+      "pickupLng",
+      "dropoffStop",
+      "dropoffLat",
+      "dropoffLng",
+      "intermediateStops",
+    ];
+
+    const refMap: Record<
+      keyof RouteValidationErrors,
+      React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>
+    > = {
+      routeName: routeNameRef,
+      pickupStop: pickupStopRef,
+      pickupLat: pickupLatRef,
+      pickupLng: pickupLngRef,
+      dropoffStop: dropoffStopRef,
+      dropoffLat: dropoffLatRef,
+      dropoffLng: dropoffLngRef,
+      intermediateStops: intermediateStopsRef,
+    };
+
+    for (const field of fieldOrder) {
+      if (validationErrors[field]) {
+        const el = refMap[field]?.current;
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => el.focus({ preventScroll: true }), 300);
+        }
+        break;
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✅ Client-side validation
+    const validationErrors = validateRouteFields({
+      routeName: formData.routeName,
+      pickupStop: formData.pickupStop,
+      pickupLat: formData.pickupLat,
+      pickupLng: formData.pickupLng,
+      dropoffStop: formData.dropoffStop,
+      dropoffLat: formData.dropoffLat,
+      dropoffLng: formData.dropoffLng,
+      intermediateStops: formData.intermediateStops,
+    });
+
+    if (hasErrors(validationErrors)) {
+      setErrors(validationErrors);
+      scrollToFirstError(validationErrors);
+      return;
+    }
+
+    setErrors({});
     setIsSubmitting(true);
 
     try {
@@ -63,11 +155,11 @@ export default function AddRoutePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          routeName: formData.routeName,
-          pickupStop: formData.pickupStop,
+          routeName: formData.routeName.trim(),
+          pickupStop: formData.pickupStop.trim(),
           pickupLat: formData.pickupLat ? parseFloat(formData.pickupLat) : null,
           pickupLng: formData.pickupLng ? parseFloat(formData.pickupLng) : null,
-          dropoffStop: formData.dropoffStop,
+          dropoffStop: formData.dropoffStop.trim(),
           dropoffLat: formData.dropoffLat
             ? parseFloat(formData.dropoffLat)
             : null,
@@ -83,7 +175,18 @@ export default function AddRoutePage() {
       if (data.success) {
         router.push("/admin/routes");
       } else {
-        alert("Failed to add route: " + data.error);
+        // Server-side error: scroll to a field if we can guess which one
+        if (data.error?.toLowerCase().includes("route name")) {
+          routeNameRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          setTimeout(
+            () => routeNameRef.current?.focus({ preventScroll: true }),
+            300,
+          );
+        }
+        alert(data.error || "Failed to add route");
       }
     } catch (error) {
       console.error("Error adding route:", error);
@@ -124,7 +227,7 @@ export default function AddRoutePage() {
       <div className="grid grid-cols-2 gap-6 max-w-7xl">
         {/* Left Column: Form */}
         <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33]">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="p-6 space-y-6">
               <h3 className="text-white font-bold font-['Inter'] text-base">
                 Route Information
@@ -133,17 +236,26 @@ export default function AddRoutePage() {
               {/* Route Name */}
               <div>
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  Route Name
+                  Route Name <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={routeNameRef}
                   type="text"
                   name="routeName"
                   value={formData.routeName}
                   onChange={handleInputChange}
                   placeholder="e.g. Inti Subang → Caltex Kelana Jaya"
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                  required
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                    errors.routeName
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.routeName && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.routeName}
+                  </p>
+                )}
               </div>
 
               {/* Pickup Section */}
@@ -155,17 +267,26 @@ export default function AddRoutePage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address
+                      Address <span className="text-[#EA1701]">*</span>
                     </label>
                     <input
+                      ref={pickupStopRef}
                       type="text"
                       name="pickupStop"
                       value={formData.pickupStop}
                       onChange={handleInputChange}
                       placeholder="Enter pickup address"
-                      className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                      required
+                      className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                        errors.pickupStop
+                          ? "border-[#EA1701] focus:border-[#EA1701]"
+                          : "border-[#2C2D33] focus:border-[#96DDFF]"
+                      }`}
                     />
+                    {errors.pickupStop && (
+                      <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                        {errors.pickupStop}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -174,28 +295,48 @@ export default function AddRoutePage() {
                         Latitude
                       </label>
                       <input
+                        ref={pickupLatRef}
                         type="number"
                         step="any"
                         name="pickupLat"
                         value={formData.pickupLat}
                         onChange={handleInputChange}
                         placeholder="3.074200"
-                        className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
+                        className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                          errors.pickupLat
+                            ? "border-[#EA1701] focus:border-[#EA1701]"
+                            : "border-[#2C2D33] focus:border-[#96DDFF]"
+                        }`}
                       />
+                      {errors.pickupLat && (
+                        <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                          {errors.pickupLat}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
                         Longitude
                       </label>
                       <input
+                        ref={pickupLngRef}
                         type="number"
                         step="any"
                         name="pickupLng"
                         value={formData.pickupLng}
                         onChange={handleInputChange}
                         placeholder="101.591300"
-                        className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
+                        className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                          errors.pickupLng
+                            ? "border-[#EA1701] focus:border-[#EA1701]"
+                            : "border-[#2C2D33] focus:border-[#96DDFF]"
+                        }`}
                       />
+                      {errors.pickupLng && (
+                        <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                          {errors.pickupLng}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -210,17 +351,26 @@ export default function AddRoutePage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address
+                      Address <span className="text-[#EA1701]">*</span>
                     </label>
                     <input
+                      ref={dropoffStopRef}
                       type="text"
                       name="dropoffStop"
                       value={formData.dropoffStop}
                       onChange={handleInputChange}
                       placeholder="Enter drop-off address"
-                      className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
-                      required
+                      className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                        errors.dropoffStop
+                          ? "border-[#EA1701] focus:border-[#EA1701]"
+                          : "border-[#2C2D33] focus:border-[#96DDFF]"
+                      }`}
                     />
+                    {errors.dropoffStop && (
+                      <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                        {errors.dropoffStop}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -229,28 +379,48 @@ export default function AddRoutePage() {
                         Latitude
                       </label>
                       <input
+                        ref={dropoffLatRef}
                         type="number"
                         step="any"
                         name="dropoffLat"
                         value={formData.dropoffLat}
                         onChange={handleInputChange}
                         placeholder="3.074200"
-                        className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
+                        className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                          errors.dropoffLat
+                            ? "border-[#EA1701] focus:border-[#EA1701]"
+                            : "border-[#2C2D33] focus:border-[#96DDFF]"
+                        }`}
                       />
+                      {errors.dropoffLat && (
+                        <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                          {errors.dropoffLat}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
                         Longitude
                       </label>
                       <input
+                        ref={dropoffLngRef}
                         type="number"
                         step="any"
                         name="dropoffLng"
                         value={formData.dropoffLng}
                         onChange={handleInputChange}
                         placeholder="101.591300"
-                        className="w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm"
+                        className={`w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
+                          errors.dropoffLng
+                            ? "border-[#EA1701] focus:border-[#EA1701]"
+                            : "border-[#2C2D33] focus:border-[#96DDFF]"
+                        }`}
                       />
+                      {errors.dropoffLng && (
+                        <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                          {errors.dropoffLng}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -265,13 +435,23 @@ export default function AddRoutePage() {
                   </span>
                 </label>
                 <textarea
+                  ref={intermediateStopsRef}
                   name="intermediateStops"
                   value={formData.intermediateStops}
                   onChange={handleInputChange}
                   placeholder="e.g. Main Gate, Library, Admin Building"
                   rows={2}
-                  className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm resize-none"
+                  className={`w-full px-4 py-3 bg-[#171821] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition resize-none ${
+                    errors.intermediateStops
+                      ? "border-[#EA1701] focus:border-[#EA1701]"
+                      : "border-[#2C2D33] focus:border-[#96DDFF]"
+                  }`}
                 />
+                {errors.intermediateStops && (
+                  <p className="text-[#EA1701] font-['Inter'] text-xs mt-1.5">
+                    {errors.intermediateStops}
+                  </p>
+                )}
               </div>
 
               {/* Status Note */}
