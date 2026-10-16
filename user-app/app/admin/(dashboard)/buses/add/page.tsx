@@ -1,29 +1,24 @@
-// user-app/app/admin/buses/add/page.tsx
+// app/admin/(dashboard)/buses/add/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SmallDropdown from "../../components/SmallDropdown";
 import {
   validateBusFields,
   hasErrors,
   BusValidationErrors,
 } from "@/lib/validation";
 
-interface Bus {
-  id: number;
-  busName: string;
-  licensePlate: string;
-}
-
-interface Route {
+interface RouteOption {
   id: number;
   routeName: string;
   assignedBusId: number | null;
   assignedBusName: string | null;
 }
 
-interface Device {
+interface DeviceOption {
   id: number;
   deviceName: string;
   busId: number | null;
@@ -31,11 +26,7 @@ interface Device {
 
 export default function AddBusPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nextBusId, setNextBusId] = useState(1);
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [errors, setErrors] = useState<BusValidationErrors>({});
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     busName: "",
     licensePlate: "",
@@ -46,6 +37,9 @@ export default function AddBusPage() {
     routeId: "",
     deviceId: "",
   });
+  const [errors, setErrors] = useState<BusValidationErrors>({});
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
+  const [devices, setDevices] = useState<DeviceOption[]>([]);
 
   // Refs for scroll-to-error
   const licensePlateRef = useRef<HTMLInputElement>(null);
@@ -54,53 +48,22 @@ export default function AddBusPage() {
   const driverNameRef = useRef<HTMLInputElement>(null);
   const driverPhoneRef = useRef<HTMLInputElement>(null);
 
-  // Fetch buses to calculate next ID
+  // Fetch route + device options
   useEffect(() => {
-    const fetchBuses = async () => {
+    const fetchOptions = async () => {
       try {
-        const response = await fetch("/api/admin/buses");
-        const data = await response.json();
-        if (data.success && data.buses.length > 0) {
-          const maxId = Math.max(...data.buses.map((b: Bus) => b.id));
-          setNextBusId(maxId + 1);
-        }
-      } catch (error) {
-        console.error("Failed to fetch buses:", error);
-      }
-    };
-    fetchBuses();
-  }, []);
+        const routesRes = await fetch("/api/admin/routes");
+        const routesData = await routesRes.json();
+        if (routesData.success) setRoutes(routesData.routes);
 
-  // Fetch routes for dropdown
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      try {
-        const response = await fetch("/api/admin/routes");
-        const data = await response.json();
-        if (data.success) {
-          setRoutes(data.routes);
-        }
+        const devicesRes = await fetch("/api/admin/devices");
+        const devicesData = await devicesRes.json();
+        if (devicesData.success) setDevices(devicesData.devices);
       } catch (error) {
-        console.error("Failed to fetch routes:", error);
+        console.error("Failed to fetch options:", error);
       }
     };
-    fetchRoutes();
-  }, []);
-
-  // Fetch devices for dropdown
-  useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const response = await fetch("/api/admin/devices");
-        const data = await response.json();
-        if (data.success) {
-          setDevices(data.devices);
-        }
-      } catch (error) {
-        console.error("Failed to fetch devices:", error);
-      }
-    };
-    fetchDevices();
+    fetchOptions();
   }, []);
 
   // Helper: scroll + focus the first field that has an error
@@ -129,7 +92,6 @@ export default function AddBusPage() {
         const el = refMap[field]?.current;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
-          // Small delay so scroll settles before focusing
           setTimeout(() => el.focus({ preventScroll: true }), 300);
         }
         break;
@@ -173,7 +135,7 @@ export default function AddBusPage() {
     }
 
     setErrors({});
-    setIsSubmitting(true);
+    setSaving(true);
 
     try {
       const response = await fetch("/api/admin/buses", {
@@ -193,7 +155,7 @@ export default function AddBusPage() {
 
       const data = await response.json();
       if (data.success) {
-        router.push("/admin/buses");
+        router.push(`/admin/buses/${data.bus.id}`);
       } else {
         // Server-side error: scroll to a field if we can guess which one
         if (data.error?.toLowerCase().includes("license plate")) {
@@ -206,19 +168,34 @@ export default function AddBusPage() {
             300,
           );
         }
-        alert(data.error || "Failed to add bus");
+        alert(data.error || "Failed to create bus");
       }
     } catch (error) {
-      console.error("Error adding bus:", error);
-      alert("An error occurred while adding the bus.");
+      console.error("Error creating bus:", error);
+      alert("An error occurred while saving.");
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
+    }
+  };
+
+  // Status helper for the badge preview
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "Active":
+        return "bg-[#E1FFDA] text-[#3EB900]";
+      case "Delayed":
+        return "bg-[#FFF4CC] text-[#B8860B]";
+      case "Breakdown":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      case "Inactive":
+        return "bg-[#FFC0B9] text-[#EA1701]";
+      default:
+        return "bg-[#2C2D33] text-[#87888C]";
     }
   };
 
   return (
     <div>
-      {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
         <Link
           href="/admin/buses"
@@ -239,31 +216,18 @@ export default function AddBusPage() {
           </svg>
         </Link>
         <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
-          Add New Shuttle
+          Add Bus
         </h1>
       </div>
 
-      {/* Form Card */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-2xl">
         <form onSubmit={handleSubmit} noValidate>
           <div className="p-6 space-y-6">
-            {/* Basic Information */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Basic Information
               </h3>
 
-              {/* Bus ID */}
-              <div className="flex justify-between items-center py-2 border-b border-[#2C2D33]">
-                <span className="text-[#87888C] font-['Inter'] text-sm">
-                  Bus ID
-                </span>
-                <span className="text-white font-['Inter'] text-sm">
-                  B{String(nextBusId).padStart(3, "0")}
-                </span>
-              </div>
-
-              {/* License Plate */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   License Plate <span className="text-[#EA1701]">*</span>
@@ -288,7 +252,6 @@ export default function AddBusPage() {
                 )}
               </div>
 
-              {/* Bus Model */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Bus Model <span className="text-[#EA1701]">*</span>
@@ -313,7 +276,6 @@ export default function AddBusPage() {
                 )}
               </div>
 
-              {/* Capacity */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Capacity <span className="text-[#EA1701]">*</span>
@@ -340,58 +302,51 @@ export default function AddBusPage() {
                 )}
               </div>
 
-              {/* Status */}
+              {/* Status dropdown */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Status
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="relative flex-1">
-                    <select
-                      name="status"
+                  <div className="flex-1">
+                    <SmallDropdown
                       value={formData.status}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
-                    >
-                      <option value="Active">Active (running normally)</option>
-                      <option value="Inactive">Inactive (not in use)</option>
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-[#87888C]"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </div>
+                      onChange={(value: string) => {
+                        setFormData((prev) => ({ ...prev, status: value }));
+                      }}
+                      options={[
+                        {
+                          value: "Active",
+                          label: "Active (running normally)",
+                        },
+                        {
+                          value: "Breakdown",
+                          label: "Breakdown (out of service)",
+                        },
+                        {
+                          value: "Inactive",
+                          label: "Inactive (not in use)",
+                        },
+                      ]}
+                      placeholder="Select status"
+                    />
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${
-                      formData.status === "Active"
-                        ? "bg-[#E1FFDA] text-[#3EB900]"
-                        : "bg-[#FFC0B9] text-[#EA1701]"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusStyle(formData.status)}`}
                   >
                     {formData.status}
                   </span>
                 </div>
 
                 <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
-                  <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
+                  <p className="text-[#87888C] font-['Inter'] text-xs">
                     <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
                     Setting this bus to{" "}
-                    <span className="text-[#EA1701] font-semibold">
-                      Inactive
-                    </span>{" "}
-                    will also deactivate its assigned route. The route will not
-                    appear in the user app.
+                    <span className="text-[#EA1701]">Breakdown</span> will
+                    notify users of the disruption. Setting to{" "}
+                    <span className="text-[#6E6E7E]">Inactive</span> will also
+                    deactivate its assigned route. Routes with live ETAs beyond
+                    the scheduled time are automatically flagged as delayed.
                   </p>
                 </div>
               </div>
@@ -405,7 +360,6 @@ export default function AddBusPage() {
                 Driver Information
               </h3>
 
-              {/* Driver Name */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Driver Name
@@ -430,7 +384,6 @@ export default function AddBusPage() {
                 )}
               </div>
 
-              {/* Driver Phone */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Contact Number
@@ -454,14 +407,6 @@ export default function AddBusPage() {
                   </p>
                 )}
               </div>
-
-              <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
-                <p className="text-[#87888C] font-['Inter'] text-xs leading-relaxed">
-                  <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-                  Driver information is optional and can be added later from
-                  the bus edit page.
-                </p>
-              </div>
             </div>
 
             <div className="border-t border-[#2C2D33]" />
@@ -472,51 +417,23 @@ export default function AddBusPage() {
                 Assigned Route
               </h3>
               <div className="mt-4">
-                <div className="relative">
-                  <select
-                    name="routeId"
-                    value={formData.routeId}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
-                  >
-                    <option value="">Select route</option>
-                    {routes.length === 0 ? (
-                      <option value="" disabled>
-                        No routes available
-                      </option>
-                    ) : (
-                      routes.map((route) => {
-                        const alreadyAssigned = route.assignedBusId !== null;
-
-                        return (
-                          <option
-                            key={route.id}
-                            value={route.id.toString()}
-                            disabled={alreadyAssigned}
-                          >
-                            {route.routeName}
-                            {alreadyAssigned ? " (Already assigned)" : ""}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-[#87888C]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </div>
+                <SmallDropdown
+                  value={formData.routeId}
+                  onChange={(value: string) => {
+                    setFormData((prev) => ({ ...prev, routeId: value }));
+                  }}
+                  placeholder="Select route"
+                  options={routes.map((route) => {
+                    const alreadyAssigned = route.assignedBusId !== null;
+                    return {
+                      value: route.id.toString(),
+                      label: alreadyAssigned
+                        ? `${route.routeName} (Already assigned)`
+                        : route.routeName,
+                      disabled: alreadyAssigned,
+                    };
+                  })}
+                />
               </div>
             </div>
 
@@ -528,55 +445,27 @@ export default function AddBusPage() {
                 Assigned Device
               </h3>
               <div className="mt-4">
-                <div className="relative">
-                  <select
-                    name="deviceId"
-                    value={formData.deviceId}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm appearance-none pr-10"
-                  >
-                    <option value="">Select device</option>
-                    {devices.length === 0 ? (
-                      <option value="" disabled>
-                        No devices available
-                      </option>
-                    ) : (
-                      devices.map((device) => {
-                        const alreadyAssigned = device.busId != null;
-                        return (
-                          <option
-                            key={device.id}
-                            value={device.id.toString()}
-                            disabled={alreadyAssigned}
-                          >
-                            {device.deviceName}
-                            {alreadyAssigned ? " (already assigned)" : ""}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-[#87888C]"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                </div>
+                <SmallDropdown
+                  value={formData.deviceId}
+                  onChange={(value: string) => {
+                    setFormData((prev) => ({ ...prev, deviceId: value }));
+                  }}
+                  placeholder="Select device"
+                  options={devices.map((device) => {
+                    const alreadyAssigned = device.busId !== null;
+                    return {
+                      value: device.id.toString(),
+                      label: alreadyAssigned
+                        ? `${device.deviceName} (Already assigned)`
+                        : device.deviceName,
+                      disabled: alreadyAssigned,
+                    };
+                  })}
+                />
               </div>
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2C2D33]">
             <Link
               href="/admin/buses"
@@ -586,10 +475,10 @@ export default function AddBusPage() {
             </Link>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={saving}
               className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Adding..." : "Add"}
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
