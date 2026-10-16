@@ -1,7 +1,7 @@
 // app/admin/buses/[id]/edit/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
@@ -63,6 +63,13 @@ export default function EditBusPage({ params }: PageProps) {
   const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
   const [showRemoveDeviceModal, setShowRemoveDeviceModal] = useState(false);
 
+  // Refs for scroll-to-error
+  const licensePlateRef = useRef<HTMLInputElement>(null);
+  const busNameRef = useRef<HTMLInputElement>(null);
+  const capacityRef = useRef<HTMLInputElement>(null);
+  const driverNameRef = useRef<HTMLInputElement>(null);
+  const driverPhoneRef = useRef<HTMLInputElement>(null);
+
   // Unwrap params and fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -103,6 +110,39 @@ export default function EditBusPage({ params }: PageProps) {
     fetchData();
   }, [params]);
 
+  // Helper: scroll + focus the first field that has an error
+  const scrollToFirstError = (validationErrors: BusValidationErrors) => {
+    const fieldOrder: (keyof BusValidationErrors)[] = [
+      "licensePlate",
+      "busName",
+      "capacity",
+      "driverName",
+      "driverPhone",
+    ];
+
+    const refMap: Record<
+      keyof BusValidationErrors,
+      React.RefObject<HTMLInputElement | null>
+    > = {
+      licensePlate: licensePlateRef,
+      busName: busNameRef,
+      capacity: capacityRef,
+      driverName: driverNameRef,
+      driverPhone: driverPhoneRef,
+    };
+
+    for (const field of fieldOrder) {
+      if (validationErrors[field]) {
+        const el = refMap[field]?.current;
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => el.focus({ preventScroll: true }), 300);
+        }
+        break;
+      }
+    }
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -142,6 +182,7 @@ export default function EditBusPage({ params }: PageProps) {
 
     if (hasErrors(validationErrors)) {
       setErrors(validationErrors);
+      scrollToFirstError(validationErrors);
       return;
     }
 
@@ -168,7 +209,17 @@ export default function EditBusPage({ params }: PageProps) {
       if (data.success) {
         router.push(`/admin/buses/${busId}`);
       } else {
-        // Show server-side error (e.g., duplicate plate)
+        // Server-side error: scroll to a field if we can guess which one
+        if (data.error?.toLowerCase().includes("license plate")) {
+          licensePlateRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          setTimeout(
+            () => licensePlateRef.current?.focus({ preventScroll: true }),
+            300,
+          );
+        }
         alert(data.error || "Failed to update bus");
       }
     } catch (error) {
@@ -254,6 +305,7 @@ export default function EditBusPage({ params }: PageProps) {
                   License Plate <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={licensePlateRef}
                   type="text"
                   name="licensePlate"
                   value={formData.licensePlate}
@@ -277,6 +329,7 @@ export default function EditBusPage({ params }: PageProps) {
                   Bus Model <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={busNameRef}
                   type="text"
                   name="busName"
                   value={formData.busName}
@@ -300,6 +353,7 @@ export default function EditBusPage({ params }: PageProps) {
                   Capacity <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={capacityRef}
                   type="number"
                   name="capacity"
                   value={formData.capacity}
@@ -320,7 +374,7 @@ export default function EditBusPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* ✅ Status dropdown */}
+              {/* Status dropdown */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Status
@@ -381,12 +435,12 @@ export default function EditBusPage({ params }: PageProps) {
                 Driver Information
               </h3>
 
-              {/* Driver Name */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Driver Name
                 </label>
                 <input
+                  ref={driverNameRef}
                   type="text"
                   name="driverName"
                   value={formData.driverName}
@@ -405,12 +459,12 @@ export default function EditBusPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* Driver Phone */}
               <div className="mt-4">
                 <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
                   Contact Number
                 </label>
                 <input
+                  ref={driverPhoneRef}
                   type="tel"
                   name="driverPhone"
                   value={formData.driverPhone}

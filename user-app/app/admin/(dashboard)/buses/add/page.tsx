@@ -1,7 +1,7 @@
 // user-app/app/admin/buses/add/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -46,6 +46,13 @@ export default function AddBusPage() {
     routeId: "",
     deviceId: "",
   });
+
+  // Refs for scroll-to-error
+  const licensePlateRef = useRef<HTMLInputElement>(null);
+  const busNameRef = useRef<HTMLInputElement>(null);
+  const capacityRef = useRef<HTMLInputElement>(null);
+  const driverNameRef = useRef<HTMLInputElement>(null);
+  const driverPhoneRef = useRef<HTMLInputElement>(null);
 
   // Fetch buses to calculate next ID
   useEffect(() => {
@@ -96,6 +103,40 @@ export default function AddBusPage() {
     fetchDevices();
   }, []);
 
+  // Helper: scroll + focus the first field that has an error
+  const scrollToFirstError = (validationErrors: BusValidationErrors) => {
+    const fieldOrder: (keyof BusValidationErrors)[] = [
+      "licensePlate",
+      "busName",
+      "capacity",
+      "driverName",
+      "driverPhone",
+    ];
+
+    const refMap: Record<
+      keyof BusValidationErrors,
+      React.RefObject<HTMLInputElement | null>
+    > = {
+      licensePlate: licensePlateRef,
+      busName: busNameRef,
+      capacity: capacityRef,
+      driverName: driverNameRef,
+      driverPhone: driverPhoneRef,
+    };
+
+    for (const field of fieldOrder) {
+      if (validationErrors[field]) {
+        const el = refMap[field]?.current;
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Small delay so scroll settles before focusing
+          setTimeout(() => el.focus({ preventScroll: true }), 300);
+        }
+        break;
+      }
+    }
+  };
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -127,6 +168,7 @@ export default function AddBusPage() {
 
     if (hasErrors(validationErrors)) {
       setErrors(validationErrors);
+      scrollToFirstError(validationErrors);
       return;
     }
 
@@ -153,6 +195,17 @@ export default function AddBusPage() {
       if (data.success) {
         router.push("/admin/buses");
       } else {
+        // Server-side error: scroll to a field if we can guess which one
+        if (data.error?.toLowerCase().includes("license plate")) {
+          licensePlateRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          setTimeout(
+            () => licensePlateRef.current?.focus({ preventScroll: true }),
+            300,
+          );
+        }
         alert(data.error || "Failed to add bus");
       }
     } catch (error) {
@@ -216,6 +269,7 @@ export default function AddBusPage() {
                   License Plate <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={licensePlateRef}
                   type="text"
                   name="licensePlate"
                   value={formData.licensePlate}
@@ -240,6 +294,7 @@ export default function AddBusPage() {
                   Bus Model <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={busNameRef}
                   type="text"
                   name="busName"
                   value={formData.busName}
@@ -264,6 +319,7 @@ export default function AddBusPage() {
                   Capacity <span className="text-[#EA1701]">*</span>
                 </label>
                 <input
+                  ref={capacityRef}
                   type="number"
                   name="capacity"
                   value={formData.capacity}
@@ -355,6 +411,7 @@ export default function AddBusPage() {
                   Driver Name
                 </label>
                 <input
+                  ref={driverNameRef}
                   type="text"
                   name="driverName"
                   value={formData.driverName}
@@ -379,6 +436,7 @@ export default function AddBusPage() {
                   Contact Number
                 </label>
                 <input
+                  ref={driverPhoneRef}
                   type="tel"
                   name="driverPhone"
                   value={formData.driverPhone}
