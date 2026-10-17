@@ -1,45 +1,74 @@
-// admin-app/app/api/notifications/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher-server";
+import { getSession } from "@/lib/session";
+import {
+  sendAlertNotification,
+  sendAnnouncement,
+  sendInfo,
+} from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { title, message, type } = body;
+    const session = await getSession();
 
-    if (!title || !message) {
+    if (!session) {
       return NextResponse.json(
-        { success: false, error: "Title and message are required" },
-        { status: 400 }
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
-    // Save to DB
-    const notification = await prisma.notification.create({
-      data: {
-        title,
-        message,
-        type: type || "info",
-      },
+    const { title, message, type = "info" } = await request.json();
+
+    if (
+      typeof title !== "string" ||
+      typeof message !== "string" ||
+      !title.trim() ||
+      !message.trim()
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Title and message are required" },
+        { status: 400 },
+      );
+    }
+
+    let notification;
+
+    switch (type) {
+      case "announcement":
+        notification = await sendAnnouncement(title.trim(), message.trim());
+        break;
+
+      case "info":
+        notification = await sendInfo(title.trim(), message.trim());
+        break;
+
+      case "alert":
+        notification = await sendAlertNotification(
+          title.trim(),
+          message.trim(),
+        );
+        break;
+
+      default:
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Use announcement, info, or alert for this endpoint",
+          },
+          { status: 400 },
+        );
+    }
+
+    return NextResponse.json({
+      success: true,
+      notification,
     });
-
-    // Broadcast to all connected clients via Pusher
-    await pusherServer.trigger("notifications", "new-notification", {
-      id: notification.id,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type,
-    });
-
-    console.log(`📡 Broadcasted notification: ${notification.title}`);
-
-    return NextResponse.json({ success: true, notification });
   } catch (error) {
-    console.error("API Error:", error);
+    console.error("Notification creation failed:", error);
+
     return NextResponse.json(
       { success: false, error: "Failed to create notification" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
