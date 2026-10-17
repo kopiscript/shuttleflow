@@ -5,7 +5,11 @@ import { getSession } from "@/lib/session";
 import { logAdminAudit } from "@/lib/adminAuditLog";
 import { logActivity } from "@/lib/activityLog";
 import { getDeviceHealth } from "@/lib/deviceHealth";
-import { sendAlertNotification, sendInfo } from "@/lib/notifications";
+import {
+  sendAlertNotification,
+  sendInfo,
+  sendAnnouncement,
+} from "@/lib/notifications";
 import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // GET - Fetch a single bus
@@ -256,13 +260,10 @@ export async function PUT(
       else if (status === "Inactive") {
         if (activeRoute) {
           // Create a generic info notification before deactivating.
-          await prisma.notification.create({
-            data: {
-              type: "announcement",
-              title: `Service Disruption: ${activeRoute.routeName}`,
-              message: `The route "${activeRoute.routeName}" is now inactive and no longer being tracked. Please plan your journey accordingly.`,
-            },
-          });
+          await sendAnnouncement(
+            `Service Disruption: ${activeRoute.routeName}`,
+            `The route "${activeRoute.routeName}" is now inactive and no longer being tracked. Please plan your journey accordingly.`,
+          );
 
           await prisma.route.update({
             where: { id: activeRoute.id },
@@ -271,10 +272,10 @@ export async function PUT(
           await logActivity(
             busId,
             "status_changed",
-            `Route "${routeLabel}" deactivated because bus is Inactive`
+            `Route "${routeLabel}" deactivated because bus is Inactive`,
           );
           console.log(
-            `🔇 Route ${routeLabel} deactivated — bus ${oldBus.busName} is Inactive`
+            `🔇 Route ${routeLabel} deactivated — bus ${oldBus.busName} is Inactive`,
           );
         }
       }
