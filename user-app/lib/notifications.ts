@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { pusherServer } from "./pusher-server";
+import { Resend } from "resend";
 
 // Broadcast a notification in real-time to all connected clients via Pusher.
 // This works from server-side code (API routes), unlike the old
@@ -24,38 +25,125 @@ async function broadcastNotification(notification: {
 }
 
 // Send email to all verified subscribers
+function escapeEmailHtml(value: string) {
+  const entities: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+
+  return value.replace(/[&<>"']/g, (character) => entities[character]);
+}
+
 async function sendEmailsToSubscribers(
   title: string,
   message: string,
   type: string,
 ) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/notifications/email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, message, type }),
-    });
+    const apiKey = process.env.RESEND_API_KEY;
+    const userAppUrl = process.env.USER_APP_URL;
 
-    if (!response.ok) {
-      throw new Error(`Notification email API failed: HTTP ${response.status}`);
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY is missing in the admin app");
     }
 
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || "Notification email API failed");
+    if (!userAppUrl) {
+      throw new Error("USER_APP_URL is missing in the admin app");
     }
 
-    console.log("Notification email result:", {
-      emailsAccepted: result.emailsSent,
-      message: result.message,
+    const resend = new Resend(apiKey);
+
+    const subscribers = await prisma.email_subscribers.findMany({
+      where: { verified: true },
+      select: {
+        id: true,
+        email: true,
+      },
     });
+
+    console.log("Starting notification emails:", {
+      type,
+      subscriberCount: subscribers.length,
+    });
+
+    let emailsSent = 0;
+    let emailsFailed = 0;
+
+    for (const subscriber of subscribers) {
+      try {
+        const unsubscribeUrl = new URL("/api/unsubscribe", userAppUrl);
+        unsubscribeUrl.searchParams.set("email", subscriber.email);
+
+        const { data, error } = await resend.emails.send({
+          from: "ShuttleFlow <noreply@shuttleflow.azmiproductions.com>",
+          to: subscriber.email,
+          subject: `🚌 ShuttleFlow Alert: ${title}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
+              <h2 style="color: #99121A;">ShuttleFlow Alert</h2>
+              <h3>${escapeEmailHtml(title)}</h3>
+              <p style="white-space: pre-wrap;">${escapeEmailHtml(message)}</p>
+              <hr style="margin: 20px 0;" />
+              <p style="color: #666; font-size: 12px;">
+                You received this because you subscribed to ShuttleFlow alerts.
+                <br />
+                <a href="${escapeEmailHtml(unsubscribeUrl.toString())}">
+                  Unsubscribe
+                </a>
+              </p>
+            </div>
+          `,
+        });
+
+        if (error || !data?.id) {
+          emailsFailed++;
+
+          console.error("Notification email failed:", {
+            subscriberId: subscriber.id,
+            error: error ?? "No email ID returned",
+          });
+        } else {
+          emailsSent++;
+
+          console.log("Notification email accepted:", {
+            subscriberId: subscriber.id,
+            emailId: data.id,
+          });
+        }
+      } catch (error) {
+        emailsFailed++;
+
+        console.error("Notification email request failed:", {
+          subscriberId: subscriber.id,
+          error,
+        });
+      }
+
+      // Space out requests for this small subscriber-list test.
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    const result = {
+      success: emailsFailed === 0,
+      emailsSent,
+      emailsFailed,
+    };
+
+    console.log("Notification email result:", result);
 
     return result;
   } catch (error) {
     console.error("Failed to send email notifications:", error);
-    // Don't throw - email failure shouldn't break the notification
+
+    // Keep website notifications working if email fails.
+    return {
+      success: false,
+      emailsSent: 0,
+      error: "Could not complete email sending",
+    };
   }
 }
 
