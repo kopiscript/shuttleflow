@@ -320,10 +320,6 @@ export default function AddBusPage() {
                           label: "Active (running normally)",
                         },
                         {
-                          value: "Breakdown",
-                          label: "Breakdown (out of service)",
-                        },
-                        {
                           value: "Inactive",
                           label: "Inactive (not in use)",
                         },
@@ -342,11 +338,10 @@ export default function AddBusPage() {
                   <p className="text-[#87888C] font-['Inter'] text-xs">
                     <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
                     Setting this bus to{" "}
-                    <span className="text-[#EA1701]">Breakdown</span> will
-                    notify users of the disruption. Setting to{" "}
                     <span className="text-[#6E6E7E]">Inactive</span> will also
-                    deactivate its assigned route. Routes with live ETAs beyond
-                    the scheduled time are automatically flagged as delayed.
+                    deactivate its assigned route. The route will not appear in
+                    the user app. Breakdown status can be set later from the
+                    edit page if the bus goes out of service.
                   </p>
                 </div>
               </div>
