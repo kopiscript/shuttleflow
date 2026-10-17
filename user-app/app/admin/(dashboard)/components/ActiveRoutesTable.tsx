@@ -291,34 +291,56 @@ export default function ActiveRoutesTable({
 
   // Fetch buses every 5s
   useEffect(() => {
-    const fetchBuses = async () => {
-      try {
-        const res = await fetch("/api/admin/buses");
-        const data = await res.json();
-        if (data.success) {
-          const withRoutes: BusRow[] = (data.buses ?? [])
-            .filter((b: any) => b.routeId != null)
-            .map((b: any) => ({
-              ...b,
-              deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
-              busState: (b.busState ?? "approaching") as BusState,
-            }));
-          setBuses(withRoutes);
-        }
-      } catch (err) {
-        console.error("Failed to fetch active routes:", err);
-      } finally {
-        setLoading(false);
+  const fetchBuses = async () => {
+    try {
+      // Fetch buses AND routes in parallel so we can determine
+      // which routes are genuinely "Active" (bus assigned + bus Active + device attached).
+      const [busesRes, routesRes] = await Promise.all([
+        fetch("/api/admin/buses"),
+        fetch("/api/admin/routes"),
+      ]);
+      const [busesData, routesData] = await Promise.all([
+        busesRes.json(),
+        routesRes.json(),
+      ]);
+
+      if (busesData.success && routesData.success) {
+        // The authoritative Active rule lives in deriveRouteStatus()
+        // (lib/routeStatus.ts) and is exposed via route.status here.
+        // No duplicate logic — we trust the API's verdict.
+        const activeRouteIds = new Set<number>(
+          (routesData.routes ?? [])
+            .filter((r: any) => r.status === "Active")
+            .map((r: any) => Number(r.id)),
+        );
+
+        const withRoutes: BusRow[] = (busesData.buses ?? [])
+          .filter(
+            (b: any) =>
+              b.routeId != null && activeRouteIds.has(Number(b.routeId)),
+          )
+          .map((b: any) => ({
+            ...b,
+            deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
+            busState: (b.busState ?? "approaching") as BusState,
+          }));
+
+        setBuses(withRoutes);
       }
-    };
-    fetchBuses();
-    const poll = setInterval(fetchBuses, 5000);
-    const tick = setInterval(() => forceTick((n) => n + 1), 30000);
-    return () => {
-      clearInterval(poll);
-      clearInterval(tick);
-    };
-  }, []);
+    } catch (err) {
+      console.error("Failed to fetch active routes:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchBuses();
+  const poll = setInterval(fetchBuses, 5000);
+  const tick = setInterval(() => forceTick((n) => n + 1), 30000);
+  return () => {
+    clearInterval(poll);
+    clearInterval(tick);
+  };
+}, []);
 
   // Report the currently selected bus's state to the parent
   useEffect(() => {
