@@ -197,7 +197,7 @@ export default function BusManagement() {
     } else if (status === "Offline") {
       return "bg-[#FFC0B9] text-[#EA1701]";
     } else if (status === "Active") {
-      return "bg-[#D6E4FF] text-[#1A4B9B]";
+      return "bg-[#E1FFDA] text-[#3EB900]";
     } else if (status === "Delayed") {
       return "bg-[#FFF4CE] text-[#B76E00]";
     } else if (status === "Breakdown") {
