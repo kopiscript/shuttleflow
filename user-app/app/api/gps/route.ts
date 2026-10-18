@@ -19,21 +19,43 @@ export async function POST(request: Request) {
             );
         }
 
-        // --- 2. PARSE DATA ---
+        // --- 2. PARSE DATA & RESOLVE DEVICE NVS ID ---
         const body = await request.json();
-        const { busId, latitude, longitude, speed, alert } = body;
+        const { busId, deviceId, latitude, longitude, speed, alert } = body;
 
-        if (!busId || latitude === undefined || longitude === undefined) {
+        if ((!busId && !deviceId) || latitude === undefined || longitude === undefined) {
             return NextResponse.json(
                 { success: false, error: "Missing required fields" },
                 { status: 400 }
             );
         }
 
-        const parsedBusId = parseInt(busId);
+        let parsedBusId = busId ? parseInt(busId) : NaN;
+
+        // If the ESP32 sent its permanent NVS deviceId, update device health & resolve assigned bus
+        if (deviceId) {
+            const parsedDeviceId = parseInt(deviceId);
+            if (!isNaN(parsedDeviceId)) {
+                // 1. Update Device health status and lastSeen timestamp
+                await prisma.device.update({
+                    where: { id: parsedDeviceId },
+                    data: { lastSeen: new Date(), status: "Online" },
+                }).catch(() => { });
+
+                // 2. Look up which bus this device is currently assigned to
+                const activeAssignment = await prisma.busDeviceAssignment.findFirst({
+                    where: { deviceId: parsedDeviceId, endedAt: null },
+                });
+
+                if (activeAssignment) {
+                    parsedBusId = activeAssignment.busId;
+                }
+            }
+        }
+
         if (isNaN(parsedBusId)) {
             return NextResponse.json(
-                { success: false, error: "Invalid bus ID" },
+                { success: false, error: "Device is not assigned to an active bus and no valid fallback busId provided" },
                 { status: 400 }
             );
         }
