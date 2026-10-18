@@ -1,7 +1,7 @@
 //support-tickets/attachment/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { r2, R2_BUCKET_NAME } from "@/lib/r2";
+import { r2, getR2BucketName } from "@/lib/r2";
 import { getSession } from "@/lib/session"; // use your actual existing import
 
 export async function GET(request: NextRequest) {
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         }
 
         const command = new GetObjectCommand({
-            Bucket: R2_BUCKET_NAME,
+            Bucket: getR2BucketName(),
             Key: key,
         });
 
