@@ -1,7 +1,7 @@
 // app/admin/devices/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ActionMenu from "@/components/ActionMenu";
@@ -10,6 +10,7 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 interface Device {
   id: number;
   deviceName: string;
+  isUnclaimed?: boolean;
   status: string;
   lastSeen: string | null;
   busId: number | null;
@@ -32,17 +33,34 @@ const initialDeleteModal: DeleteModalState = {
   isDeleting: false,
 };
 
+type FilterMode = "ALL" | "UNCLAIMED" | "CLAIMED" | "UNASSIGNED_BUS";
+
 export default function DeviceManagement() {
   const router = useRouter();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterMode, setFilterMode] = useState<FilterMode>("ALL");
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>(initialDeleteModal);
+
+  // Filter Dropdown state
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Fetch devices
   useEffect(() => {
@@ -145,8 +163,17 @@ export default function DeviceManagement() {
     }
   };
 
-  // Filter devices by multiple search fields including formatted ID
+  const isDeviceUnclaimed = (device: Device) =>
+    Boolean(device.isUnclaimed || device.deviceName?.toUpperCase().startsWith("UNCLAIMED"));
+
+  // Filter devices by dropdown filter mode AND search term
   const filteredDevices = devices.filter((device) => {
+    const unclaimed = isDeviceUnclaimed(device);
+
+    if (filterMode === "UNCLAIMED" && !unclaimed) return false;
+    if (filterMode === "CLAIMED" && unclaimed) return false;
+    if (filterMode === "UNASSIGNED_BUS" && device.busId !== null) return false;
+
     const searchTermLower = searchTerm.toLowerCase().trim();
     if (!searchTermLower) return true;
 
@@ -163,6 +190,7 @@ export default function DeviceManagement() {
       device.busId?.toString() || "",
       licensePlate.toLowerCase(),
       device.status?.toLowerCase() || "",
+      unclaimed ? "unclaimed" : "claimed",
     ];
 
     return searchFields.some((field) => field.includes(searchTermLower));
@@ -181,7 +209,7 @@ export default function DeviceManagement() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterMode]);
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
@@ -214,6 +242,16 @@ export default function DeviceManagement() {
     return device.busLicensePlate ? `${busId} (${device.busLicensePlate})` : busId;
   };
 
+  const filterOptions: { label: string; value: FilterMode }[] = [
+    { label: "All Devices", value: "ALL" },
+    { label: "Unclaimed Name (NVS)", value: "UNCLAIMED" },
+    { label: "Claimed Devices", value: "CLAIMED" },
+    { label: "Unassigned Bus", value: "UNASSIGNED_BUS" },
+  ];
+
+  const currentFilterLabel =
+    filterOptions.find((f) => f.value === filterMode)?.label || "All Devices";
+
   return (
     <div>
       {/* Page Header */}
@@ -222,33 +260,80 @@ export default function DeviceManagement() {
           Device Management
         </h1>
         <p className="text-[#87888C] mt-2 font-['Inter'] text-sm">
-          Manage GPS devices across your fleet. Monitor device status, assign to buses, and track device health.
+          Manage GPS devices across your fleet. Monitor device status, claim newly flashed NVS units, and assign devices to buses.
         </p>
       </div>
 
-      {/* Search and Add Button */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Search, Filter Dropdown, and Add Button */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Search by ID, Name, Assigned Bus, Status..."
+            placeholder="Search by ID, Name, MAC, Assigned Bus, Status..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#D2D2D2]"
           />
         </div>
+
+        {/* Custom Filter Dropdown */}
+        <div className="relative w-full sm:w-52" ref={filterRef}>
+          <div
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="flex items-center justify-between w-full px-4 py-2.5 bg-[#21222D] text-white rounded-lg border border-[#2C2D33] cursor-pointer hover:border-[#96DDFF] transition font-['Inter'] text-sm"
+          >
+            <span className="truncate">{currentFilterLabel}</span>
+            <svg
+              className={`w-4 h-4 text-[#87888C] transition-transform ${isFilterOpen ? "rotate-180" : ""
+                }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+
+          {isFilterOpen && (
+            <div className="absolute right-0 z-50 w-full mt-2 bg-[#21222D] border border-[#2C2D33] rounded-xl shadow-xl overflow-hidden">
+              {filterOptions.map((opt) => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    setFilterMode(opt.value);
+                    setIsFilterOpen(false);
+                  }}
+                  className={`px-4 py-2.5 text-sm font-['Inter'] cursor-pointer hover:bg-[#2B2B36] transition ${filterMode === opt.value
+                      ? "text-[#96DDFF] bg-[#2B2B36]"
+                      : "text-white"
+                    }`}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <Link
           href="/admin/devices/add"
-          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 whitespace-nowrap"
+          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <span>+</span> Add Device
         </Link>
       </div>
 
       {/* Search Results Count */}
-      {!loading && !error && searchTerm && (
+      {!loading && !error && (searchTerm || filterMode !== "ALL") && (
         <div className="text-[#87888C] font-['Inter'] text-sm mb-3">
-          Found {filteredDevices.length} result{filteredDevices.length !== 1 ? "s" : ""} for "{searchTerm}"
+          Found {filteredDevices.length} result{filteredDevices.length !== 1 ? "s" : ""}
+          {searchTerm ? ` for "${searchTerm}"` : ""}
+          {filterMode !== "ALL" ? ` (${currentFilterLabel})` : ""}
         </div>
       )}
 
@@ -296,58 +381,70 @@ export default function DeviceManagement() {
               ) : paginatedDevices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#87888C] font-['Inter'] text-sm">
-                    {searchTerm
-                      ? "No devices match your search."
-                      : "No devices added yet. Click 'Add Device' to create one."}
+                    {searchTerm || filterMode !== "ALL"
+                      ? "No devices match your current filter."
+                      : "No devices added yet. Power on an ESP32 or click 'Add Device' to create one."}
                   </td>
                 </tr>
               ) : (
-                paginatedDevices.map((device, index) => (
-                  <tr
-                    key={device.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`View details for device D${String(device.id).padStart(3, "0")}`}
-                    onClick={() => handleRowClick(device.id)}
-                    onKeyDown={(e) => handleRowKeyDown(e, device.id)}
-                    className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                      }`}
-                  >
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      D{String(device.id).padStart(3, "0")}
-                    </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {device.deviceName}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(device.status)}`}
-                      >
-                        {device.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {getBusDisplay(device)}
-                    </td>
-                    <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm">
-                      {device.lastSeen
-                        ? new Date(device.lastSeen).toLocaleString()
-                        : "Never"}
-                    </td>
-                    <td
-                      className="px-6 py-4"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
+                paginatedDevices.map((device, index) => {
+                  const unclaimed = isDeviceUnclaimed(device);
+                  return (
+                    <tr
+                      key={device.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View details for device D${String(device.id).padStart(3, "0")}`}
+                      onClick={() => handleRowClick(device.id)}
+                      onKeyDown={(e) => handleRowKeyDown(e, device.id)}
+                      className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
+                        }`}
                     >
-                      <ActionMenu
-                        id={device.id}
-                        type="device"
-                        onDelete={handleDeleteClick}
-                        itemName={device.deviceName}
-                      />
-                    </td>
-                  </tr>
-                ))
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        D{String(device.id).padStart(3, "0")}
+                      </td>
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{device.deviceName}</span>
+                          {unclaimed && (
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF4CC]/20 text-[#F5A623] border border-[#F5A623]/40">
+                              Unclaimed
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(
+                            device.status
+                          )}`}
+                        >
+                          {device.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                        {getBusDisplay(device)}
+                      </td>
+                      <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm">
+                        {device.lastSeen
+                          ? new Date(device.lastSeen).toLocaleString()
+                          : "Never"}
+                      </td>
+                      <td
+                        className="px-6 py-4"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <ActionMenu
+                          id={device.id}
+                          type="device"
+                          onDelete={handleDeleteClick}
+                          itemName={device.deviceName}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
