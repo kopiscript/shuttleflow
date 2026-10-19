@@ -309,8 +309,8 @@ export default function DeviceManagement() {
                     setIsFilterOpen(false);
                   }}
                   className={`px-4 py-2.5 text-sm font-['Inter'] cursor-pointer hover:bg-[#2B2B36] transition ${filterMode === opt.value
-                      ? "text-[#96DDFF] bg-[#2B2B36]"
-                      : "text-white"
+                    ? "text-[#96DDFF] bg-[#2B2B36]"
+                    : "text-white"
                     }`}
                 >
                   {opt.label}
@@ -321,10 +321,10 @@ export default function DeviceManagement() {
         </div>
 
         <Link
-          href="/admin/devices/add"
+          href="/admin/devices/claim"
           className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center justify-center gap-2 whitespace-nowrap"
         >
-          <span>+</span> Add Device
+          <span>+</span> Claim Device
         </Link>
       </div>
 
@@ -458,8 +458,8 @@ export default function DeviceManagement() {
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === 1
-                    ? "text-[#87888C] cursor-not-allowed"
-                    : "text-[#87888C] hover:text-white"
+                  ? "text-[#87888C] cursor-not-allowed"
+                  : "text-[#87888C] hover:text-white"
                   }`}
               >
                 Previous
@@ -481,8 +481,8 @@ export default function DeviceManagement() {
                     key={page}
                     onClick={() => goToPage(page as number)}
                     className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === page
-                        ? "bg-[#96DDFF] text-[#171821]"
-                        : "text-[#87888C] hover:text-white"
+                      ? "bg-[#96DDFF] text-[#171821]"
+                      : "text-[#87888C] hover:text-white"
                       }`}
                   >
                     {page}
@@ -494,8 +494,8 @@ export default function DeviceManagement() {
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`px-3 py-2 rounded-lg font-['Inter'] text-sm transition ${currentPage === totalPages
-                    ? "text-[#87888C] cursor-not-allowed"
-                    : "text-[#87888C] hover:text-white"
+                  ? "text-[#87888C] cursor-not-allowed"
+                  : "text-[#87888C] hover:text-white"
                   }`}
               >
                 Next

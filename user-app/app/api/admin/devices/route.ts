@@ -30,9 +30,15 @@ export async function GET() {
     const formattedDevices = devices.map((device) => {
       const activeAssignment = device.busAssignments[0];
       const health = getDeviceHealth(device.lastSeen);
+      const isUnclaimed = device.deviceName
+        ?.trim()
+        .toUpperCase()
+        .startsWith("UNCLAIMED");
+
       return {
         id: device.id,
         deviceName: device.deviceName,
+        isUnclaimed,
         status: health.status,
         lastSeen: device.lastSeen,
         minutesSinceLastPing: health.minutesSinceLastPing,
@@ -56,11 +62,11 @@ export async function GET() {
   }
 }
 
-// POST /api/admin/devices - Add a new device
+// POST /api/admin/devices - Claim an existing hardware ID or create a manual record
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { deviceName } = body;
+    const { deviceId, deviceName } = body;
     const session = await getSession();
 
     if (!session) {
@@ -70,33 +76,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!deviceName) {
+    if (!deviceName || !deviceName.trim()) {
       return NextResponse.json(
         { success: false, error: "Device name is required" },
         { status: 400 },
       );
     }
 
-    // Create the device
-    const device = await prisma.device.create({
+    const cleanName = deviceName.trim();
+
+    // --- CASE 1: CLAIM EXISTING DETECTED NVS HARDWARE ---
+    if (deviceId && deviceId !== "NEW") {
+      const parsedId = parseInt(String(deviceId), 10);
+      if (isNaN(parsedId)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid device ID selected" },
+          { status: 400 },
+        );
+      }
+
+      const existingDevice = await prisma.device.findUnique({
+        where: { id: parsedId },
+      });
+
+      if (!existingDevice) {
+        return NextResponse.json(
+          { success: false, error: "Device not found" },
+          { status: 404 },
+        );
+      }
+
+      // Update the existing device's name in-place
+      const claimedDevice = await prisma.device.update({
+        where: { id: parsedId },
+        data: {
+          deviceName: cleanName,
+        },
+      });
+
+      await logAdminAudit({
+        adminId: session.adminId,
+        category: "FLEET",
+        action: "DEVICE_CLAIMED",
+        targetType: "Device",
+        targetId: claimedDevice.id,
+        details: {
+          previousName: existingDevice.deviceName,
+          claimedName: claimedDevice.deviceName,
+        },
+        req: request,
+      });
+
+      return NextResponse.json({
+        success: true,
+        action: "claimed",
+        device: claimedDevice,
+      });
+    }
+
+    // --- CASE 2: MANUAL PRE-REGISTRATION ---
+    const newDevice = await prisma.device.create({
       data: {
-        deviceName,
+        deviceName: cleanName,
         status: "Offline",
         lastSeen: null,
       },
     });
 
-    // ADD THE AUDIT LOG HERE
     await logAdminAudit({
       adminId: session.adminId,
       category: "FLEET",
       action: "DEVICE_CREATED",
       targetType: "Device",
-      targetId: device.id,
+      targetId: newDevice.id,
       details: {
         createdRecord: {
-          id: device.id,
-          deviceName: device.deviceName,
+          id: newDevice.id,
+          deviceName: newDevice.deviceName,
         },
       },
       req: request,
@@ -104,12 +160,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      device: device,
+      action: "created",
+      device: newDevice,
     });
   } catch (error) {
-    console.error("Error creating device:", error);
+    console.error("Error creating/claiming device:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to create device" },
+      { success: false, error: "Failed to process device request" },
       { status: 500 },
     );
   }

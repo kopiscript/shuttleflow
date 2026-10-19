@@ -12,7 +12,7 @@ interface UnclaimedDevice {
   lastSeen: string | null;
 }
 
-export default function AddDevicePage() {
+export default function ClaimDevicePage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unclaimedDevices, setUnclaimedDevices] = useState<UnclaimedDevice[]>([]);
@@ -36,38 +36,38 @@ export default function AddDevicePage() {
   }, []);
 
   // Fetch unclaimed NVS devices
-  useEffect(() => {
-    const fetchUnclaimed = async () => {
-      try {
-        setLoadingDevices(true);
-        const res = await fetch("/api/admin/devices");
-        const data = await res.json();
-        if (data.success && Array.isArray(data.devices)) {
-          const pending = data.devices.filter(
-            (d: UnclaimedDevice) =>
-              d.isUnclaimed || d.deviceName?.toUpperCase().startsWith("UNCLAIMED")
-          );
-          setUnclaimedDevices(pending);
-          if (pending.length > 0) {
-            setSelectedDeviceId(String(pending[0].id));
-          } else {
-            setSelectedDeviceId("NEW");
-          }
+  const fetchDetectedDevices = async () => {
+    try {
+      setLoadingDevices(true);
+      const res = await fetch("/api/admin/devices");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.devices)) {
+        const pending = data.devices.filter(
+          (d: UnclaimedDevice) =>
+            d.isUnclaimed || d.deviceName?.toUpperCase().startsWith("UNCLAIMED")
+        );
+        setUnclaimedDevices(pending);
+        if (pending.length > 0) {
+          setSelectedDeviceId(String(pending[0].id));
+        } else {
+          setSelectedDeviceId("NEW");
         }
-      } catch (err) {
-        console.error("Failed to fetch unclaimed devices:", err);
-        setSelectedDeviceId("NEW");
-      } finally {
-        setLoadingDevices(false);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch unclaimed devices:", err);
+      setSelectedDeviceId("NEW");
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
 
-    fetchUnclaimed();
+  useEffect(() => {
+    fetchDetectedDevices();
   }, []);
 
   const getSelectedLabel = () => {
-    if (loadingDevices) return "Loading detected hardware...";
-    if (selectedDeviceId === "NEW") return "Auto-generate New ID (Manual Entry)";
+    if (loadingDevices) return "Scanning for detected hardware...";
+    if (selectedDeviceId === "NEW") return "+ Pre-register Manual ID (No Hardware Yet)";
     const found = unclaimedDevices.find((d) => String(d.id) === selectedDeviceId);
     if (found) {
       return `D${String(found.id).padStart(3, "0")} — ${found.deviceName}`;
@@ -82,6 +82,11 @@ export default function AddDevicePage() {
       return;
     }
 
+    if (!deviceName.trim()) {
+      alert("Please enter a device name.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -90,7 +95,7 @@ export default function AddDevicePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           deviceId: selectedDeviceId,
-          deviceName: deviceName,
+          deviceName: deviceName.trim(),
         }),
       });
 
@@ -99,12 +104,12 @@ export default function AddDevicePage() {
       if (data.success) {
         router.push("/admin/devices");
       } else {
-        console.error("Failed to add device:", data.error);
-        alert("Failed to add device: " + data.error);
+        console.error("Failed to process device:", data.error);
+        alert("Failed to process device: " + data.error);
       }
     } catch (error) {
-      console.error("Error adding device:", error);
-      alert("An error occurred while adding the device.");
+      console.error("Error saving device:", error);
+      alert("An error occurred while saving the device.");
     } finally {
       setIsSubmitting(false);
     }
@@ -132,16 +137,20 @@ export default function AddDevicePage() {
             />
           </svg>
         </Link>
-        <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
-          Add New Device
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
+            Claim / Add Device
+          </h1>
+          <p className="text-[#87888C] font-['Inter'] text-sm mt-1">
+            Pair and assign a friendly name to newly detected ESP32 units.
+          </p>
+        </div>
       </div>
 
       {/* Form Card */}
       <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] max-w-3xl">
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-6">
-            {/* Basic Information */}
             <div>
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Basic Information
@@ -149,9 +158,23 @@ export default function AddDevicePage() {
 
               {/* Device ID Dropdown (NVS Provisioned Units) */}
               <div>
-                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-                  Select Device ID (NVS Provisioned)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[#87888C] font-['Inter'] text-sm">
+                    Select Device ID (NVS Provisioned)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={fetchDetectedDevices}
+                    disabled={loadingDevices}
+                    className="text-xs text-[#96DDFF] hover:underline flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh scan
+                  </button>
+                </div>
+
                 <div className="relative" ref={dropdownRef}>
                   <div
                     onClick={() => !loadingDevices && setIsDropdownOpen(!isDropdownOpen)}
@@ -209,7 +232,7 @@ export default function AddDevicePage() {
                       ))}
 
                       <div className="px-4 py-2 text-xs font-semibold text-[#87888C] bg-[#171821] border-y border-[#2C2D33]">
-                        Manual Fallback
+                        Manual Option
                       </div>
                       <div
                         onClick={() => {
@@ -227,7 +250,7 @@ export default function AddDevicePage() {
                   )}
                 </div>
                 <p className="text-[#87888C] font-['Inter'] text-xs mt-2">
-                  When an ESP32 boots up for the first time, it automatically registers its MAC address and stores its assigned Device ID into NVS flash memory. Select it above to assign a friendly name.
+                  When an ESP32 boots up for the first time, it registers its MAC address and permanently stores its assigned Device ID in NVS flash memory. Select it above to assign a friendly name.
                 </p>
               </div>
 
@@ -241,7 +264,7 @@ export default function AddDevicePage() {
                   name="deviceName"
                   value={deviceName}
                   onChange={(e) => setDeviceName(e.target.value)}
-                  placeholder="Enter device name (e.g., GPS Module #001)"
+                  placeholder="Enter device name (e.g., Bus 4 - Front GPS Module)"
                   className="w-full px-4 py-3 bg-[#171821] text-white rounded-lg border border-[#2C2D33] focus:outline-none focus:border-[#96DDFF] font-['Inter'] text-sm placeholder:text-[#87888C]"
                   required
                 />
@@ -265,7 +288,7 @@ export default function AddDevicePage() {
               {isSubmitting
                 ? "Saving..."
                 : selectedDeviceId !== "NEW"
-                  ? "Claim & Save Device"
+                  ? "Claim Device"
                   : "Add Device"}
             </button>
           </div>
