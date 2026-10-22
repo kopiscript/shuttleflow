@@ -398,8 +398,8 @@ export default function ActiveRoutesTable({
           bus.dropoffLat != null &&
           bus.dropoffLng != null;
 
-        const pickupKey = `pickup:${bus.id}`;
-        const dropoffKey = `dropoff:${bus.id}`;
+        const pickupKey = `pickup:${bus.id}:${bus.pickupLat},${bus.pickupLng}`;
+const dropoffKey = `dropoff:${bus.id}:${bus.dropoffLat},${bus.dropoffLng}`;
 
         const pickupCached =
           lastFetched[pickupKey] && now - lastFetched[pickupKey] < ETA_CACHE_MS;
@@ -425,18 +425,16 @@ export default function ActiveRoutesTable({
           ).then((r) => r.json());
 
         const dropoffPromise =
-          wantDropoff && !dropoffCached
-            ? Promise.resolve(null)
-            : wantDropoff
-              ? fetch(
-                `/api/admin/eta?${new URLSearchParams({
-                  originLat: String(bus.lat),
-                  originLng: String(bus.lng),
-                  destLat: String(bus.dropoffLat!),
-                  destLng: String(bus.dropoffLng!),
-                })}`,
-              ).then((r) => r.json())
-              : Promise.resolve(null);
+  wantDropoff && !dropoffCached
+    ? fetch(
+        `/api/admin/eta?${new URLSearchParams({
+          originLat: String(bus.lat),
+          originLng: String(bus.lng),
+          destLat: String(bus.dropoffLat!),
+          destLng: String(bus.dropoffLng!),
+        })}`,
+      ).then((r) => r.json())
+    : Promise.resolve(null);
 
         if (!pickupCached) lastFetched[pickupKey] = now;
         if (wantDropoff && !dropoffCached) lastFetched[dropoffKey] = now;

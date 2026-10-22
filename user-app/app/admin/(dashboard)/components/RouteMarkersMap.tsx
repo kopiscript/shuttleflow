@@ -90,6 +90,9 @@ export default function RouteMarkersMap({
 
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
+    console.log("[RouteMarkersMap] busState:", busState);
+    console.log("[RouteMarkersMap] dropoffPaths:", dropoffPaths);
+    console.log("[RouteMarkersMap] buses:", buses);
 
     const layer = markersLayerRef.current;
     layer.clearLayers();
@@ -171,8 +174,7 @@ export default function RouteMarkersMap({
           })
             .addTo(layer)
             .bindTooltip(
-              `${route.pickupStop ?? "Pickup"} → ${
-                route.dropoffStop ?? "Drop-off"
+              `${route.pickupStop ?? "Pickup"} → ${route.dropoffStop ?? "Drop-off"
               } (estimated)`,
               { sticky: true }
             );
@@ -212,8 +214,7 @@ export default function RouteMarkersMap({
 
       L.marker(dropoffCoord, { icon: dropoffIcon })
         .bindTooltip(
-          `<b>🏁 ${route.routeName}</b><br/>Drop-off: ${
-            route.dropoffStop ?? ""
+          `<b>🏁 ${route.routeName}</b><br/>Drop-off: ${route.dropoffStop ?? ""
           }`,
           {
             direction: "top",
@@ -233,8 +234,8 @@ export default function RouteMarkersMap({
       L.marker(coord, { icon: busIcon })
         .bindTooltip(
           `<b>🚌 ${bus.busName}</b><br/>` +
-            (bus.routeName ? `Route: ${bus.routeName}<br/>` : "") +
-            (bus.status ? `Status: ${bus.status}` : ""),
+          (bus.routeName ? `Route: ${bus.routeName}<br/>` : "") +
+          (bus.status ? `Status: ${bus.status}` : ""),
           {
             direction: "top",
             offset: [0, -10],

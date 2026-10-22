@@ -262,16 +262,61 @@ export default function AdminDashboard() {
           {/* Map Legend */}
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap text-[11px]">
-              {/* Pickup Stop Pin */}
               <div className="flex items-center gap-1.5">
-                <PickupLegendIcon size={14} />
-  <span className="text-[#87888C] font-['Inter'] text-xs">Pickup</span>
+                <svg width="10" height="14" viewBox="0 0 36 44">
+                  <path
+                    d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43
+                       C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
+                    fill="#3b82f6"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+                  <text
+                    x="17"
+                    y="20"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontFamily="Inter, sans-serif"
+                    fontSize="13"
+                    fontWeight="700"
+                    fill="#ffffff"
+                  >
+                    P
+                  </text>
+                </svg>
+                <span className="text-[#87888C] font-['Inter']">
+                  Pickup Stop
+                </span>
               </div>
 
-              {/* Drop-off Stop Pin */}
               <div className="flex items-center gap-1.5">
-                <DropoffLegendIcon size={14} />
-  <span className="text-[#87888C] font-['Inter'] text-xs">Drop-off</span>
+                <svg
+                  width={10}
+                  height={14}
+                  viewBox="0 0 40 50"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z"
+                    fill="#1F2937"
+                    stroke="white"
+                    strokeWidth="2.5"
+                  />
+                  <circle cx="20" cy="18" r="13" fill="white" opacity="0.95" />
+                  <g transform="translate(11, 9)">
+                    <rect x="0" y="1" width="1.5" height="16" fill="#1F2937" />
+                    <rect x="1.5" y="1" width="5" height="4" fill="#1F2937" />
+                    <rect x="6.5" y="1" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+                    <rect x="11.5" y="1" width="5" height="4" fill="#1F2937" />
+                    <rect x="1.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+                    <rect x="6.5" y="5" width="5" height="4" fill="#1F2937" />
+                    <rect x="11.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+                  </g>
+                </svg>
+                <span className="text-[#87888C] font-['Inter']">
+                  Drop-off Stop
+                </span>
               </div>
 
               {/* Active Bus */}

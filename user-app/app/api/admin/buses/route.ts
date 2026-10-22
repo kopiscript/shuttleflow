@@ -9,11 +9,18 @@ import { validateBusFields, hasErrors } from "@/lib/validation";
 
 // ---- Bus state machine constants ----
 const AT_PICKUP_RADIUS = 50;          // meters — bus is "at" the pickup
+const AT_DROPOFF_RADIUS = 50;         // meters — bus is "at" the drop-off
 const AT_PICKUP_DWELL_MS = 15_000;    // 15 seconds — must wait this long
-const PROXIMITY_ALERT_RADIUS = 500;   // meters — for resetting state
-const TRIP_DONE_RADIUS = 500;         // meters — how close to dropoff counts as "done"
 
 type BusState = "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
+
+interface BusStateResult {
+  state: BusState;
+  shouldSetArrival: boolean;
+  shouldReset: boolean;
+  distanceToPickup: number;
+  distanceToDropoff: number | null;
+}
 
 // Haversine distance in meters
 function calculateDistance(
@@ -35,11 +42,16 @@ function calculateDistance(
 }
 
 /**
- * Compute the current state of a bus on its route. Also persists
- * `arrivedAtPickupAt` when the bus first enters the pickup radius, and
- * clears it when the bus leaves after having visited.
+ * Compute the current state of a bus on its route (pure — no DB writes).
+ * The caller decides whether to persist `arrivedAtPickupAt` changes.
+ *
+ * State rules:
+ *   - approaching       : hasn't visited the pickup yet (or just arrived, < 15s dwell)
+ *   - at_pickup         : inside pickup radius for >= 15s
+ *   - en_route_to_dropoff : left pickup, hasn't reached dropoff yet
+ *   - trip_done         : reached dropoff (reset for next trip)
  */
-async function computeBusState(
+function computeBusState(
   route: {
     id: number;
     pickupLat: number | null;
@@ -50,8 +62,17 @@ async function computeBusState(
   },
   busLat: number,
   busLng: number
-): Promise<BusState> {
-  if (!route.pickupLat || !route.pickupLng) return "approaching";
+): BusStateResult {
+  // Null-safe (allows 0 coordinates to pass through)
+  if (route.pickupLat == null || route.pickupLng == null) {
+    return {
+      state: "approaching",
+      shouldSetArrival: false,
+      shouldReset: false,
+      distanceToPickup: -1,
+      distanceToDropoff: null,
+    };
+  }
 
   const distanceToPickup = calculateDistance(
     busLat,
@@ -59,41 +80,70 @@ async function computeBusState(
     route.pickupLat,
     route.pickupLng
   );
+
+  const distanceToDropoff =
+    route.dropoffLat != null && route.dropoffLng != null
+      ? calculateDistance(busLat, busLng, route.dropoffLat, route.dropoffLng)
+      : null;
+
   const isAtPickup = distanceToPickup <= AT_PICKUP_RADIUS;
-  const isWithinAlertZone = distanceToPickup <= PROXIMITY_ALERT_RADIUS;
+  const isAtDropoff =
+    distanceToDropoff !== null && distanceToDropoff <= AT_DROPOFF_RADIUS;
 
-  let arrivedAtPickupAt = route.arrivedAtPickupAt;
-
+  // ---- 1. At the pickup ----
   if (isAtPickup) {
-    if (!arrivedAtPickupAt) {
-      arrivedAtPickupAt = new Date();
-      await prisma.route.update({
-        where: { id: route.id },
-        data: { arrivedAtPickupAt },
-      });
+    if (!route.arrivedAtPickupAt) {
+      // First entry — signal caller to record arrival
+      return {
+        state: "approaching",
+        shouldSetArrival: true,
+        shouldReset: false,
+        distanceToPickup,
+        distanceToDropoff,
+      };
     }
-    const dwellMs = Date.now() - new Date(arrivedAtPickupAt).getTime();
-    return dwellMs >= AT_PICKUP_DWELL_MS ? "at_pickup" : "approaching";
+    const dwellMs = Date.now() - new Date(route.arrivedAtPickupAt).getTime();
+    return {
+      state: dwellMs >= AT_PICKUP_DWELL_MS ? "at_pickup" : "approaching",
+      shouldSetArrival: false,
+      shouldReset: false,
+      distanceToPickup,
+      distanceToDropoff,
+    };
   }
 
-  if (isWithinAlertZone) {
-    return arrivedAtPickupAt ? "en_route_to_dropoff" : "approaching";
+  // ---- 2. At the drop-off (trip genuinely finished) ----
+  if (isAtDropoff && route.arrivedAtPickupAt) {
+    return {
+      state: "trip_done",
+      shouldSetArrival: false,
+      shouldReset: true,
+      distanceToPickup,
+      distanceToDropoff,
+    };
   }
 
-  // Outside 500m from pickup
-  if (arrivedAtPickupAt) {
-    // Trip cycle finished → reset for next approach
-    await prisma.route.update({
-      where: { id: route.id },
-      data: {
-        arrivedAtPickupAt: null,
-        alertedForCurrentApproach: false,
-      },
-    });
-    return "trip_done";
+  // ---- 3. Has visited pickup, not yet at dropoff → en route ----
+  //   Regardless of how far from the pickup, if the bus has visited the
+  //   pickup and hasn't reached the dropoff, it's on its way to the dropoff.
+  if (route.arrivedAtPickupAt) {
+    return {
+      state: "en_route_to_dropoff",
+      shouldSetArrival: false,
+      shouldReset: false,
+      distanceToPickup,
+      distanceToDropoff,
+    };
   }
 
-  return "approaching";
+  // ---- 4. Hasn't visited pickup yet ----
+  return {
+    state: "approaching",
+    shouldSetArrival: false,
+    shouldReset: false,
+    distanceToPickup,
+    distanceToDropoff,
+  };
 }
 
 // GET - list all buses
@@ -113,10 +163,7 @@ export async function GET() {
         locations: {
           where: {
             NOT: {
-              AND: [
-                { latitude: 0 },
-                { longitude: 0 },
-              ],
+              AND: [{ latitude: 0 }, { longitude: 0 }],
             },
           },
           orderBy: { recordedAt: "desc" },
@@ -132,10 +179,10 @@ export async function GET() {
         const busLat = latestLocation ? Number(latestLocation.latitude) : null;
         const busLng = latestLocation ? Number(latestLocation.longitude) : null;
 
-        // ✅ Compute bus state (needs both a route and a current location)
+        // Compute bus state (needs both a route and a current location)
         let busState: BusState = "approaching";
         if (activeRoute && busLat !== null && busLng !== null) {
-          busState = await computeBusState(
+          const result = computeBusState(
             {
               id: activeRoute.id,
               pickupLat: activeRoute.pickupLat,
@@ -147,6 +194,24 @@ export async function GET() {
             busLat,
             busLng
           );
+
+          // Persist side effects here (single writer, no races)
+          if (result.shouldSetArrival) {
+            await prisma.route.update({
+              where: { id: activeRoute.id },
+              data: { arrivedAtPickupAt: new Date() },
+            });
+          } else if (result.shouldReset) {
+            await prisma.route.update({
+              where: { id: activeRoute.id },
+              data: {
+                arrivedAtPickupAt: null,
+                alertedForCurrentApproach: false,
+              },
+            });
+          }
+
+          busState = result.state;
         }
 
         return {
@@ -232,7 +297,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ Server-side field validation
+    // Server-side field validation
     const validationErrors = validateBusFields({
       licensePlate: licensePlate || "",
       busName: busName || "",
@@ -249,34 +314,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ Normalize values (ONCE)
+    // Normalize values (ONCE)
     const normalizedPlate = licensePlate.trim().toUpperCase();
     const normalizedName = busName.trim();
     const normalizedDriverName = driverName?.trim() || null;
     const normalizedDriverPhone = driverPhone?.trim() || null;
 
-    // ✅ Server-side guard: reject duplicate license plate (ONCE)
+    // Server-side guard: reject duplicate license plate
     const duplicatePlate = await prisma.bus.findFirst({
       where: { licensePlate: normalizedPlate },
     });
 
     if (duplicatePlate) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "A bus with this license plate already exists",
-        },
+        { success: false, error: "A bus with this license plate already exists" },
         { status: 409 }
       );
     }
 
-    // Server-side guard: reject if the route is already assigned to another bus
+    // Server-side guard: reject if the route is already assigned
     if (routeId) {
-      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst(
-        {
-          where: { routeId: parseInt(routeId), endedAt: null },
-        }
-      );
+      const existingRouteAssignment = await prisma.busRouteAssignment.findFirst({
+        where: { routeId: parseInt(routeId), endedAt: null },
+      });
 
       if (existingRouteAssignment) {
         return NextResponse.json(
@@ -289,7 +349,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Server-side guard: reject if the device is already assigned to another bus
+    // Server-side guard: reject if the device is already assigned
     if (deviceId) {
       const existingDeviceAssignment =
         await prisma.busDeviceAssignment.findFirst({
