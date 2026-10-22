@@ -6,7 +6,7 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 
-import { createPickupIcon, createDropoffIcon } from "./mapIcons";
+import { createPickupIcon, createDropoffIcon, PickupLegendIcon, DropoffLegendIcon, } from "./mapIcons";
 
 interface RoutePickerMapProps {
   pickupLat: string;
@@ -314,17 +314,13 @@ export default function RoutePickerMap({
 
       <div className="flex flex-wrap items-center gap-4 mt-3">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#3b82f6]" />
-          <span className="text-[#87888C] font-['Inter'] text-xs">
-            Pickup
-          </span>
+          <PickupLegendIcon size={14} />
+          <span className="text-[#87888C] font-['Inter'] text-xs">Pickup</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#22c55e]" />
-          <span className="text-[#87888C] font-['Inter'] text-xs">
-            Drop-off
-          </span>
+          <DropoffLegendIcon size={14} />
+          <span className="text-[#87888C] font-['Inter'] text-xs">Drop-off</span>
         </div>
 
         <span className="text-[#87888C] font-['Inter'] text-xs ml-auto">

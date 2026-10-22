@@ -7,6 +7,7 @@ import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable, { type BusState } from "./components/ActiveRoutesTable";
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
+import { PickupLegendIcon, DropoffLegendIcon, } from "./components/mapIcons";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -222,57 +223,13 @@ export default function AdminDashboard() {
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap text-[11px]">
               <div className="flex items-center gap-1.5">
-                <svg width="10" height="14" viewBox="0 0 36 44">
-                  <path
-                    d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43
-                       C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
-                    fill="#3b82f6"
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
-                  />  
-                  <text
-                    x="17"
-                    y="20"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontFamily="Inter, sans-serif"
-                    fontSize="13"
-                    fontWeight="700"
-                    fill="#ffffff"
-                  >
-                    P
-                  </text>
-                </svg>
-                <span className="text-[#87888C] font-['Inter']">
-                  Pickup Stop
-                </span>
+                <PickupLegendIcon size={14} />
+  <span className="text-[#87888C] font-['Inter'] text-xs">Pickup</span>
               </div>
 
               <div className="flex items-center gap-1.5">
-                <svg width="10" height="14" viewBox="0 0 36 44">
-                  <path
-                    d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43
-                       C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
-                    fill="#bb0c0c"
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
-                  />
-                  <text
-                    x="17"
-                    y="20"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontFamily="Inter, sans-serif"
-                    fontSize="13"
-                    fontWeight="700"
-                    fill="#ffffff"
-                  >
-                    D
-                  </text>
-                </svg>
-                <span className="text-[#87888C] font-['Inter']">
-                  Drop-off Stop
-                </span>
+                <DropoffLegendIcon size={14} />
+  <span className="text-[#87888C] font-['Inter'] text-xs">Drop-off</span>
               </div>
 
               <div className="flex items-center gap-1.5">
