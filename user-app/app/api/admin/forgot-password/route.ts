@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     });
 
     // Build reset URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
     const resetUrl = `${baseUrl}/admin/reset-password?token=${resetToken}`;
 
     // Send email via Resend
