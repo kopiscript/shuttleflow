@@ -7,7 +7,6 @@ import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable, { type BusState } from "./components/ActiveRoutesTable";
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
-import { PickupLegendIcon, DropoffLegendIcon, } from "./components/mapIcons";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -22,18 +21,23 @@ const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
 
 const downloadCumulativeBusData = async () => {
   try {
-    // Fetch up to 5000 recent pings for the cumulative export
     const res = await fetch("/api/admin/bus-logs?export=true");
     const data = await res.json();
 
-    if (!data.success || data.logs.length === 0) {
+    if (!data.success || !data.logs || data.logs.length === 0) {
       alert("No location data available to export.");
       return;
     }
 
     const headers = ["Log ID", "Bus", "Plate", "Lat", "Lng", "Speed", "Time"];
     const csvRows = data.logs.map((l: any) => [
-      l.id, l.bus?.bus_name, l.bus?.license_plate, l.latitude, l.longitude, l.speed || "0", new Date(l.recorded_at).toISOString()
+      l.id,
+      `"${l.bus?.bus_name || ""}"`,
+      `"${l.bus?.license_plate || ""}"`,
+      l.latitude,
+      l.longitude,
+      l.speed || "0",
+      new Date(l.recorded_at).toISOString(),
     ]);
 
     const csvContent = [headers.join(","), ...csvRows.map((r: any) => r.join(","))].join("\n");
@@ -44,6 +48,7 @@ const downloadCumulativeBusData = async () => {
     link.click();
   } catch (err) {
     console.error("Export failed", err);
+    alert("Failed to export telemetry data.");
   }
 };
 
@@ -81,7 +86,7 @@ export default function AdminDashboard() {
 
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
 
-  // the currently selected bus's state, fed by ActiveRoutesTable
+  // Currently selected bus's state, fed by ActiveRoutesTable
   const [busState, setBusState] = useState<BusState>("approaching");
 
   const [unresolvedTickets, setUnresolvedTickets] = useState(0);
@@ -98,7 +103,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     const monitorDelays = async () => {
       try {
-        console.log("Checking for delays...");
         await fetch("/api/monitor-delays");
       } catch (error) {
         console.error("Failed to run delay monitor:", error);
@@ -107,8 +111,6 @@ export default function AdminDashboard() {
 
     // Run every 5 minutes
     const interval = setInterval(monitorDelays, 5 * 60 * 1000);
-
-    // Also run once on initial load
     monitorDelays();
 
     return () => clearInterval(interval);
@@ -133,14 +135,16 @@ export default function AdminDashboard() {
             routesData.routes.filter((r: Route) => r.status === "Active")
           );
         }
+
         if (busesData.success) {
           const allBuses: any[] = busesData.buses ?? [];
-          // Only GPS-valid buses go to the map
+          // Only buses with valid GPS coordinates are placed on the map
           const validBuses = allBuses.filter(
             (b: any) => b.lat != null && b.lng != null
           );
           setBuses(validBuses);
-          // Build routeId → busStatus from ALL buses (regardless of GPS)
+
+          // Build routeId → busStatus from ALL buses regardless of GPS lock
           const statusMap: Record<number, string> = {};
           for (const b of allBuses) {
             if (b.routeId != null && b.status) {
@@ -149,6 +153,7 @@ export default function AdminDashboard() {
           }
           setRouteBusStatus(statusMap);
         }
+
         if (ticketsData.success) {
           setUnresolvedTickets(ticketsData.count ?? 0);
           setUnresolvedTicketList(ticketsData.tickets ?? []);
@@ -169,28 +174,39 @@ export default function AdminDashboard() {
   const numericRouteId = selectedRouteId ? Number(selectedRouteId) : null;
 
   return (
-
     <div className="space-y-4">
-      {/* Header row */}
-      <div>
-        <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
-          Dashboard
-        </h1>
-        <p className="text-[#87888C] mt-1 font-['Inter'] text-sm">
-          Welcome to the admin panel.
-        </p>
+      {/* Header row with Telemetry Export Button */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white font-['Bai_Jamjuree']">
+            Dashboard
+          </h1>
+          <p className="text-[#87888C] mt-1 font-['Inter'] text-sm">
+            Welcome to the admin panel.
+          </p>
+        </div>
+
+        <button
+          onClick={downloadCumulativeBusData}
+          className="px-4 py-2 bg-[#21222D] hover:bg-[#2C2D33] text-[#96DDFF] border border-[#2C2D33] hover:border-[#96DDFF] transition rounded-lg font-['Inter'] text-sm flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export Fleet Telemetry
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Map card — row 1, cols 1-3 */}
         <div className="lg:col-span-3 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 flex flex-col">
-          {/* Header */}
+          {/* Header & Dynamic Route Filter */}
           <div className="relative z-10 flex items-center justify-between gap-6 mb-3">
             <h2 className="text-white font-bold font-['Inter'] shrink-0">
               Active Route Map
             </h2>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 max-w-xs sm:max-w-sm">
               <SmallDropdown
                 value={selectedRouteId}
                 onChange={setSelectedRouteId}
@@ -215,7 +231,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Map area — explicit height so Leaflet has a bounded box */}
+          {/* Map area */}
           <div className="relative z-0 h-[400px] rounded-xl overflow-hidden">
             {loading ? (
               <div className="w-full h-full bg-[#171821] flex items-center justify-center">
@@ -242,26 +258,66 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Legend + note — natural height, no clipping */}
+          {/* Map Legend */}
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap text-[11px]">
+              {/* Pickup Stop Pin */}
               <div className="flex items-center gap-1.5">
-                <PickupLegendIcon size={14} />
-                <span className="text-[#87888C] font-['Inter'] text-xs">Pickup</span>
+                <svg width="10" height="14" viewBox="0 0 36 44">
+                  <path
+                    d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43 C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
+                    fill="#3b82f6"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+                  <text
+                    x="17"
+                    y="20"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontFamily="Inter, sans-serif"
+                    fontSize="13"
+                    fontWeight="700"
+                    fill="#ffffff"
+                  >
+                    P
+                  </text>
+                </svg>
+                <span className="text-[#87888C] font-['Inter'] text-xs">Pickup Stop</span>
               </div>
 
+              {/* Drop-off Stop Pin */}
               <div className="flex items-center gap-1.5">
-                <DropoffLegendIcon size={14} />
-                <span className="text-[#87888C] font-['Inter'] text-xs">Drop-off</span>
+                <svg width="10" height="14" viewBox="0 0 36 44">
+                  <path
+                    d="M17 1 C 8.16 1 1 8.16 1 17 C 1 29 17 43 17 43 C 17 43 33 29 33 17 C 33 8.16 25.84 1 17 1 Z"
+                    fill="#bb0c0c"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                  />
+                  <text
+                    x="17"
+                    y="20"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontFamily="Inter, sans-serif"
+                    fontSize="13"
+                    fontWeight="700"
+                    fill="#ffffff"
+                  >
+                    D
+                  </text>
+                </svg>
+                <span className="text-[#87888C] font-['Inter'] text-xs">Drop-off Stop</span>
               </div>
 
+              {/* Active Bus */}
               <div className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#FEB002]"></div>
-                <span className="text-[#87888C] font-['Inter']">
-                  Active Bus
-                </span>
+                <span className="text-[#87888C] font-['Inter'] text-xs">Active Bus</span>
               </div>
 
+              {/* Approach Line */}
               <div className="flex items-center gap-1.5">
                 <svg width="18" height="6" viewBox="0 0 26 8">
                   <line
@@ -274,11 +330,10 @@ export default function AdminDashboard() {
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[#87888C] font-['Inter']">
-                  Bus → Pickup
-                </span>
+                <span className="text-[#87888C] font-['Inter'] text-xs">Bus → Pickup</span>
               </div>
 
+              {/* Drop-off Line */}
               <div className="flex items-center gap-1.5">
                 <svg width="18" height="6" viewBox="0 0 26 8">
                   <line
@@ -291,25 +346,20 @@ export default function AdminDashboard() {
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[#87888C] font-['Inter']">
-                  Bus → Drop-off
-                </span>
+                <span className="text-[#87888C] font-['Inter'] text-xs">Bus → Drop-off</span>
               </div>
             </div>
 
             <p className="text-[#87888C] font-['Inter'] text-[12px] mt-2 leading-4">
               <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
               Solid road-following lines are only drawn for{" "}
-              <span className="text-white">online devices</span>. Offline
-              devices show a{" "}
+              <span className="text-white">online devices</span>. Offline devices show a{" "}
               <span className="text-white">dashed straight line</span>.
             </p>
           </div>
         </div>
 
-        {/* Unresolved tickets card — row 1, col 4.
-         *  `self-start` keeps it at its natural height instead of
-         *  stretching to fill the taller map card. */}
+        {/* Unresolved tickets card — row 1, col 4 */}
         <div className="lg:col-span-1">
           <UnresolvedTicketsCard
             count={unresolvedTickets}
