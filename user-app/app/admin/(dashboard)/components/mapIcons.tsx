@@ -100,3 +100,65 @@ export function createBusIcon() {
     popupAnchor: [0, -58],
   });
 }
+
+// legend icons for map
+
+export function PickupLegendIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size * 1.25}
+      viewBox="0 0 45 50"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z"
+        fill="#3b82f6"
+        stroke="white"
+        strokeWidth="2.5"
+      />
+      <circle cx="20" cy="18" r="12" fill="white" opacity="0.95" />
+      <text
+        x="20"
+        y="23"
+        fontFamily="Inter, sans-serif"
+        fontSize="14"
+        fontWeight="700"
+        textAnchor="middle"
+        fill="#3b82f6"
+      >
+        P
+      </text>
+    </svg>
+  );
+}
+
+export function DropoffLegendIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size * 1.25}
+      viewBox="0 0 45 50"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M20 0C9.5 0 1 8.5 1 19C1 29.5 20 50 20 50C20 50 39 29.5 39 19C39 8.5 30.5 0 20 0Z"
+        fill="#1F2937"
+        stroke="white"
+        strokeWidth="2.5"
+      />
+      <circle cx="20" cy="18" r="13" fill="white" opacity="0.95" />
+      <g transform="translate(11, 9)">
+        <rect x="0" y="1" width="1.5" height="16" fill="#1F2937" />
+        <rect x="1.5" y="1" width="5" height="4" fill="#1F2937" />
+        <rect x="6.5" y="1" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+        <rect x="11.5" y="1" width="5" height="4" fill="#1F2937" />
+        <rect x="1.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+        <rect x="6.5" y="5" width="5" height="4" fill="#1F2937" />
+        <rect x="11.5" y="5" width="5" height="4" fill="#FFFFFF" stroke="#1F2937" strokeWidth="0.5" />
+      </g>
+    </svg>
+  );
+}
