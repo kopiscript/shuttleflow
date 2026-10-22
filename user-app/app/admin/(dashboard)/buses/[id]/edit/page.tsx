@@ -5,7 +5,11 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
-import { validateBusFields, hasErrors, BusValidationErrors } from "@/lib/validation";
+import {
+  validateBusFields,
+  hasErrors,
+  BusValidationErrors,
+} from "@/lib/validation";
 import SmallDropdown from "../../../components/SmallDropdown";
 interface Bus {
   id: number;
@@ -149,8 +153,7 @@ export default function EditBusPage({ params }: PageProps) {
     const { name, value } = e.target;
 
     // Auto-uppercase license plate as user types
-    const finalValue =
-      name === "licensePlate" ? value.toUpperCase() : value;
+    const finalValue = name === "licensePlate" ? value.toUpperCase() : value;
 
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
 
@@ -375,43 +378,48 @@ export default function EditBusPage({ params }: PageProps) {
               </div>
 
               {/* Status dropdown */}
-<div className="mt-4">
-  <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
-    Status
-  </label>
-  <div className="flex items-center gap-3">
-    <div className="flex-1">
-      <SmallDropdown
-        value={formData.status}
-        onChange={(value) => {
-          setFormData((prev) => ({ ...prev, status: value }));
-        }}
-        options={[
-          { value: "Active", label: "Active (running normally)" },
-          { value: "Breakdown", label: "Breakdown (out of service)" },
-          { value: "Inactive", label: "Inactive (not in use)" },
-        ]}
-        placeholder="Select status"
-      />
-    </div>
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusStyle(formData.status)}`}
-    >
-      {formData.status}
-    </span>
-  </div>
+              <div className="mt-4">
+                <label className="text-[#87888C] font-['Inter'] text-sm block mb-2">
+                  Status
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <SmallDropdown
+                      width="w-full"
+                      value={formData.status}
+                      onChange={(value) => {
+                        setFormData((prev) => ({ ...prev, status: value }));
+                      }}
+                      options={[
+                        { value: "Active", label: "Active (running normally)" },
+                        {
+                          value: "Breakdown",
+                          label: "Breakdown (out of service)",
+                        },
+                        { value: "Inactive", label: "Inactive (not in use)" },
+                      ]}
+                      placeholder="Select status"
+                    />
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusStyle(formData.status)}`}
+                  >
+                    {formData.status}
+                  </span>
+                </div>
 
-  <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
-    <p className="text-[#87888C] font-['Inter'] text-xs">
-      <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
-      Setting this bus to{" "}
-      <span className="text-[#EA1701]">Breakdown</span> will notify users of the
-      disruption. Setting to <span className="text-[#6E6E7E]">Inactive</span> will
-      also deactivate its assigned route. Routes with live ETAs beyond the
-      scheduled time are automatically flagged as delayed.
-    </p>
-  </div>
-</div>
+                <div className="mt-3 p-3 bg-[#171821] rounded-lg border border-[#2C2D33]">
+                  <p className="text-[#87888C] font-['Inter'] text-xs">
+                    <span className="text-[#96DDFF] font-semibold">Note:</span>{" "}
+                    Setting this bus to{" "}
+                    <span className="text-[#EA1701]">Breakdown</span> will
+                    notify users of the disruption. Setting to{" "}
+                    <span className="text-[#6E6E7E]">Inactive</span> will also
+                    deactivate its assigned route. Routes with live ETAs beyond
+                    the scheduled time are automatically flagged as delayed.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-[#2C2D33]" />
@@ -474,108 +482,111 @@ export default function EditBusPage({ params }: PageProps) {
             <div className="border-t border-[#2C2D33]" />
 
             <div>
-  <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
-    Assigned Route
-  </h3>
-  <div className="mt-4 flex gap-2">
-    <div className="flex-1">
-      <SmallDropdown
-        value={formData.routeId}
-        onChange={(value) => {
-          setFormData((prev) => ({ ...prev, routeId: value }));
-        }}
-        placeholder="Select route"
-        options={routes.map((route) => {
-          const alreadyAssignedToAnotherBus =
-            route.assignedBusId !== null && route.assignedBusId !== busId;
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Route
+              </h3>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <SmallDropdown
+                    width="w-full"
+                    value={formData.routeId}
+                    onChange={(value) => {
+                      setFormData((prev) => ({ ...prev, routeId: value }));
+                    }}
+                    placeholder="Select route"
+                    options={routes.map((route) => {
+                      const alreadyAssignedToAnotherBus =
+                        route.assignedBusId !== null &&
+                        route.assignedBusId !== busId;
 
-          return {
-            value: route.id.toString(),
-            label: alreadyAssignedToAnotherBus
-              ? `${route.routeName} (Already assigned)`
-              : route.routeName,
-            disabled: alreadyAssignedToAnotherBus,
-          };
-        })}
-      />
-    </div>
-    {formData.routeId && (
-      <button
-        type="button"
-        onClick={() => setShowRemoveRouteModal(true)}
-        className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-        Remove
-      </button>
-    )}
-  </div>
-</div>
+                      return {
+                        value: route.id.toString(),
+                        label: alreadyAssignedToAnotherBus
+                          ? `${route.routeName} (Already assigned)`
+                          : route.routeName,
+                        disabled: alreadyAssignedToAnotherBus,
+                      };
+                    })}
+                  />
+                </div>
+                {formData.routeId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveRouteModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap shrink-0 self-start"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
 
             <div className="border-t border-[#2C2D33]" />
 
             <div>
-  <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
-    Assigned Device
-  </h3>
-  <div className="mt-4 flex gap-2">
-    <div className="flex-1">
-      <SmallDropdown
-        value={formData.deviceId}
-        onChange={(value) => {
-          setFormData((prev) => ({ ...prev, deviceId: value }));
-        }}
-        placeholder="Select device"
-        options={devices.map((device) => {
-          const alreadyAssignedToAnotherBus =
-            device.busId != null && device.busId !== busId;
+              <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
+                Assigned Device
+              </h3>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <SmallDropdown
+                    width="w-full"
+                    value={formData.deviceId}
+                    onChange={(value) => {
+                      setFormData((prev) => ({ ...prev, deviceId: value }));
+                    }}
+                    placeholder="Select device"
+                    options={devices.map((device) => {
+                      const alreadyAssignedToAnotherBus =
+                        device.busId != null && device.busId !== busId;
 
-          return {
-            value: device.id.toString(),
-            label: alreadyAssignedToAnotherBus
-              ? `${device.deviceName} (Already assigned)`
-              : device.deviceName,
-            disabled: alreadyAssignedToAnotherBus,
-          };
-        })}
-      />
-    </div>
-    {formData.deviceId && (
-      <button
-        type="button"
-        onClick={() => setShowRemoveDeviceModal(true)}
-        className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-        Remove
-      </button>
-    )}
-  </div>
-</div>
+                      return {
+                        value: device.id.toString(),
+                        label: alreadyAssignedToAnotherBus
+                          ? `${device.deviceName} (Already assigned)`
+                          : device.deviceName,
+                        disabled: alreadyAssignedToAnotherBus,
+                      };
+                    })}
+                  />
+                </div>
+                {formData.deviceId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveDeviceModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap shrink-0 self-start"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Remove Route Confirmation Modal */}
             <DeleteConfirmModal

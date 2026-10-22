@@ -45,7 +45,7 @@ export default function SmallDropdown({
   }, []);
 
   return (
-    <div className={`relative w-full ${width}`} ref={dropdownRef}>
+    <div className={`relative min-w-0 max-w-full ${width}`} ref={dropdownRef}>
       {/* Trigger */}
       <button
         type="button"
@@ -78,7 +78,7 @@ export default function SmallDropdown({
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[#21222D] border border-[#2C2D33] rounded-lg shadow-[0px_8px_40px_rgba(0,0,0,0.4)] overflow-hidden z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 w-full min-w-0 bg-[#21222D] border border-[#2C2D33] rounded-lg shadow-[0px_8px_40px_rgba(0,0,0,0.4)] z-50 max-h-60 overflow-y-auto overflow-x-hidden">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-sm font-['Inter'] text-[#87888C]">
               No options available
@@ -94,7 +94,7 @@ export default function SmallDropdown({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-sm font-['Inter'] transition ${
+                className={`w-full text-left whitespace-normal break-words px-3 py-2 text-sm font-['Inter'] transition ${
                   opt.disabled
                     ? "text-[#4A4A55] cursor-not-allowed"
                     : opt.value === value
