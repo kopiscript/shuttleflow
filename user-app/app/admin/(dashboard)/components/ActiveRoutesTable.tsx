@@ -24,6 +24,8 @@ interface BusRow {
   lng: number | null;
   lastSeen: string | null;
   deviceStatus: string | null;
+  /** Bus operational status: "Active" | "Delayed" | "Breakdown" | "Inactive" */
+  busStatus: string | null;
   busState: BusState;
   device?: {
     id: number;
@@ -216,13 +218,22 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
   return null;
 };
 
-// traffic-ratio based badge
+// traffic-ratio based badge — bus operational status takes priority
 const getStatusBadge = (
   eta: EtaResult | null,
   locationLastSeen: string | null,   // bus.lastSeen (locations.recorded_at)
   deviceLastSeen: string | null,     // bus.device?.lastSeen (devices.last_seen)
   deviceStatus: string | null,
+  busStatus: string | null,          // bus.status: "Active" | "Delayed" | "Breakdown"
 ) => {
+  // Device-triggered statuses take top priority
+  if (busStatus === "Breakdown") {
+    return { label: "Breakdown", classes: "bg-[#FFE4E4] text-[#EA1701]" };
+  }
+  if (busStatus === "Delayed") {
+    return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
+  }
+
   // Offline/never-connected short-circuit
   if (
     deviceStatus === "Offline" ||
@@ -322,6 +333,7 @@ export default function ActiveRoutesTable({
           .map((b: any) => ({
             ...b,
             deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
+            busStatus: b.status ?? null,
             busState: (b.busState ?? "approaching") as BusState,
           }));
 
@@ -560,6 +572,7 @@ export default function ActiveRoutesTable({
           bus.lastSeen,
           bus.device?.lastSeen ?? null,
           bus.deviceStatus,
+          bus.busStatus,
         );
         const normalized = badge.label.toLowerCase().replace(/\s+/g, "-");
         if (normalized !== statusFilter) return false;
@@ -606,6 +619,7 @@ export default function ActiveRoutesTable({
               { value: "all", label: "All Status" },
               { value: "on-time", label: "On Time" },
               { value: "delayed", label: "Delayed" },
+              { value: "breakdown", label: "Breakdown" },
               { value: "no-signal", label: "No Signal" },
             ]}
             width="w-36"
@@ -633,15 +647,25 @@ export default function ActiveRoutesTable({
                 bus.lastSeen,
                 bus.device?.lastSeen ?? null,
                 bus.deviceStatus,
+                bus.busStatus,
               );
               const isOffline = bus.deviceStatus === "Offline";
               const showEta = !isOffline && eta !== null;
+              const isBreakdown = bus.busStatus === "Breakdown";
+              const isDelayed = bus.busStatus === "Delayed";
 
               return (
                 <tr
                   key={bus.id}
-                  className={`border-t border-[#2C2D33] ${i % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
-                    }`}
+                  className={`border-t border-[#2C2D33] ${
+                    isBreakdown
+                      ? "bg-[#1f1515]"
+                      : isDelayed
+                      ? "bg-[#1e1c10]"
+                      : i % 2 === 0
+                      ? "bg-[#21222D]"
+                      : "bg-[#1D1E27]"
+                  }`}
                 >
                   <td className="py-4 pl-4 pr-4 align-middle whitespace-nowrap">
                     <span className="inline-block px-3 py-1 rounded-md text-sm font-bold font-['Inter'] bg-[#96DDFF] text-[#171821]">

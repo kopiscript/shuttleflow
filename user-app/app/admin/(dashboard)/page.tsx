@@ -74,6 +74,8 @@ interface TicketPreview {
 export default function AdminDashboard() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
+  /** routeId → bus operational status ("Active" | "Delayed" | "Breakdown") */
+  const [routeBusStatus, setRouteBusStatus] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
 
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
@@ -104,7 +106,7 @@ export default function AdminDashboard() {
 
     // Run every 5 minutes
     const interval = setInterval(monitorDelays, 5 * 60 * 1000);
-    
+
     // Also run once on initial load
     monitorDelays();
 
@@ -131,10 +133,20 @@ export default function AdminDashboard() {
           );
         }
         if (busesData.success) {
-          const validBuses = (busesData.buses ?? []).filter(
+          const allBuses: any[] = busesData.buses ?? [];
+          // Only GPS-valid buses go to the map
+          const validBuses = allBuses.filter(
             (b: any) => b.lat != null && b.lng != null
           );
           setBuses(validBuses);
+          // Build routeId → busStatus from ALL buses (regardless of GPS)
+          const statusMap: Record<number, string> = {};
+          for (const b of allBuses) {
+            if (b.routeId != null && b.status) {
+              statusMap[Number(b.routeId)] = b.status;
+            }
+          }
+          setRouteBusStatus(statusMap);
         }
         if (ticketsData.success) {
           setUnresolvedTickets(ticketsData.count ?? 0);
@@ -172,23 +184,34 @@ export default function AdminDashboard() {
         {/* Map card — row 1, cols 1-3 */}
         <div className="lg:col-span-3 bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 flex flex-col">
           {/* Header */}
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h2 className="text-white font-bold font-['Inter']">
+          <div className="relative z-10 flex items-center justify-between gap-6 mb-3">
+            <h2 className="text-white font-bold font-['Inter'] shrink-0">
               Active Route Map
             </h2>
 
-            <SmallDropdown
-              value={selectedRouteId}
-              onChange={setSelectedRouteId}
-              options={[
-                { value: "", label: "All Routes" },
-                ...routes.map((r) => ({
-                  value: String(r.id),
-                  label: r.routeName,
-                })),
-              ]}
-              width="w-44"
-            />
+            <div className="flex-1 min-w-0">
+              <SmallDropdown
+                value={selectedRouteId}
+                onChange={setSelectedRouteId}
+                options={[
+                  { value: "", label: "All Routes" },
+                  ...routes.map((r) => {
+                    const busStatus = routeBusStatus[r.id];
+                    const statusSuffix =
+                      busStatus === "Breakdown"
+                        ? " ⚠ Breakdown"
+                        : busStatus === "Delayed"
+                          ? " · Delayed"
+                          : "";
+                    return {
+                      value: String(r.id),
+                      label: r.routeName + statusSuffix,
+                    };
+                  }),
+                ]}
+                width="w-full"
+              />
+            </div>
           </div>
 
           {/* Map area — explicit height so Leaflet has a bounded box */}
@@ -229,7 +252,7 @@ export default function AdminDashboard() {
                     fill="#3b82f6"
                     stroke="#ffffff"
                     strokeWidth="2.5"
-                  />  
+                  />
                   <text
                     x="17"
                     y="20"
