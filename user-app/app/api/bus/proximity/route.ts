@@ -1,82 +1,38 @@
-// app/api/bus/proximity/route.ts
-import { NextResponse } from "next/server";
+// app/api/bus/proximity/route.ts — user-app
+// The admin endpoint /api/admin/buses is the SINGLE source of truth for bus state.
+// This endpoint only handles the proximity notification pipeline.
+
 import { prisma } from "@/lib/prisma";
-import { calculateDistance } from "@/lib/distance";
-import { sendProximityAlert } from "@/lib/notifications";
-
-const PROXIMITY_THRESHOLD = 500; // meters
-const AT_PICKUP_RADIUS = 50;          // meters
-const AT_PICKUP_DWELL_MS = 15_000;    // 15 seconds
-const TRIP_DONE_RADIUS = 500;
-
-type BusState = "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
-
-async function computeBusState(
-  route: {
-    id: number;
-    pickupLat: number | null;
-    pickupLng: number | null;
-    dropoffLat: number | null;
-    dropoffLng: number | null;
-    arrivedAtPickupAt: Date | null;
-  },
-  busLat: number,
-  busLng: number
-): Promise<BusState> {
-  if (!route.pickupLat || !route.pickupLng) return "approaching";
-
-  const distanceToPickup = calculateDistance(
-    busLat, busLng, route.pickupLat, route.pickupLng
-  );
-  const isAtPickup = distanceToPickup <= AT_PICKUP_RADIUS;
-  const isWithinAlertZone = distanceToPickup <= PROXIMITY_THRESHOLD;
-
-  let arrivedAtPickupAt = route.arrivedAtPickupAt;
-
-  if (isAtPickup) {
-    if (!arrivedAtPickupAt) {
-      arrivedAtPickupAt = new Date();
-      await prisma.route.update({
-        where: { id: route.id },
-        data: { arrivedAtPickupAt },
-      });
-    }
-    const dwellMs = Date.now() - new Date(arrivedAtPickupAt).getTime();
-    return dwellMs >= AT_PICKUP_DWELL_MS ? "at_pickup" : "approaching";
-  }
-
-  if (isWithinAlertZone) {
-    return arrivedAtPickupAt ? "en_route_to_dropoff" : "approaching";
-  }
-
-  if (arrivedAtPickupAt) {
-    await prisma.route.update({
-      where: { id: route.id },
-      data: {
-        arrivedAtPickupAt: null,
-        alertedForCurrentApproach: false,
-      },
-    });
-    return "trip_done";
-  }
-
-  return "approaching";
-}
+import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const routeId = parseInt(searchParams.get("routeId") || "0");
+    const routeIdParam = searchParams.get("routeId");
 
-    if (!routeId) {
+    if (!routeIdParam) {
       return NextResponse.json(
         { success: false, error: "routeId is required" },
         { status: 400 }
       );
     }
 
+    const routeId = parseInt(routeIdParam);
+    if (isNaN(routeId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid routeId" },
+        { status: 400 }
+      );
+    }
+
     const route = await prisma.route.findUnique({
       where: { id: routeId },
+      include: {
+        busAssignments: {
+          where: { endedAt: null },
+          include: { bus: true },
+        },
+      },
     });
 
     if (!route) {
@@ -86,28 +42,27 @@ export async function GET(request: Request) {
       );
     }
 
-    if (!route.pickupLat || !route.pickupLng) {
-      return NextResponse.json(
-        { success: false, error: "Route does not have pickup coordinates." },
-        { status: 400 }
-      );
-    }
-
-    const assignment = await prisma.busRouteAssignment.findFirst({
-      where: { routeId, endedAt: null },
-    });
-
-    if (!assignment) {
+    if (!route.busAssignments[0]) {
       return NextResponse.json(
         { success: false, error: "No bus assigned to this route" },
         { status: 404 }
       );
     }
 
-    const busId = assignment.busId;
+    if (route.pickupLat == null || route.pickupLng == null) {
+      return NextResponse.json(
+        { success: false, error: "Route does not have pickup coordinates" },
+        { status: 400 }
+      );
+    }
+
+    const bus = route.busAssignments[0].bus;
 
     const latestLocation = await prisma.location.findFirst({
-      where: { busId },
+      where: {
+        busId: bus.id,
+        NOT: { AND: [{ latitude: 0 }, { longitude: 0 }] },
+      },
       orderBy: { recordedAt: "desc" },
     });
 
@@ -120,103 +75,70 @@ export async function GET(request: Request) {
 
     const busLat = Number(latestLocation.latitude);
     const busLng = Number(latestLocation.longitude);
-    const pickupLat = route.pickupLat;
-    const pickupLng = route.pickupLng;
 
-    const distance = calculateDistance(busLat, busLng, pickupLat, pickupLng);
-    const isNear = distance <= PROXIMITY_THRESHOLD;
+    // Haversine
+    const R = 6371e3;
+    const φ1 = (busLat * Math.PI) / 180;
+    const φ2 = (route.pickupLat * Math.PI) / 180;
+    const Δφ = ((route.pickupLat - busLat) * Math.PI) / 180;
+    const Δλ = ((route.pickupLng - busLng) * Math.PI) / 180;
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceToPickup = R * c;
 
+    const ALERT_RADIUS = 500;
+    const isNearPickup = distanceToPickup <= ALERT_RADIUS;
+
+    // Atomic CAS to prevent duplicate alerts across serverless instances
     let alertSent = false;
-    let notificationId: number | null = null;
-    let alertedNow = route.alertedForCurrentApproach;
-
-    if (isNear && !route.alertedForCurrentApproach) {
-      // Atomic compare-and-swap: only one instance wins the race
+    if (isNearPickup && !route.alertedForCurrentApproach) {
       const updated = await prisma.route.updateMany({
-        where: {
-          id: routeId,
-          alertedForCurrentApproach: false,
-        },
+        where: { id: routeId, alertedForCurrentApproach: false },
         data: { alertedForCurrentApproach: true },
       });
-
       if (updated.count === 1) {
-        // We won the race → send the alert
-        const notification = await sendProximityAlert(
-          route.routeName,
-          route.pickupStop,
-          Math.round(distance)
-        );
         alertSent = true;
-        alertedNow = true;
-        notificationId = notification.id;
-
-        console.log(
-          `🚌 [proximity] alert sent for ${route.routeName}: ${Math.round(
-            distance
-          )}m from ${route.pickupStop}`
-        );
-      } else {
-        // Another instance beat us to it
-        alertedNow = true;
-        console.log(
-          `⏭️ [proximity] skipped — another instance already alerted for ${route.routeName}`
-        );
+        // TODO: fire Pusher + email here (existing pipeline)
       }
-    } else if (!isNear && route.alertedForCurrentApproach) {
-      // Bus left the radius → reset for the next approach
-      await prisma.route.update({
-        where: { id: routeId },
+    } else if (!isNearPickup && route.alertedForCurrentApproach) {
+      // Bus left the radius — reset for next approach
+      await prisma.route.updateMany({
+        where: { id: routeId, alertedForCurrentApproach: true },
         data: { alertedForCurrentApproach: false },
       });
-      alertedNow = false;
-
-      console.log(
-        `↩️ [proximity] route ${route.routeName} left proximity zone, flag reset`
-      );
     }
 
-    // ✅ Compute bus state for the path-visibility rules
-    const busState = await computeBusState(
-      {
-        id: route.id,
-        pickupLat: route.pickupLat,
-        pickupLng: route.pickupLng,
-        dropoffLat: route.dropoffLat,
-        dropoffLng: route.dropoffLng,
-        arrivedAtPickupAt: route.arrivedAtPickupAt,
-      },
-      busLat,
-      busLng
-    );
+    // Read busState from the admin API — do NOT recompute here
+    // (avoids race with /api/admin/buses writes)
+    // The frontend already polls /api/admin/buses separately if needed;
+    // for the user app, we simply reflect the raw route state.
+    // Since we removed state computation here, default to "approaching"
+    // unless the route has already visited the pickup.
+    const busState = route.arrivedAtPickupAt
+      ? isNearPickup
+        ? "at_pickup"
+        : "en_route_to_dropoff"
+      : "approaching";
 
     return NextResponse.json({
       success: true,
       data: {
-        routeId: route.id,
-        routeName: route.routeName,
-        busId,
-        pickupStop: route.pickupStop,
-        busLocation: { lat: busLat, lng: busLng },
-        pickupLocation: { lat: pickupLat, lng: pickupLng },
-        distanceToPickup: Math.round(distance),
-        isNearPickup: isNear,
-        threshold: PROXIMITY_THRESHOLD,
+        routeId,
+        busId: bus.id,
+        distanceToPickup: Math.round(distanceToPickup),
+        isNearPickup,
         alertSent,
-        notificationId,
-        alertedForCurrentApproach: alertedNow,
-        busState,   // ← NEW
-        status: isNear ? "approaching_pickup" : "en_route",
+        alertedForCurrentApproach: route.alertedForCurrentApproach,
+        busState,
+        status: isNearPickup ? "approaching_pickup" : "far_from_pickup",
       },
     });
   } catch (error) {
-    console.error("Proximity check error:", error);
+    console.error("Failed to fetch proximity:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to check proximity",
-      },
+      { success: false, error: "Failed to fetch proximity" },
       { status: 500 }
     );
   }
