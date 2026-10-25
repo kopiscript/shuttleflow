@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const url =
       `https://api.tomtom.com/routing/1/calculateRoute/` +
       `${originLat},${originLng}:${destLat},${destLng}/json` +
-      `?key=${key}&traffic=true&travelMode=car&routeRepresentation=polyline`;
+      `?key=${key}&traffic=true&travelMode=car&computeTravelTimeFor=all`;
 
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
