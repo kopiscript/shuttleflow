@@ -1,62 +1,95 @@
 // app/api/subscribe/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { Resend } from 'resend';
-import { getBaseUrl } from '@/lib/url';
-import crypto from 'crypto';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { Resend } from "resend";
+import { getBaseUrl } from "@/lib/url";
+import crypto from "crypto";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
-    try {
-        const { email } = await request.json();
+  try {
+    const { email: rawEmail } = await request.json();
 
-        // Validate email
-        if (!email) {
-            return NextResponse.json(
-                { success: false, error: 'Email is required' },
-                { status: 400 }
-            );
-        }
+    if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Email is required" },
+        { status: 400 },
+      );
+    }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return NextResponse.json(
-                { success: false, error: 'Invalid email format' },
-                { status: 400 }
-            );
-        }
+    const email = rawEmail.trim().toLowerCase();
 
-        // Check if already subscribed
-        const existing = await prisma.emailSubscriber.findUnique({
-            where: { email }
-        });
+    // Validate email
+    if (!email) {
+      return NextResponse.json(
+        { success: false, error: "Email is required" },
+        { status: 400 },
+      );
+    }
 
-        if (existing && existing.verified) {
-            return NextResponse.json(
-                { success: false, error: 'This email is already subscribed' },
-                { status: 400 }
-            );
-        }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid email format" },
+        { status: 400 },
+      );
+    }
 
-        // Generate verification token
-        const token = crypto.randomBytes(32).toString('hex');
-        const baseUrl = getBaseUrl();
-        const verifyUrl = `${baseUrl}/api/verify-subscription?token=${token}`;
+    const domain = email.split("@")[1];
 
-        // Upsert subscriber (create or update)
-        await prisma.emailSubscriber.upsert({
-            where: { email },
-            update: { token, verified: false },
-            create: { email, token, verified: false },
-        });
+    const commonTypos: Record<string, string> = {
+      "gmail.con": "gmail.com",
+      "gmail.comm": "gmail.com",
+      "gmial.com": "gmail.com",
+      "gamil.com": "gmail.com",
+      "hotmail.con": "hotmail.com",
+      "outlook.con": "outlook.com",
+      "yahoo.con": "yahoo.com",
+    };
 
-        // Send verification email via Resend
-        const { data, error } = await resend.emails.send({
-            from: 'ShuttleFlow <noreply@shuttleflow.azmiproductions.com>',
-            to: email,
-            subject: 'Confirm Your Subscription to ShuttleFlow Alerts',
-            html: `
+    const suggestedDomain = commonTypos[domain];
+
+    if (suggestedDomain) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Please check your email address. Did you mean @${suggestedDomain}?`,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Check if already subscribed
+    const existing = await prisma.emailSubscriber.findUnique({
+      where: { email },
+    });
+
+    if (existing && existing.verified) {
+      return NextResponse.json(
+        { success: false, error: "This email is already subscribed" },
+        { status: 400 },
+      );
+    }
+
+    // Generate verification token
+    const token = crypto.randomBytes(32).toString("hex");
+    const baseUrl = getBaseUrl();
+    const verifyUrl = `${baseUrl}/api/verify-subscription?token=${token}`;
+
+    // Upsert subscriber (create or update)
+    await prisma.emailSubscriber.upsert({
+      where: { email },
+      update: { token, verified: false },
+      create: { email, token, verified: false },
+    });
+
+    // Send verification email via Resend
+    const { data, error } = await resend.emails.send({
+      from: "ShuttleFlow <noreply@shuttleflow.azmiproductions.com>",
+      to: email,
+      subject: "Confirm Your Subscription to ShuttleFlow Alerts",
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
                     <h2 style="color: #99121A;">Confirm Your Subscription</h2>
                     <p>Thank you for subscribing to ShuttleFlow email alerts!</p>
@@ -67,30 +100,30 @@ export async function POST(request: NextRequest) {
                     <p style="color: #666; font-size: 12px;">If you didn't request this, you can ignore this email.</p>
                 </div>
             `,
-        }); if (error) {
-            console.error('Verification email failed:', error);
+    });
+    if (error) {
+      console.error("Verification email failed:", error);
 
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: 'Could not send verification email.'
-                },
-                { status: 502 }
-            );
-        }
-
-        console.log('Verification email accepted:', data?.id);
-
-        return NextResponse.json({
-            success: true,
-            message: 'Verification email sent! Please check your inbox.'
-        });
-
-    } catch (error) {
-        console.error('Subscribe error:', error);
-        return NextResponse.json(
-            { success: false, error: 'Failed to subscribe. Please try again.' },
-            { status: 500 }
-        );
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Could not send verification email.",
+        },
+        { status: 502 },
+      );
     }
+
+    console.log("Verification email accepted:", data?.id);
+
+    return NextResponse.json({
+      success: true,
+      message: "Verification email sent! Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Subscribe error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to subscribe. Please try again." },
+      { status: 500 },
+    );
+  }
 }
