@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Each attachment must be 4 MB or smaller",
+          error:
+            "The uploaded file exceeds the 4 MB limit. Please choose a smaller file.",
         },
         {
           status: 400,

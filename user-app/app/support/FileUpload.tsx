@@ -49,7 +49,7 @@ export default function FileUpload({
 
     if (oversizedFile) {
       setFileError(
-        `${oversizedFile.name}: Each attachment must be 4 MB or smaller.`,
+        `"${oversizedFile.name}" exceeds the 4 MB upload limit. Please choose a smaller file.`,
       );
       return;
     }

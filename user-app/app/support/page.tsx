@@ -14,6 +14,12 @@ type ReportType =
   | "route_problem"
   | "other";
 
+type FieldErrors = {
+  email?: string;
+  reportType?: string;
+  description?: string;
+};
+
 export default function SupportPage() {
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
@@ -23,6 +29,7 @@ export default function SupportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,18 +37,6 @@ export default function SupportPage() {
 
     const normalizedEmail = email.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!normalizedEmail) {
-      setErrorMessage("Please enter your email address.");
-      return;
-    }
-
-    if (!emailRegex.test(normalizedEmail)) {
-      setErrorMessage(
-        "Please enter a valid email address, e.g. example@gmail.com.",
-      );
-      return;
-    }
 
     const validTypes = [
       "feedback",
@@ -51,13 +46,26 @@ export default function SupportPage() {
       "other",
     ];
 
+    const errors: FieldErrors = {};
+
+    if (!normalizedEmail) {
+      errors.email = "Please enter your email address.";
+    } else if (!emailRegex.test(normalizedEmail)) {
+      errors.email =
+        "Please enter a valid email address, e.g. example@gmail.com.";
+    }
+
     if (!validTypes.includes(reportType)) {
-      setErrorMessage("Please select a report type.");
-      return;
+      errors.reportType = "Please select a report type.";
     }
 
     if (!description.trim()) {
-      setErrorMessage("Please enter a description.");
+      errors.description = "Please enter a description.";
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
@@ -72,14 +80,14 @@ export default function SupportPage() {
 
     if (oversizedFile) {
       setErrorMessage(
-        `${oversizedFile.name}: Each attachment must be 4 MB or smaller.`,
+        `"${oversizedFile.name}" exceeds the 4 MB upload limit. Please choose a smaller file.`,
       );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      let fileUrls: string[] = [];
+      const fileUrls: string[] = [];
 
       if (selectedFiles && selectedFiles.length > 0) {
         for (const file of selectedFiles) {
@@ -114,7 +122,6 @@ export default function SupportPage() {
               uploadData.error || `${t("support.uploadFailed")} ${file.name}`,
             );
 
-            setIsSubmitting(false);
             return;
           }
 
@@ -131,7 +138,7 @@ export default function SupportPage() {
           email: normalizedEmail,
           reportType,
           description: description.trim(),
-          fileUrls: fileUrls,
+          fileUrls,
         }),
       });
 
@@ -157,6 +164,7 @@ export default function SupportPage() {
     setDescription("");
     setSelectedFiles(null);
     setErrorMessage(null);
+    setFieldErrors({});
   };
 
   return (
@@ -187,11 +195,27 @@ export default function SupportPage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  aria-describedby={
+                    fieldErrors.email ? "email-error" : undefined
+                  }
                   placeholder={t("support.email")}
                   required
                   className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
                 />
+                {fieldErrors.email && (
+                  <p
+                    id="email-error"
+                    role="alert"
+                    className="mt-2 text-sm text-red-700"
+                  >
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               {/* Report Type Dropdown - Light: white, Dark: #A88F92 */}
@@ -199,8 +223,16 @@ export default function SupportPage() {
                 <div className="relative">
                   <select
                     value={reportType}
-                    onChange={(e) =>
-                      setReportType(e.target.value as ReportType)
+                    onChange={(e) => {
+                      setReportType(e.target.value as ReportType);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        reportType: undefined,
+                      }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.reportType)}
+                    aria-describedby={
+                      fieldErrors.reportType ? "report-type-error" : undefined
                     }
                     required
                     className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white"
@@ -242,18 +274,46 @@ export default function SupportPage() {
                     />
                   </svg>
                 </div>
+                {fieldErrors.reportType && (
+                  <p
+                    id="report-type-error"
+                    role="alert"
+                    className="mt-2 text-sm text-red-700"
+                  >
+                    {fieldErrors.reportType}
+                  </p>
+                )}
               </div>
 
               {/* Description Textarea - Light: white, Dark: #A88F92 */}
               <div className="mb-7">
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      description: undefined,
+                    }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.description)}
+                  aria-describedby={
+                    fieldErrors.description ? "description-error" : undefined
+                  }
                   placeholder={t("support.description")}
                   rows={4}
                   required
                   className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all resize-none shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
                 />
+                {fieldErrors.description && (
+                  <p
+                    id="description-error"
+                    role="alert"
+                    className="mt-2 text-sm text-red-700"
+                  >
+                    {fieldErrors.description}
+                  </p>
+                )}
               </div>
 
               {/* File Upload Component */}
