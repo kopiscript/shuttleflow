@@ -8,6 +8,16 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const SAFE_ERROR =
   "Failed to send reset email. Please try again later.";
 
+// Same helper as monitor-delays. Prefer env var, otherwise derive
+// the base URL from the incoming request so preview deployments work.
+function getBaseUrl(request: Request): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl) return envUrl.replace(/\/+$/, "");
+
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -32,39 +42,19 @@ export async function POST(request: Request) {
       });
     }
 
-    // Generate secure token
     const resetToken = crypto.randomBytes(32).toString("hex");
     const resetTokenExpiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
 
     await prisma.admin.update({
       where: { id: admin.id },
-      data: {
-        resetToken,
-        resetTokenExpiry,
-      },
+      data: { resetToken, resetTokenExpiry },
     });
 
-    // Build reset URL. The link must point to the admin app, so use
-    // NEXT_PUBLIC_ADMIN_APP_URL. Only fall back to localhost in development.
-    const baseUrl =
-      process.env.NEXT_PUBLIC_ADMIN_APP_URL ||
-      (process.env.NODE_ENV === "development" ? "http://localhost:3001" : null);
-
-    if (!baseUrl) {
-      console.error(
-        "NEXT_PUBLIC_ADMIN_APP_URL is not configured. Cannot build reset URL."
-      );
-      return NextResponse.json(
-        { success: false, error: SAFE_ERROR },
-        { status: 500 }
-      );
-    }
-
+    const baseUrl = getBaseUrl(request);
     const resetUrl =
-      `${baseUrl.replace(/\/+$/, "")}/admin/reset-password` +
+      `${baseUrl}/admin/reset-password` +
       `?token=${encodeURIComponent(resetToken)}`;
 
-    // Send email via Resend
     try {
       const { error: emailError } = await resend.emails.send({
         from: "ShuttleFlow <noreply@shuttleflow.azmiproductions.com>",
@@ -104,7 +94,6 @@ export async function POST(request: Request) {
       });
 
       if (emailError) {
-        // Log full detail server-side only — never expose to the client.
         console.error("Resend API error:", emailError);
         return NextResponse.json(
           { success: false, error: SAFE_ERROR },

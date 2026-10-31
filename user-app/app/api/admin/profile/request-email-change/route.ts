@@ -10,6 +10,17 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const SAFE_ERROR =
   "Failed to send verification email. Please try again later.";
 
+// Same helper as monitor-delays and forgot-password.
+// Prefer env var, otherwise derive the base URL from the incoming request
+// so that preview deployments (which have no stable domain) still work.
+function getBaseUrl(request: Request): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl) return envUrl.replace(/\/+$/, "");
+
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getSession();
@@ -85,35 +96,10 @@ export async function POST(request: Request) {
       },
     });
 
-    // Build confirm URL. Use the admin app URL, fall back to localhost
-    // only in development. Strip trailing slash to avoid //admin/... 404.
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.NODE_ENV === "development"
-        ? "http://localhost:3001"
-        : null);
-
-    if (!baseUrl) {
-      console.error(
-        "NEXT_PUBLIC_APP_URL is not configured. Cannot build confirm URL."
-      );
-      // Clear the pending change so the user can retry cleanly
-      await prisma.admin.update({
-        where: { id: admin.id },
-        data: {
-          pendingEmail: null,
-          emailChangeToken: null,
-          emailChangeExpiry: null,
-        },
-      });
-      return NextResponse.json(
-        { success: false, error: SAFE_ERROR },
-        { status: 500 }
-      );
-    }
-
+    // Build confirm URL from the request itself. No env-var guard needed.
+    const baseUrl = getBaseUrl(request);
     const confirmUrl =
-      `${baseUrl.replace(/\/+$/, "")}/admin/confirm-email` +
+      `${baseUrl}/admin/confirm-email` +
       `?token=${encodeURIComponent(emailChangeToken)}`;
 
     try {
