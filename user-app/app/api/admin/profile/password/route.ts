@@ -57,6 +57,14 @@ export async function PUT(request: Request) {
       );
     }
 
+    // 👇 ADDED CHECK: Ensure new password is different from current 👇
+    if (currentPassword === newPassword) {
+      return NextResponse.json(
+        { success: false, error: "New password cannot be the same as your current password" },
+        { status: 400 }
+      );
+    }
+
     const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
     await prisma.admin.update({
