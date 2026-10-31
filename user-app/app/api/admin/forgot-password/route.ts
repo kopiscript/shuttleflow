@@ -11,7 +11,7 @@ const SAFE_ERROR =
 // Same helper as monitor-delays. Prefer env var, otherwise derive
 // the base URL from the incoming request so preview deployments work.
 function getBaseUrl(request: Request): string {
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const envUrl = process.env.NEXT_PUBLIC_ADMIN_APP_URL;
   if (envUrl) return envUrl.replace(/\/+$/, "");
 
   const url = new URL(request.url);
