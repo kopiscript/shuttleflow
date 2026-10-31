@@ -7,199 +7,302 @@ import FileUpload from "./FileUpload";
 import SuccessModal from "../../components/SuccessModal";
 import { useLanguage } from "../../context/LanguageContext";
 
-type ReportType = "feedback" | "bus_delay" | "driver_issue" | "route_problem" | "other";
+type ReportType =
+  | "feedback"
+  | "bus_delay"
+  | "driver_issue"
+  | "route_problem"
+  | "other";
 
 export default function SupportPage() {
-    const { t } = useLanguage();
-    const [email, setEmail] = useState("");
-    const [reportType, setReportType] = useState<ReportType | "">("");
-    const [description, setDescription] = useState("");
-    const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { t } = useLanguage();
+  const [email, setEmail] = useState("");
+  const [reportType, setReportType] = useState<ReportType | "">("");
+  const [description, setDescription] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        setErrorMessage(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
 
-        try {
-            let fileUrls: string[] = [];
+    const normalizedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            if (selectedFiles && selectedFiles.length > 0) {
-                for (const file of selectedFiles) {
+    if (!normalizedEmail) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
 
-                    const formData = new FormData();
-                    formData.append("file", file);
+    if (!emailRegex.test(normalizedEmail)) {
+      setErrorMessage(
+        "Please enter a valid email address, e.g. example@gmail.com.",
+      );
+      return;
+    }
 
-                    const uploadResponse = await fetch(
-                        "/api/fileupload",
-                        {
-                            method: "POST",
-                            body: formData,
-                        }
-                    );
+    const validTypes = [
+      "feedback",
+      "bus_delay",
+      "driver_issue",
+      "route_problem",
+      "other",
+    ];
 
-                    const uploadData = await uploadResponse.json();
+    if (!validTypes.includes(reportType)) {
+      setErrorMessage("Please select a report type.");
+      return;
+    }
 
-                    if (!uploadResponse.ok || !uploadData.success) {
-                        setErrorMessage(
-                            uploadData.error ||
-                            `${t("support.uploadFailed")} ${file.name}`
-                        );
+    if (!description.trim()) {
+      setErrorMessage("Please enter a description.");
+      return;
+    }
 
-                        setIsSubmitting(false);
-                        return;
-                    }
+    const files = selectedFiles ?? [];
 
-                    fileUrls.push(uploadData.fileUrl);
-                }
-            }
+    if (files.length > 3) {
+      setErrorMessage("You cannot upload more than 3 files.");
+      return;
+    }
 
-            const response = await fetch('/api/supporttickets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email,
-                    reportType,
-                    description,
-                    fileUrls: fileUrls,
-                }),
-            });
+    const oversizedFile = files.find((file) => file.size > 4 * 1024 * 1024);
 
-            const data = await response.json();
+    if (oversizedFile) {
+      setErrorMessage(
+        `${oversizedFile.name}: Each attachment must be 4 MB or smaller.`,
+      );
+      return;
+    }
 
-            if (data.success) {
-                setShowModal(true);
-            } else {
-                setErrorMessage(data.error || t("support.submitError"));
-            }
-        } catch (error) {
-            console.error("Submit error:", error);
-            setErrorMessage(t("support.networkError"));
-        } finally {
+    setIsSubmitting(true);
+    try {
+      let fileUrls: string[] = [];
+
+      if (selectedFiles && selectedFiles.length > 0) {
+        for (const file of selectedFiles) {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const uploadResponse = await fetch("/api/fileupload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (uploadResponse.status === 413) {
+            setErrorMessage(
+              "The attachment is too large. Please use a file of 4 MB or smaller.",
+            );
+            return;
+          }
+
+          const contentType = uploadResponse.headers.get("content-type") ?? "";
+
+          if (!contentType.includes("application/json")) {
+            setErrorMessage(
+              "The upload service returned an unexpected response. Please try again.",
+            );
+            return;
+          }
+
+          const uploadData = await uploadResponse.json();
+
+          if (!uploadResponse.ok || !uploadData.success) {
+            setErrorMessage(
+              uploadData.error || `${t("support.uploadFailed")} ${file.name}`,
+            );
+
             setIsSubmitting(false);
+            return;
+          }
+
+          fileUrls.push(uploadData.fileUrl);
         }
-    };
+      }
 
-    const handleCloseModal = () => {
-        setShowModal(false);
-        setEmail("");
-        setReportType("");
-        setDescription("");
-        setSelectedFiles(null);
-        setErrorMessage(null);
-    };
+      const response = await fetch("/api/supporttickets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          reportType,
+          description: description.trim(),
+          fileUrls: fileUrls,
+        }),
+      });
 
-    return (
-        <>
-            <PageShell>
-                <div className="font-['Inter'] px-6 pb-8 overflow-y-auto h-full">
-                    <div className="max-w-md mx-auto">
-                        {/* Title Section */}
-                        <div className="text-center mb-8 mt-4">
-                            <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold">
-                                {t("support.title")}
-                            </h1>
-                            <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
-                                {t("support.subtitle")}
-                            </p>
-                        </div>
+      const data = await response.json();
 
-                        <form onSubmit={handleSubmit}>
-                            {/* Error Message */}
-                            {errorMessage && (
-                                <div className="mb-7 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                                    {errorMessage}
-                                </div>
-                            )}
+      if (data.success) {
+        setShowModal(true);
+      } else {
+        setErrorMessage(data.error || t("support.submitError"));
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+      setErrorMessage(t("support.networkError"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-                            {/* Email Input - Light: white, Dark: #A88F92 */}
-                            <div className="mb-7">
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder={t("support.email")}
-                                    required
-                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
-                                />
-                            </div>
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEmail("");
+    setReportType("");
+    setDescription("");
+    setSelectedFiles(null);
+    setErrorMessage(null);
+  };
 
-                            {/* Report Type Dropdown - Light: white, Dark: #A88F92 */}
-                            <div className="mb-7">
-                                <div className="relative">
-                                    <select
-                                        value={reportType}
-                                        onChange={(e) => setReportType(e.target.value as ReportType)}
-                                        required
-                                        className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white"
-                                    >
-                                        <option value="" disabled className="text-gray-400 dark:text-white/70">{t("support.reportType")}</option>
-                                        <option value="feedback">{t("support.reportTypes.feedback")}</option>
-                                        <option value="bus_delay">{t("support.reportTypes.busDelay")}</option>
-                                        <option value="driver_issue">{t("support.reportTypes.driverIssue")}</option>
-                                        <option value="route_problem">{t("support.reportTypes.routeProblem")}</option>
-                                        <option value="other">{t("support.reportTypes.other")}</option>
-                                    </select>
-                                    <svg
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none dark:text-white/50"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </div>
+  return (
+    <>
+      <PageShell>
+        <div className="font-['Inter'] px-6 pb-8 overflow-y-auto h-full">
+          <div className="max-w-md mx-auto">
+            {/* Title Section */}
+            <div className="text-center mb-8 mt-4">
+              <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold">
+                {t("support.title")}
+              </h1>
+              <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
+                {t("support.subtitle")}
+              </p>
+            </div>
 
-                            {/* Description Textarea - Light: white, Dark: #A88F92 */}
-                            <div className="mb-7">
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder={t("support.description")}
-                                    rows={4}
-                                    required
-                                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all resize-none shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
-                                />
-                            </div>
-
-                            {/* File Upload Component */}
-                            <FileUpload
-                                onFileSelect={setSelectedFiles}
-                                selectedFiles={selectedFiles}
-                            />
-
-                            {/* Submit Button - Color #CF2B10 */}
-                            <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="w-full py-3 bg-[#99121A] hover:bg-[#7a0e15] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
-                                >
-                                    {isSubmitting ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            {t("common.submitting")}
-                                        </div>
-                                    ) : (
-                                        t("support.submit")
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+            <form onSubmit={handleSubmit} noValidate>
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="mb-7 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {errorMessage}
                 </div>
-            </PageShell>
+              )}
 
-            <SuccessModal isOpen={showModal} onClose={handleCloseModal} />
-        </>
-    );
+              {/* Email Input - Light: white, Dark: #A88F92 */}
+              <div className="mb-7">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("support.email")}
+                  required
+                  className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
+                />
+              </div>
+
+              {/* Report Type Dropdown - Light: white, Dark: #A88F92 */}
+              <div className="mb-7">
+                <div className="relative">
+                  <select
+                    value={reportType}
+                    onChange={(e) =>
+                      setReportType(e.target.value as ReportType)
+                    }
+                    required
+                    className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 font-bold appearance-none focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white"
+                  >
+                    <option
+                      value=""
+                      disabled
+                      className="text-gray-400 dark:text-white/70"
+                    >
+                      {t("support.reportType")}
+                    </option>
+                    <option value="feedback">
+                      {t("support.reportTypes.feedback")}
+                    </option>
+                    <option value="bus_delay">
+                      {t("support.reportTypes.busDelay")}
+                    </option>
+                    <option value="driver_issue">
+                      {t("support.reportTypes.driverIssue")}
+                    </option>
+                    <option value="route_problem">
+                      {t("support.reportTypes.routeProblem")}
+                    </option>
+                    <option value="other">
+                      {t("support.reportTypes.other")}
+                    </option>
+                  </select>
+                  <svg
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none dark:text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Description Textarea - Light: white, Dark: #A88F92 */}
+              <div className="mb-7">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={t("support.description")}
+                  rows={4}
+                  required
+                  className="w-full px-4 py-4 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CF2B10]/50 focus:border-[#CF2B10] transition-all resize-none shadow-md dark:bg-[#A88F92] dark:border-white/20 dark:text-white dark:placeholder-white/70"
+                />
+              </div>
+
+              {/* File Upload Component */}
+              <FileUpload
+                onFileSelect={setSelectedFiles}
+                selectedFiles={selectedFiles}
+              />
+
+              {/* Submit Button - Color #CF2B10 */}
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-[#99121A] hover:bg-[#7a0e15] text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg
+                        className="w-5 h-5 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      {t("common.submitting")}
+                    </div>
+                  ) : (
+                    t("support.submit")
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </PageShell>
+
+      <SuccessModal isOpen={showModal} onClose={handleCloseModal} />
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 
 interface FileUploadProps {
@@ -14,37 +14,51 @@ export default function FileUpload({
 }: FileUploadProps) {
   const { t } = useLanguage();
   const MAX_FILES = 3;
+  const MAX_FILE_SIZE = 4 * 1024 * 1024;
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
-
-    // Allow selecting the same file again after removing it.
     event.currentTarget.value = "";
 
     if (files.length === 0) return;
 
-    const validFiles = files.filter(
-      (file) => file.type === "image/jpeg" || file.type === "image/png",
-    );
-
-    if (validFiles.length !== files.length) {
-      alert(t("support.fileUpload.invalidType"));
-    }
-
-    if (validFiles.length === 0) return;
+    setFileError(null);
 
     const currentFiles = selectedFiles ?? [];
 
-    if (currentFiles.length + validFiles.length > MAX_FILES) {
-      alert("Maximum 3 attachments allowed.");
+    if (currentFiles.length + files.length > MAX_FILES) {
+      setFileError(
+        "You cannot upload more than 3 files. Please select fewer files.",
+      );
+      return;
     }
 
-    onFileSelect([...currentFiles, ...validFiles].slice(0, MAX_FILES));
+    const invalidFile = files.find(
+      (file) => file.type !== "image/jpeg" && file.type !== "image/png",
+    );
+
+    if (invalidFile) {
+      setFileError("Only JPG and PNG files are allowed.");
+      return;
+    }
+
+    const oversizedFile = files.find((file) => file.size > MAX_FILE_SIZE);
+
+    if (oversizedFile) {
+      setFileError(
+        `${oversizedFile.name}: Each attachment must be 4 MB or smaller.`,
+      );
+      return;
+    }
+
+    onFileSelect([...currentFiles, ...files]);
   };
 
   const handleRemoveFile = (indexToRemove: number) => {
+    setFileError(null);
     if (selectedFiles) {
       const newFiles = selectedFiles.filter(
         (_, index) => index !== indexToRemove,
@@ -99,6 +113,15 @@ export default function FileUpload({
           >
             {t("support.fileUpload.addFiles")}
           </button>
+
+          {fileError && (
+            <p
+              role="alert"
+              className="mt-3 text-sm text-red-600 dark:text-red-200"
+            >
+              {fileError}
+            </p>
+          )}
 
           {/* File Preview Cards */}
           {selectedFiles && selectedFiles.length > 0 && (
