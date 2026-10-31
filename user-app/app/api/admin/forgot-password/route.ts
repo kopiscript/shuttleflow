@@ -5,6 +5,9 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const SAFE_ERROR =
+  "Failed to send reset email. Please try again later.";
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -41,9 +44,25 @@ export async function POST(request: Request) {
       },
     });
 
-    // Build reset URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-    const resetUrl = `${baseUrl}/admin/reset-password?token=${resetToken}`;
+    // Build reset URL. The link must point to the admin app, so use
+    // NEXT_PUBLIC_ADMIN_APP_URL. Only fall back to localhost in development.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_ADMIN_APP_URL ||
+      (process.env.NODE_ENV === "development" ? "http://localhost:3001" : null);
+
+    if (!baseUrl) {
+      console.error(
+        "NEXT_PUBLIC_ADMIN_APP_URL is not configured. Cannot build reset URL."
+      );
+      return NextResponse.json(
+        { success: false, error: SAFE_ERROR },
+        { status: 500 }
+      );
+    }
+
+    const resetUrl =
+      `${baseUrl.replace(/\/$/, "")}/admin/reset-password` +
+      `?token=${encodeURIComponent(resetToken)}`;
 
     // Send email via Resend
     try {
@@ -85,12 +104,10 @@ export async function POST(request: Request) {
       });
 
       if (emailError) {
+        // Log full detail server-side only — never expose to the client.
         console.error("Resend API error:", emailError);
         return NextResponse.json(
-          {
-            success: false,
-            error: `Failed to send email: ${emailError.message}`,
-          },
+          { success: false, error: SAFE_ERROR },
           { status: 500 }
         );
       }
@@ -102,10 +119,7 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("Failed to send email:", error);
       return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to send reset email. Please try again later.",
-        },
+        { success: false, error: SAFE_ERROR },
         { status: 500 }
       );
     }
