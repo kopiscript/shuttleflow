@@ -31,7 +31,9 @@ export default function FileUpload({
 
     if (currentFiles.length + files.length > MAX_FILES) {
       setFileError(
-        "You cannot upload more than 3 files. Please select fewer files.",
+        currentFiles.length >= MAX_FILES
+          ? "You have reached the 3-file limit. Remove a file to add another."
+          : `You can select a maximum of 3 files. You already have ${currentFiles.length} selected; you can add ${MAX_FILES - currentFiles.length} more.`,
       );
       return;
     }
