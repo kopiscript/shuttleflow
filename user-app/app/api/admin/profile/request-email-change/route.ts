@@ -7,6 +7,9 @@ import { logAdminAudit } from "@/lib/adminAuditLog";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const SAFE_ERROR =
+  "Failed to send verification email. Please try again later.";
+
 export async function POST(request: Request) {
   try {
     const session = await getSession();
@@ -82,7 +85,33 @@ export async function POST(request: Request) {
       },
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+    // Build confirm URL. Use the admin app URL, fall back to localhost
+    // only in development. Strip trailing slash to avoid //admin/... 404.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.NODE_ENV === "development"
+        ? "http://localhost:3001"
+        : null);
+
+    if (!baseUrl) {
+      console.error(
+        "NEXT_PUBLIC_APP_URL is not configured. Cannot build confirm URL."
+      );
+      // Clear the pending change so the user can retry cleanly
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: {
+          pendingEmail: null,
+          emailChangeToken: null,
+          emailChangeExpiry: null,
+        },
+      });
+      return NextResponse.json(
+        { success: false, error: SAFE_ERROR },
+        { status: 500 }
+      );
+    }
+
     const confirmUrl =
       `${baseUrl.replace(/\/+$/, "")}/admin/confirm-email` +
       `?token=${encodeURIComponent(emailChangeToken)}`;
@@ -126,6 +155,7 @@ export async function POST(request: Request) {
       });
 
       if (emailError) {
+        // Log full detail server-side only — never expose to the client.
         console.error("Resend API error:", emailError);
         await prisma.admin.update({
           where: { id: admin.id },
@@ -136,12 +166,12 @@ export async function POST(request: Request) {
           },
         });
         return NextResponse.json(
-          { success: false, error: `Failed to send verification email: ${emailError.message}` },
+          { success: false, error: SAFE_ERROR },
           { status: 500 }
         );
       }
 
-      // Audit log: email change requested
+      // Audit log: email change requested (only after email succeeds)
       await logAdminAudit({
         adminId: admin.id,
         category: "SETTINGS",
@@ -170,7 +200,7 @@ export async function POST(request: Request) {
         },
       });
       return NextResponse.json(
-        { success: false, error: "Failed to send verification email" },
+        { success: false, error: SAFE_ERROR },
         { status: 500 }
       );
     }
