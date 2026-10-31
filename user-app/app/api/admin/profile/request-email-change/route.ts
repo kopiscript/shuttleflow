@@ -83,7 +83,9 @@ export async function POST(request: Request) {
     });
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-    const confirmUrl = `${baseUrl}/admin/confirm-email?token=${emailChangeToken}`;
+    const confirmUrl =
+      `${baseUrl.replace(/\/+$/, "")}/admin/confirm-email` +
+      `?token=${encodeURIComponent(emailChangeToken)}`;
 
     try {
       const { error: emailError } = await resend.emails.send({

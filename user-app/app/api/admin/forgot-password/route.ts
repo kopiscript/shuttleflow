@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     const resetUrl =
-      `${baseUrl.replace(/\/$/, "")}/admin/reset-password` +
+      `${baseUrl.replace(/\/+$/, "")}/admin/reset-password` +
       `?token=${encodeURIComponent(resetToken)}`;
 
     // Send email via Resend
