@@ -78,7 +78,7 @@
         },
         "fileUpload": {
             "title": "文件上传",
-            "maxFiles": "可上传多张图片",
+            "maxFiles": "最多可上传 3 个附件，每个附件不得超过 4 MB",
             "addFiles": "添加文件",
             "photoLibrary": "照片库",
             "takePhoto": "拍照或录像",

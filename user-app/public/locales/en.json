@@ -78,7 +78,7 @@
         },
         "fileUpload": {
             "title": "File Upload",
-            "maxFiles": "You can upload multiple images",
+            "maxFiles": "You can upload up to 3 attachments, maximum 4 MB each.",
             "addFiles": "Add Files",
             "photoLibrary": "Photo Library",
             "takePhoto": "Take Photo or Video",
