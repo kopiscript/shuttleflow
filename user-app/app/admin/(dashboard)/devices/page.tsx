@@ -264,7 +264,7 @@ export default function DeviceManagement() {
         </p>
       </div>
 
-      {/* Search, Filter Dropdown, and Add Button */}
+      {/* Search, Filter Dropdown, and Add Button - Stacked on mobile, inline on desktop */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div className="flex-1">
           <input
@@ -352,17 +352,21 @@ export default function DeviceManagement() {
       )}
 
       {/* Table */}
-      <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full">
+      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33]">
+        
+        {/* overflow-x-auto allows horizontal scroll on mobile */}
+        <div className="overflow-x-auto w-full rounded-t-2xl">
+          
+          {/* min-w-[850px] forces the table to stay wide on small screens so it doesn't squish */}
+          <table className="w-full table-fixed min-w-[850px] lg:min-w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device ID</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Name</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Status</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Assigned Bus</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Last Seen</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[10%]">Device ID</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[25%]">Device Name</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[15%]">Status</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[20%]">Assigned Bus</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[20%]">Last Seen</th>
+                <th className="text-center px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[10%]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -400,38 +404,38 @@ export default function DeviceManagement() {
                       className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                         }`}
                     >
-                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                      <td className="px-4 py-4 text-white font-['Inter'] text-sm truncate">
                         D{String(device.id).padStart(3, "0")}
                       </td>
-                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                      <td className="px-4 py-4 text-white font-['Inter'] text-sm">
                         <div className="flex items-center gap-2">
-                          <span>{device.deviceName}</span>
+                          <span className="truncate">{device.deviceName}</span>
                           {unclaimed && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF4CC]/20 text-[#F5A623] border border-[#F5A623]/40">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF4CC]/20 text-[#F5A623] border border-[#F5A623]/40 whitespace-nowrap">
                               Unclaimed
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(
+                          className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] whitespace-nowrap ${getStatusBadge(
                             device.status
                           )}`}
                         >
                           {device.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                      <td className="px-4 py-4 text-white font-['Inter'] text-sm truncate">
                         {getBusDisplay(device)}
                       </td>
-                      <td className="px-6 py-4 text-[#87888C] font-['Inter'] text-sm">
+                      <td className="px-4 py-4 text-[#87888C] font-['Inter'] text-sm truncate">
                         {device.lastSeen
                           ? new Date(device.lastSeen).toLocaleString()
                           : "Never"}
                       </td>
                       <td
-                        className="px-6 py-4"
+                        className="px-4 py-4 flex justify-center"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >

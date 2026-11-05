@@ -222,8 +222,8 @@ export default function RouteManagement() {
         </p>
       </div>
 
-      {/* Search and Add Button */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Search and Add Button - Stacked on mobile, inline on desktop */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div className="flex-1">
           <input
             type="text"
@@ -235,7 +235,7 @@ export default function RouteManagement() {
         </div>
         <Link
           href="/admin/routes/add"
-          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 whitespace-nowrap"
+          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <span>+</span> Add Route
         </Link>
@@ -263,17 +263,21 @@ export default function RouteManagement() {
       )}
 
       {/* Table */}
-      <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full">
+      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33]">
+        
+        {/* overflow-x-auto allows horizontal scroll on mobile */}
+        <div className="overflow-x-auto w-full rounded-t-2xl">
+          
+          {/* min-w-[800px] forces the table to stay wide on small screens so it doesn't squish */}
+          <table className="w-full table-fixed min-w-[800px] lg:min-w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route ID</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route Name</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Pickup Stop</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Drop-off Stop</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Status</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[10%]">Route ID</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[25%]">Route Name</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[20%]">Pickup Stop</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[20%]">Drop-off Stop</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[15%]">Status</th>
+                <th className="text-center px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[10%]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -309,30 +313,33 @@ export default function RouteManagement() {
                     className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                       }`}
                   >
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm truncate">
                       R{String(route.id).padStart(3, "0")}
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {route.routeName}
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm">
+                      <div className="whitespace-normal break-words line-clamp-2">
+                        {route.routeName}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {route.pickupStop}
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm">
+                      <div className="whitespace-normal break-words line-clamp-2">
+                        {route.pickupStop}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {route.dropoffStop}
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm">
+                      <div className="whitespace-normal break-words line-clamp-2">
+                        {route.dropoffStop}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${route.status === "Active"
-                            ? "bg-[#E1FFDA] text-[#3EB900]"
-                            : "bg-[#FFC0B9] text-[#EA1701]"
-                          }`}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] whitespace-nowrap ${getStatusBadge(route.status)}`}
                       >
                         {route.status}
                       </span>
                     </td>
                     <td
-                      className="px-6 py-4"
+                      className="px-4 py-4 flex justify-center"
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >

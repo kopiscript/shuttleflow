@@ -1,3 +1,4 @@
+// app/admin/(dashboard)/components/MostViewedRoutesChart.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -109,9 +110,9 @@ export default function MostViewedRoutesChart() {
   };
 
   return (
-    <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 lg:p-6 w-full">
+      {/* Header - Wraps naturally on small screens */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-white font-bold font-['Inter'] text-base">
             Most Viewed Routes
@@ -122,7 +123,7 @@ export default function MostViewedRoutesChart() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
           <SmallDropdown
             value={range}
             onChange={setRange}
@@ -130,7 +131,7 @@ export default function MostViewedRoutesChart() {
               { value: "7d", label: "Last 7 days" },
               { value: "30d", label: "Last 30 days" },
             ]}
-            width="w-36"
+            width="w-full sm:w-36"
           />
 
           <SmallDropdown
@@ -143,13 +144,13 @@ export default function MostViewedRoutesChart() {
                 label: r.routeName,
               })),
             ]}
-            width="w-48"
+            width="w-full sm:w-48"
           />
 
           <button
             onClick={handleExport}
             disabled={chartData.length === 0}
-            className="px-4 py-2 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="w-full sm:w-auto justify-center px-4 py-2 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <svg
               className="w-4 h-4"
@@ -169,7 +170,7 @@ export default function MostViewedRoutesChart() {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart Area */}
       {loading ? (
         <div className="h-[260px] flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-[#96DDFF] border-t-transparent rounded-full animate-spin" />
@@ -181,8 +182,10 @@ export default function MostViewedRoutesChart() {
           </p>
         </div>
       ) : (
-        <div className="flex gap-4">
-          <div className="flex-1 h-[260px]">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-4 w-full min-w-0">
+          
+          {/* Chart Container - added w-full and min-w-0 */}
+          <div className="w-full lg:flex-1 h-[300px] min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2C2D33" />
@@ -192,11 +195,13 @@ export default function MostViewedRoutesChart() {
                   stroke="#87888C"
                   style={{ fontSize: "12px", fontFamily: "Inter" }}
                   height={40}
+                  minTickGap={20} 
                 />
                 <YAxis
                   stroke="#87888C"
                   style={{ fontSize: "12px", fontFamily: "Inter" }}
                   allowDecimals={false}
+                  width={30} 
                 />
                 <Tooltip
                   contentStyle={{
@@ -224,12 +229,12 @@ export default function MostViewedRoutesChart() {
             </ResponsiveContainer>
           </div>
 
-          {/* Legend — natural height, no max-h clipping */}
-          <div className="w-48 flex-shrink-0">
+          {/* Legend */}
+          <div className="w-full lg:w-48 flex-shrink-0">
             <p className="text-[#87888C] font-['Inter'] text-xs uppercase tracking-wider mb-3">
               Routes
             </p>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:space-y-2 lg:gap-0">
               {series.map((s, i) => (
                 <div
                   key={s.id}

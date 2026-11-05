@@ -220,8 +220,8 @@ export default function BusManagement() {
         </p>
       </div>
 
-      {/* Search and Add Button */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Search and Add Button - Stacked on mobile, inline on desktop */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div className="flex-1">
           <input
             type="text"
@@ -233,7 +233,7 @@ export default function BusManagement() {
         </div>
         <Link
           href="/admin/buses/add"
-          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center gap-2 whitespace-nowrap"
+          className="px-6 py-2.5 bg-[#96DDFF] text-[#171821] rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#7ec4e8] transition flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <span>+</span> Add Shuttle
         </Link>
@@ -247,19 +247,23 @@ export default function BusManagement() {
       )}
 
       {/* Table */}
-      <div className="bg-[#21222D] rounded-2xl overflow-hidden border border-[#2C2D33]">
-        <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
-          <table className="w-full">
+      <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33]">
+        
+        {/* overflow-x-auto allows horizontal scroll on mobile */}
+        <div className="overflow-x-auto w-full rounded-t-2xl">
+          
+          {/* min-w-[900px] forces the table to stay wide on small screens so it doesn't squish */}
+          <table className="w-full table-fixed min-w-[900px] lg:min-w-full">
             <thead>
               <tr className="bg-[#2B2B36]">
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus ID</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">License Plate</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Driver</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Route</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Bus Status</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Device Status</th>
-                <th className="text-left px-6 py-4 text-white font-semibold font-['Inter'] text-sm">Actions</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[8%]">Bus ID</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[12%]">License Plate</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[15%]">Driver</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[20%]">Route</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[10%]">Bus Status</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[15%]">Device</th>
+                <th className="text-left px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[12%]">Device Status</th>
+                <th className="text-center px-4 py-4 text-white font-semibold font-['Inter'] text-sm w-[8%]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -289,46 +293,52 @@ export default function BusManagement() {
                     className={`border-t border-[#2C2D33] hover:bg-[#2B2B36] transition cursor-pointer focus:outline-none focus:bg-[#2B2B36] ${index % 2 === 0 ? "bg-[#21222D]" : "bg-[#1D1E27]"
                       }`}
                   >
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm truncate">
                       B{String(bus.id).padStart(3, "0")}
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm truncate">
                       {bus.licensePlate}
                     </td>
-                    <td className="px-6 py-4 font-['Inter'] text-sm">
+                    <td className="px-4 py-4 font-['Inter'] text-sm">
                       {bus.driverName ? (
-                        <div>
-                          <div className="text-white font-medium">{bus.driverName}</div>
+                        <div className="truncate">
+                          <div className="text-white font-medium truncate">{bus.driverName}</div>
                           {bus.driverPhone && (
-                            <div className="text-[#87888C] text-xs">{bus.driverPhone}</div>
+                            <div className="text-[#87888C] text-xs truncate">{bus.driverPhone}</div>
                           )}
                         </div>
                       ) : (
                         <span className="text-[#87888C]">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {bus.route?.routeName || "—"}
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm">
+                      {/* Added whitespace-normal and break-words so the route wraps instead of forcing horizontal scroll */}
+                      <div className="whitespace-normal break-words line-clamp-2">
+                        {bus.route?.routeName || "—"}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.status || "Active")}`}
+                        className={`px-2 py-1 rounded-full text-xs font-semibold font-['Inter'] whitespace-nowrap ${getStatusBadge(bus.status || "Active")}`}
                       >
                         {bus.status || "Active"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-white font-['Inter'] text-sm">
-                      {bus.device?.deviceName || "—"}
+                    <td className="px-4 py-4 text-white font-['Inter'] text-sm">
+                      {/* Truncate long device names */}
+                      <div className="truncate" title={bus.device?.deviceName || ""}>
+                        {bus.device?.deviceName || "—"}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold font-['Inter'] ${getStatusBadge(bus.device?.status || "No Device")}`}
+                        className={`px-2 py-1 rounded-full text-xs font-semibold font-['Inter'] whitespace-nowrap ${getStatusBadge(bus.device?.status || "No Device")}`}
                       >
                         {bus.device?.status || "No Device"}
                       </span>
                     </td>
                     <td
-                      className="px-6 py-4"
+                      className="px-4 py-4 flex justify-center"
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >

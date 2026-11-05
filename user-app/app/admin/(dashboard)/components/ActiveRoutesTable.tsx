@@ -24,7 +24,6 @@ interface BusRow {
   lng: number | null;
   lastSeen: string | null;
   deviceStatus: string | null;
-  /** Bus operational status: "Active" | "Delayed" | "Breakdown" | "Inactive" */
   busStatus: string | null;
   busState: BusState;
   device?: {
@@ -45,7 +44,6 @@ interface EtaResult {
   source: "tomtom" | "fallback";
   routePath: [number, number][] | null;
   dropoffPath: [number, number][] | null;
-  /** Which leg this ETA describes — for display labelling */
   etaDestination: "pickup" | "dropoff";
 }
 
@@ -56,9 +54,8 @@ interface ActiveRoutesTableProps {
 }
 
 const STALE_MINUTES = 10;
-const ETA_CACHE_MS = 2 * 60 * 1000; // 2 minutes
+const ETA_CACHE_MS = 2 * 60 * 1000;
 
-// Delay threshold — must match the one in /api/monitor-delays
 const DELAY_RATIO = 1.7;
 const MIN_FREE_FLOW_MINUTES = 3;
 const MIN_DELAY_MINUTES = 4;
@@ -218,7 +215,6 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
   return null;
 };
 
-// traffic-ratio based badge — bus operational status takes priority
 const getStatusBadge = (
   eta: EtaResult | null,
   locationLastSeen: string | null,
@@ -293,7 +289,6 @@ export default function ActiveRoutesTable({
   }>(() => ({ current: selectedRouteId }))[0];
   selectedRouteIdRef.current = selectedRouteId;
 
-  // Fetch buses every 5s
   useEffect(() => {
     const fetchBuses = async () => {
       try {
@@ -342,7 +337,6 @@ export default function ActiveRoutesTable({
     };
   }, []);
 
-  // Report the currently selected bus's state to the parent
   useEffect(() => {
     if (selectedRouteId == null) {
       onBusStateUpdateRef.current?.("approaching");
@@ -354,10 +348,6 @@ export default function ActiveRoutesTable({
     onBusStateUpdateRef.current?.(selectedBus?.busState ?? "approaching");
   }, [buses, selectedRouteId]);
 
-  // ─────────────────────────────────────────────────────────────────
-  // Compute ETAs — the displayed ETA comes from the leg that matches
-  // the bus's current state, not always the pickup.
-  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const lastFetched: Record<string, number> = {};
     let cancelled = false;
@@ -368,7 +358,6 @@ export default function ActiveRoutesTable({
       for (const bus of buses) {
         const now = Date.now();
 
-        // Offline → no ETA
         if (bus.deviceStatus === "Offline") {
           nextEtas[bus.id] = null;
           continue;
@@ -378,9 +367,6 @@ export default function ActiveRoutesTable({
           continue;
         }
 
-        // ── Decide which destination this ETA should point at ────
-        // approaching / trip_done  → pickup  (heading to pick students up)
-        // at_pickup / en_route_to_dropoff → dropoff (heading to drop them off)
         const etaDestination: "pickup" | "dropoff" =
           bus.busState === "at_pickup" ||
           bus.busState === "en_route_to_dropoff"
@@ -393,13 +379,10 @@ export default function ActiveRoutesTable({
           etaDestination === "dropoff" ? bus.dropoffLng : bus.pickupLng;
 
         if (destLat == null || destLng == null) {
-          // Route has no coords for this leg yet — keep previous ETA
           nextEtas[bus.id] = etas[bus.id] ?? null;
           continue;
         }
 
-        // Cache key includes leg + coordinates, so switching legs
-        // (pickup → dropoff) forces a fresh fetch
         const etaKey = `eta:${bus.id}:${etaDestination}:${destLat},${destLng}`;
         const cached =
           lastFetched[etaKey] && now - lastFetched[etaKey] < ETA_CACHE_MS;
@@ -436,7 +419,6 @@ export default function ActiveRoutesTable({
               distanceMeters: data.distanceMeters,
               trafficDelaySeconds: data.trafficDelaySeconds,
               source: "tomtom",
-              // Store the polyline in the slot that matches this leg
               routePath:
                 etaDestination === "pickup"
                   ? polyline
@@ -448,7 +430,6 @@ export default function ActiveRoutesTable({
               etaDestination,
             };
           } else {
-            // TomTom failed — fall back to haversine for the right leg
             nextEtas[bus.id] = fallbackEta(
               bus.lat,
               bus.lng,
@@ -459,7 +440,6 @@ export default function ActiveRoutesTable({
           }
         } catch {
           if (cancelled) return;
-          // Network error — keep previous if possible, else fallback
           const prev = etas[bus.id];
           if (prev) {
             nextEtas[bus.id] = prev;
@@ -533,8 +513,9 @@ export default function ActiveRoutesTable({
   }
 
   return (
-    <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="bg-[#21222D] rounded-2xl border border-[#2C2D33] p-4 lg:p-6">
+      {/* Header - Stacks vertically on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-white font-bold font-['Inter'] text-base">
             Active Routes
@@ -545,12 +526,13 @@ export default function ActiveRoutesTable({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Dropdowns wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <SmallDropdown
             value={routeFilter}
             onChange={setRouteFilter}
             options={[{ value: "", label: "All Routes" }, ...routeOptions]}
-            width="w-48"
+            width="w-full sm:w-48"
           />
 
           <SmallDropdown
@@ -563,10 +545,10 @@ export default function ActiveRoutesTable({
               { value: "breakdown", label: "Breakdown" },
               { value: "no-signal", label: "No Signal" },
             ]}
-            width="w-36"
+            width="w-full sm:w-36"
           />
 
-          <span className="px-3 py-2 rounded-lg text-xs font-semibold font-['Inter'] bg-[#E1FFDA] text-[#3EB900]">
+          <span className="px-3 py-2 rounded-lg text-xs font-semibold font-['Inter'] bg-[#E1FFDA] text-[#3EB900] flex-shrink-0">
             Live
           </span>
         </div>
@@ -579,100 +561,95 @@ export default function ActiveRoutesTable({
           </p>
         </div>
       ) : (
-        <table className="w-full">
-          <tbody>
-            {filteredBuses.map((bus, i) => {
-              const eta = etas[bus.id] ?? null;
-              const badge = getStatusBadge(
-                eta,
-                bus.lastSeen,
-                bus.device?.lastSeen ?? null,
-                bus.deviceStatus,
-                bus.busStatus,
-              );
-              const isOffline = bus.deviceStatus === "Offline";
-              const showEta = !isOffline && eta !== null;
-              const isBreakdown = bus.busStatus === "Breakdown";
-              const isDelayed = bus.busStatus === "Delayed";
+        /* Changed from a Table to a Flexbox List for better mobile wrapping */
+        <div className="flex flex-col gap-3">
+          {filteredBuses.map((bus, i) => {
+            const eta = etas[bus.id] ?? null;
+            const badge = getStatusBadge(
+              eta,
+              bus.lastSeen,
+              bus.device?.lastSeen ?? null,
+              bus.deviceStatus,
+              bus.busStatus,
+            );
+            const isOffline = bus.deviceStatus === "Offline";
+            const showEta = !isOffline && eta !== null;
+            const isBreakdown = bus.busStatus === "Breakdown";
+            const isDelayed = bus.busStatus === "Delayed";
 
-              // Dynamic label based on which leg the ETA describes
-              const etaLabel =
-                eta?.etaDestination === "dropoff"
-                  ? "To Drop-off"
-                  : "To Pickup";
+            const etaLabel =
+              eta?.etaDestination === "dropoff"
+                ? "To Drop-off"
+                : "To Pickup";
 
-              return (
-                <tr
-                  key={bus.id}
-                  className={`border-t border-[#2C2D33] ${
-                    isBreakdown
-                      ? "bg-[#1f1515]"
-                      : isDelayed
-                      ? "bg-[#1e1c10]"
-                      : i % 2 === 0
-                      ? "bg-[#21222D]"
-                      : "bg-[#1D1E27]"
-                  }`}
-                >
-                  <td className="py-4 pl-4 pr-4 align-middle whitespace-nowrap">
-                    <span className="inline-block px-3 py-1 rounded-md text-sm font-bold font-['Inter'] bg-[#96DDFF] text-[#171821]">
-                      {formatRouteId(bus.routeId)}
+            return (
+              <div
+                key={bus.id}
+                className={`flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg border border-[#2C2D33] ${
+                  isBreakdown
+                    ? "bg-[#1f1515]"
+                    : isDelayed
+                    ? "bg-[#1e1c10]"
+                    : i % 2 === 0
+                    ? "bg-[#21222D]"
+                    : "bg-[#1D1E27]"
+                }`}
+              >
+                
+                {/* Left Side: Route ID and Stops */}
+                <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+                  <span className="inline-block px-3 py-1 rounded-md text-sm font-bold font-['Inter'] bg-[#96DDFF] text-[#171821] whitespace-nowrap mt-1 md:mt-0">
+                    {formatRouteId(bus.routeId)}
+                  </span>
+
+                  <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                    <span className="text-white font-medium font-['Inter'] text-sm">
+                      {bus.pickupStop || "Unknown"}
                     </span>
-                  </td>
-
-                  <td className="py-4 pr-6 align-middle">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium font-['Inter'] text-sm">
-                        {bus.pickupStop || "Unknown"}
-                      </span>
-                      <svg
-                        className="w-4 h-4 text-[#87888C]"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 8l4 4m0 0l-4 4m4-4H3"
-                        />
-                      </svg>
-                      <span className="text-white font-medium font-['Inter'] text-sm">
-                        {bus.dropoffStop || "Unknown"}
-                      </span>
-                      <span className="text-[#87888C] font-['Inter'] text-xs ml-2">
-                        ETA{" "}
-                        {showEta && eta ? formatEta(eta.travelTimeSeconds) : "—"}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="py-4 pr-2 align-middle">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {showEta && eta && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#96DDFF] border border-[#2C2D33]">
-                          {etaLabel}: {formatDistance(eta.distanceMeters)}
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#87888C] border border-[#2C2D33]">
-                        Updated {formatRelativeTime(bus.lastSeen)}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="py-4 pr-4 pl-2 align-middle text-right whitespace-nowrap">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-md text-xs font-semibold font-['Inter'] ${badge.classes}`}
+                    <svg
+                      className="w-4 h-4 text-[#87888C] hidden md:block"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {badge.label}
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 8l4 4m0 0l-4 4m4-4H3"
+                      />
+                    </svg>
+                    <span className="text-white font-medium font-['Inter'] text-sm">
+                      {bus.dropoffStop || "Unknown"}
                     </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    <span className="text-[#87888C] font-['Inter'] text-xs md:ml-2 mt-1 md:mt-0">
+                      ETA{" "}
+                      {showEta && eta ? formatEta(eta.travelTimeSeconds) : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right Side: Badges (Distance, Updated, Status) */}
+                <div className="flex flex-wrap items-center gap-2 md:justify-end w-full md:w-auto">
+                  {showEta && eta && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#96DDFF] border border-[#2C2D33]">
+                      {etaLabel}: {formatDistance(eta.distanceMeters)}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#87888C] border border-[#2C2D33]">
+                    Updated {formatRelativeTime(bus.lastSeen)}
+                  </span>
+                  <span
+                    className={`inline-block px-3 py-1 rounded-md text-xs font-semibold font-['Inter'] ${badge.classes}`}
+                  >
+                    {badge.label}
+                  </span>
+                </div>
+
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
