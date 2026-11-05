@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SmallDropdown from "../../components/SmallDropdown";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import {
   validateBusFields,
   hasErrors,
@@ -40,6 +41,10 @@ export default function AddBusPage() {
   const [errors, setErrors] = useState<BusValidationErrors>({});
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [devices, setDevices] = useState<DeviceOption[]>([]);
+
+  // 👇 Added state for remove modals
+  const [showRemoveRouteModal, setShowRemoveRouteModal] = useState(false);
+  const [showRemoveDeviceModal, setShowRemoveDeviceModal] = useState(false);
 
   // Refs for scroll-to-error
   const licensePlateRef = useRef<HTMLInputElement>(null);
@@ -114,6 +119,15 @@ export default function AddBusPage() {
     if (errors[name as keyof BusValidationErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  // 👇 Handlers to clear selections
+  const handleRemoveRoute = () => {
+    setFormData((prev) => ({ ...prev, routeId: "" }));
+  };
+
+  const handleRemoveDevice = () => {
+    setFormData((prev) => ({ ...prev, deviceId: "" }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -308,8 +322,9 @@ export default function AddBusPage() {
                   Status
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <SmallDropdown
+                      width="w-full"
                       value={formData.status}
                       onChange={(value: string) => {
                         setFormData((prev) => ({ ...prev, status: value }));
@@ -411,24 +426,50 @@ export default function AddBusPage() {
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Assigned Route
               </h3>
-              <div className="mt-4">
-                <SmallDropdown
-                  value={formData.routeId}
-                  onChange={(value: string) => {
-                    setFormData((prev) => ({ ...prev, routeId: value }));
-                  }}
-                  placeholder="Select route"
-                  options={routes.map((route) => {
-                    const alreadyAssigned = route.assignedBusId !== null;
-                    return {
-                      value: route.id.toString(),
-                      label: alreadyAssigned
-                        ? `${route.routeName} (Already assigned)`
-                        : route.routeName,
-                      disabled: alreadyAssigned,
-                    };
-                  })}
-                />
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <SmallDropdown
+                    width="w-full"
+                    value={formData.routeId}
+                    onChange={(value: string) => {
+                      setFormData((prev) => ({ ...prev, routeId: value }));
+                    }}
+                    placeholder="Select route"
+                    options={routes.map((route) => {
+                      const alreadyAssigned = route.assignedBusId !== null;
+                      return {
+                        value: route.id.toString(),
+                        label: alreadyAssigned
+                          ? `${route.routeName} (Already assigned)`
+                          : route.routeName,
+                        disabled: alreadyAssigned,
+                      };
+                    })}
+                  />
+                </div>
+                {/* 👇 Remove Route Button */}
+                {formData.routeId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveRouteModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap shrink-0 self-start"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
 
@@ -439,26 +480,91 @@ export default function AddBusPage() {
               <h3 className="text-white font-bold font-['Inter'] text-base mb-4">
                 Assigned Device
               </h3>
-              <div className="mt-4">
-                <SmallDropdown
-                  value={formData.deviceId}
-                  onChange={(value: string) => {
-                    setFormData((prev) => ({ ...prev, deviceId: value }));
-                  }}
-                  placeholder="Select device"
-                  options={devices.map((device) => {
-                    const alreadyAssigned = device.busId !== null;
-                    return {
-                      value: device.id.toString(),
-                      label: alreadyAssigned
-                        ? `${device.deviceName} (Already assigned)`
-                        : device.deviceName,
-                      disabled: alreadyAssigned,
-                    };
-                  })}
-                />
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <SmallDropdown
+                    width="w-full"
+                    value={formData.deviceId}
+                    onChange={(value: string) => {
+                      setFormData((prev) => ({ ...prev, deviceId: value }));
+                    }}
+                    placeholder="Select device"
+                    options={devices.map((device) => {
+                      const alreadyAssigned = device.busId !== null;
+                      return {
+                        value: device.id.toString(),
+                        label: alreadyAssigned
+                          ? `${device.deviceName} (Already assigned)`
+                          : device.deviceName,
+                        disabled: alreadyAssigned,
+                      };
+                    })}
+                  />
+                </div>
+                {/* 👇 Remove Device Button */}
+                {formData.deviceId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemoveDeviceModal(true)}
+                    className="px-4 py-3 bg-[#CD0000] text-white rounded-lg font-semibold font-['Inter'] text-sm hover:bg-[#b30000] transition flex items-center gap-2 whitespace-nowrap shrink-0 self-start"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* 👇 Added Modals for Removing during Add flow */}
+            <DeleteConfirmModal
+              isOpen={showRemoveRouteModal}
+              onClose={() => setShowRemoveRouteModal(false)}
+              onConfirm={() => {
+                handleRemoveRoute();
+                setShowRemoveRouteModal(false);
+              }}
+              title="Remove Route"
+              message="Are you sure you want to remove"
+              itemName={
+                routes.find((r) => r.id.toString() === formData.routeId)
+                  ?.routeName || "this route"
+              }
+              description="This will clear your current route selection. You can still save the bus without a route."
+              confirmLabel="Remove"
+              loadingLabel="Removing..."
+              variant="warning"
+            />
+
+            <DeleteConfirmModal
+              isOpen={showRemoveDeviceModal}
+              onClose={() => setShowRemoveDeviceModal(false)}
+              onConfirm={() => {
+                handleRemoveDevice();
+                setShowRemoveDeviceModal(false);
+              }}
+              title="Remove Device"
+              message="Are you sure you want to remove"
+              itemName={
+                devices.find((d) => d.id.toString() === formData.deviceId)
+                  ?.deviceName || "this device"
+              }
+              description="This will clear your current device selection. You can still save the bus without a device."
+              confirmLabel="Remove"
+              loadingLabel="Removing..."
+              variant="warning"
+            />
           </div>
 
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2C2D33]">
