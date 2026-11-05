@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { sendProximityAlert } from "@/lib/notifications";
 
 export async function GET(request: Request) {
   try {
@@ -100,14 +101,16 @@ export async function GET(request: Request) {
       });
       if (updated.count === 1) {
         alertSent = true;
-        // TODO: fire Pusher + email here (existing pipeline)
+        try {
+          await sendProximityAlert(
+            route.routeName,
+            route.pickupStop ?? "the pickup point",
+            Math.round(distanceToPickup)
+          );
+        } catch (err) {
+          console.error("Failed to send proximity alert:", err);
+        }
       }
-    } else if (!isNearPickup && route.alertedForCurrentApproach) {
-      // Bus left the radius — reset for next approach
-      await prisma.route.updateMany({
-        where: { id: routeId, alertedForCurrentApproach: true },
-        data: { alertedForCurrentApproach: false },
-      });
     }
 
     // Read busState from the admin API — do NOT recompute here
