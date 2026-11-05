@@ -31,9 +31,25 @@ export async function POST(request: NextRequest) {
       "route_problem",
       "other",
     ];
+
+    // Validate attachment count and object keys.
     if (!validTypes.includes(reportType)) {
       return NextResponse.json(
         { success: false, error: "Invalid report type" },
+        { status: 400 },
+      );
+    }
+    if (
+      fileUrls !== undefined &&
+      (!Array.isArray(fileUrls) ||
+        fileUrls.length > 3 ||
+        fileUrls.some((value) => typeof value !== "string" || !value.trim()))
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You can upload up to 3 valid attachments.",
+        },
         { status: 400 },
       );
     }

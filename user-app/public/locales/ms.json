@@ -78,7 +78,7 @@
         },
         "fileUpload": {
             "title": "Muat Naik Fail",
-            "maxFiles": "Anda boleh memuat naik berbilang imej",
+            "maxFiles": "Anda boleh memuat naik sehingga 3 lampiran, maksimum 4 MB setiap satu",
             "addFiles": "Tambah Fail",
             "photoLibrary": "Pustaka Foto",
             "takePhoto": "Ambil Foto atau Video",
