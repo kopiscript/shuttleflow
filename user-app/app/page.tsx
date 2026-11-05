@@ -34,7 +34,7 @@ interface ETAData {
   arrivalTime: string;
   fullDisplay: string;
   distance: string;
-  pickupStop: string;
+  pickupStop: string;  
   speed: string | null;
 }
 
@@ -46,7 +46,6 @@ interface ProximityData {
   busState: "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done";
 }
 
-// Hardware Driver Incident Alert interface
 interface ActiveAlert {
   busId: number;
   busName: string;
@@ -56,7 +55,7 @@ interface ActiveAlert {
   message: string;
 }
 
-// ---- Polyline helpers (yours) ----
+// ---- Polyline helpers ----
 const decodePolyline = (encoded: string): [number, number][] => {
   const points: [number, number][] = [];
   let index = 0;
@@ -141,6 +140,9 @@ export default function HomePage() {
   const [selectedRoute, setSelectedRoute] = useState("");
   const [routes, setRoutes] = useState<Route[]>([]);
   const [etaData, setEtaData] = useState<ETAData | null>(null);
+  const [etaDestination, setEtaDestination] = useState<"pickup" | "dropoff">(
+    "pickup"
+  );
   const [loading, setLoading] = useState(true);
   const [busLocation, setBusLocation] = useState<{
     lat: number;
@@ -164,6 +166,10 @@ export default function HomePage() {
   const [busState, setBusState] = useState<
     "approaching" | "at_pickup" | "en_route_to_dropoff" | "trip_done"
   >("approaching");
+
+  // Derived: should ETA target the drop-off?
+  const goingToDropoff =
+    busState === "at_pickup" || busState === "en_route_to_dropoff";
 
   // Fetch routes
   useEffect(() => {
@@ -249,7 +255,7 @@ export default function HomePage() {
         console.error("Failed to fetch bus location and alerts:", error);
       }
 
-      // Proximity check for the selected route (yours)
+      // Proximity check for the selected route
       if (selectedRoute) {
         try {
           const res = await fetch(
@@ -283,7 +289,7 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [selectedRoute]);
 
-  // Real-Time Pusher Listener for instant driver hardware alert updates (your friend's)
+  // Pusher
   useEffect(() => {
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
@@ -323,19 +329,28 @@ export default function HomePage() {
     };
   }, [selectedRoute]);
 
-  // Fetch ETA with auto-refresh every 10 seconds (both)
+  // ─────────────────────────────────────────────────────────────
+  // FETCH ETA — DESTINATION SWITCHES BASED ON busState
+  // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!selectedRoute) {
       setEtaData(null);
       return;
     }
 
+    // The effect depends on `goingToDropoff`, so the ETA refetches
+    // automatically when busState transitions approaching → at_pickup.
+    const dest = goingToDropoff ? "dropoff" : "pickup";
+
     const fetchEta = async () => {
       try {
-        const response = await fetch(`/api/routes/${selectedRoute}/eta`);
+        const response = await fetch(
+          `/api/routes/${selectedRoute}/eta?to=${dest}`
+        );
         const data = await response.json();
         if (data.success) {
           setEtaData(data.eta);
+          setEtaDestination(dest);
         } else {
           setEtaData(null);
         }
@@ -348,9 +363,9 @@ export default function HomePage() {
     fetchEta();
     const interval = setInterval(fetchEta, 10000);
     return () => clearInterval(interval);
-  }, [selectedRoute]);
+  }, [selectedRoute, goingToDropoff]);
 
-  // Fetch both paths (bus → pickup and bus → dropoff) (yours)
+  // Fetch both paths (bus → pickup and bus → dropoff)
   useEffect(() => {
     if (!selectedRoute) {
       setPickupPath(null);
@@ -450,7 +465,7 @@ export default function HomePage() {
           }}
         />
 
-        {/* Map (both — you added paths, your friend added nothing here) */}
+        {/* Map */}
         <div className="absolute inset-0 z-0">
           <Map
             selectedRoute={selectedRoute}
@@ -473,7 +488,7 @@ export default function HomePage() {
 
         {/* Floating Bottom Panel: Alert Banner & ETA Card (both) */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20 flex flex-col gap-2.5">
-          {/* 🚨 DYNAMIC DRIVER INCIDENT BANNER (your friend's) */}
+          {/* DYNAMIC DRIVER INCIDENT BANNER */}
           {activeAlert && (
             <div
               className={`rounded-2xl p-3.5 shadow-xl text-white transition-all backdrop-blur-md flex flex-col gap-2 ${
@@ -538,8 +553,17 @@ export default function HomePage() {
                   {etaData.distance && (
                     <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
                       📍 {etaData.distance} from {etaData.pickupStop}
+                      {/* etaData.pickupStop actually holds the destination stop name
+                          from the API — which is pickup OR dropoff depending on `to`.
+                          Rename in API if you want cleaner code, but this works. */}
                     </span>
                   )}
+                  {/* Show which leg this ETA refers to */}
+                  <span className="text-[10px] uppercase tracking-wide text-(--disclaimer-text) opacity-60 mt-1">
+                    {etaDestination === "dropoff"
+                      ? "Heading to drop-off"
+                      : "Heading to pickup"}
+                  </span>
                 </div>
               ) : (
                 <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
@@ -548,7 +572,7 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Proximity Status — only show when bus is approaching (yours) */}
+            {/* Proximity Status — only show when bus is approaching */}
             {proximityData && proximityData.isNear && (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs font-medium text-green-600 dark:text-green-400">
@@ -572,7 +596,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 📞 DRIVER CONTACT MODAL (your friend's) */}
+        {/* DRIVER CONTACT MODAL */}
         {showDriverModal && activeAlert && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white dark:bg-[#2B2B36] rounded-2xl max-w-xs w-full p-5 shadow-2xl text-center">

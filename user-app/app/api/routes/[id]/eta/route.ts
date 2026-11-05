@@ -106,7 +106,7 @@ export async function GET(
           `?key=${TOMTOM_API_KEY}` +
           `&traffic=true` +
           `&routeType=fastest` +
-          `&routeRepresentation=polyline`;
+          `&computeTravelTimeFor=all`;   // needed for delay detection
 
         const response = await fetch(url);
         const data = await response.json();
@@ -119,7 +119,7 @@ export async function GET(
           routeSummary = data.routes[0].summary;
           tomtomSuccess = true;
 
-          // ✅ Extract the polyline
+          // Extract the polyline
           const rawPoints =
             data.routes[0]?.legs?.[0]?.points ??
             data.routes[0]?.geometry?.points ??
@@ -186,6 +186,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
+      destination: to,   // lets the frontend know which leg this is
       eta: {
         minutes: etaMinutes,
         minutesDisplay: minutesLeftStr,
@@ -198,7 +199,7 @@ export async function GET(
         routeSummary,
         busLocation: { lat: busLat, lng: busLng },
         destinationLocation: { lat: destLat, lng: destLng },
-        encodedPolyline,   // ← NEW
+        encodedPolyline,
       },
       routeName: route.routeName,
     });
