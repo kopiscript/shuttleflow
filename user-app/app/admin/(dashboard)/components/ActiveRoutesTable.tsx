@@ -37,7 +37,6 @@ interface BusRow {
   } | null;
 }
 
-// ✅ ADDED: noTrafficTravelTimeSeconds
 interface EtaResult {
   travelTimeSeconds: number;
   noTrafficTravelTimeSeconds: number;
@@ -46,6 +45,8 @@ interface EtaResult {
   source: "tomtom" | "fallback";
   routePath: [number, number][] | null;
   dropoffPath: [number, number][] | null;
+  /** Which leg this ETA describes — for display labelling */
+  etaDestination: "pickup" | "dropoff";
 }
 
 interface ActiveRoutesTableProps {
@@ -118,17 +119,19 @@ const fallbackEta = (
   fromLng: number,
   toLat: number,
   toLng: number,
+  etaDestination: "pickup" | "dropoff",
 ): EtaResult => {
   const km = haversineKm(fromLat, fromLng, toLat, toLng);
   const seconds = (km / FALLBACK_SPEED_KMH) * 3600;
   return {
     travelTimeSeconds: seconds,
-    noTrafficTravelTimeSeconds: seconds, // no traffic info in fallback
+    noTrafficTravelTimeSeconds: seconds,
     distanceMeters: km * 1000,
     trafficDelaySeconds: 0,
     source: "fallback",
     routePath: null,
     dropoffPath: null,
+    etaDestination,
   };
 };
 
@@ -184,7 +187,6 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
 
   if (Array.isArray(raw)) {
     const out: [number, number][] = [];
-
     for (const p of raw) {
       if (p && typeof p === "object" && "latitude" in p && "longitude" in p) {
         const lat = (p as any).latitude;
@@ -192,7 +194,6 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
         if (isValidCoord(lat, lng)) out.push([lat, lng]);
         continue;
       }
-
       if (Array.isArray(p) && p.length >= 2) {
         const lat = p[0];
         const lng = p[1];
@@ -200,7 +201,6 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
         continue;
       }
     }
-
     return out.length > 1 ? out : null;
   }
 
@@ -221,12 +221,11 @@ const normalisePolyline = (raw: unknown): [number, number][] | null => {
 // traffic-ratio based badge — bus operational status takes priority
 const getStatusBadge = (
   eta: EtaResult | null,
-  locationLastSeen: string | null,   // bus.lastSeen (locations.recorded_at)
-  deviceLastSeen: string | null,     // bus.device?.lastSeen (devices.last_seen)
+  locationLastSeen: string | null,
+  deviceLastSeen: string | null,
   deviceStatus: string | null,
-  busStatus: string | null,          // bus.status: "Active" | "Delayed" | "Breakdown"
+  busStatus: string | null,
 ) => {
-  // Device-triggered statuses take top priority
   if (busStatus === "Breakdown") {
     return { label: "Breakdown", classes: "bg-[#FFE4E4] text-[#EA1701]" };
   }
@@ -234,11 +233,7 @@ const getStatusBadge = (
     return { label: "Delayed", classes: "bg-[#FFF4CC] text-[#B8860B]" };
   }
 
-  // Offline/never-connected short-circuit
-  if (
-    deviceStatus === "Offline" ||
-    deviceStatus === "Never Connected"
-  ) {
+  if (deviceStatus === "Offline" || deviceStatus === "Never Connected") {
     return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
   }
 
@@ -254,12 +249,10 @@ const getStatusBadge = (
     ? (Date.now() - new Date(locationLastSeen).getTime()) / 60000
     : Infinity;
 
-  // If either timestamp is stale, we don't have reliable info
   if (deviceAgeMin > STALE_MINUTES || locationAgeMin > STALE_MINUTES) {
     return { label: "No Signal", classes: "bg-[#2C2D33] text-[#87888C]" };
   }
 
-  // Fresh data: check traffic
   if (eta && eta.source === "tomtom") {
     const freeMin = eta.noTrafficTravelTimeSeconds / 60;
     const realMin = eta.travelTimeSeconds / 60;
@@ -302,57 +295,52 @@ export default function ActiveRoutesTable({
 
   // Fetch buses every 5s
   useEffect(() => {
-  const fetchBuses = async () => {
-    try {
-      // Fetch buses AND routes in parallel so we can determine
-      // which routes are genuinely "Active" (bus assigned + bus Active + device attached).
-      const [busesRes, routesRes] = await Promise.all([
-        fetch("/api/admin/buses"),
-        fetch("/api/admin/routes"),
-      ]);
-      const [busesData, routesData] = await Promise.all([
-        busesRes.json(),
-        routesRes.json(),
-      ]);
+    const fetchBuses = async () => {
+      try {
+        const [busesRes, routesRes] = await Promise.all([
+          fetch("/api/admin/buses"),
+          fetch("/api/admin/routes"),
+        ]);
+        const [busesData, routesData] = await Promise.all([
+          busesRes.json(),
+          routesRes.json(),
+        ]);
 
-      if (busesData.success && routesData.success) {
-        // The authoritative Active rule lives in deriveRouteStatus()
-        // (lib/routeStatus.ts) and is exposed via route.status here.
-        // No duplicate logic — we trust the API's verdict.
-        const activeRouteIds = new Set<number>(
-          (routesData.routes ?? [])
-            .filter((r: any) => r.status === "Active")
-            .map((r: any) => Number(r.id)),
-        );
+        if (busesData.success && routesData.success) {
+          const activeRouteIds = new Set<number>(
+            (routesData.routes ?? [])
+              .filter((r: any) => r.status === "Active")
+              .map((r: any) => Number(r.id)),
+          );
 
-        const withRoutes: BusRow[] = (busesData.buses ?? [])
-          .filter(
-            (b: any) =>
-              b.routeId != null && activeRouteIds.has(Number(b.routeId)),
-          )
-          .map((b: any) => ({
-            ...b,
-            deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
-            busStatus: b.status ?? null,
-            busState: (b.busState ?? "approaching") as BusState,
-          }));
+          const withRoutes: BusRow[] = (busesData.buses ?? [])
+            .filter(
+              (b: any) =>
+                b.routeId != null && activeRouteIds.has(Number(b.routeId)),
+            )
+            .map((b: any) => ({
+              ...b,
+              deviceStatus: b.device?.status ?? b.deviceStatus ?? null,
+              busStatus: b.status ?? null,
+              busState: (b.busState ?? "approaching") as BusState,
+            }));
 
-        setBuses(withRoutes);
+          setBuses(withRoutes);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active routes:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to fetch active routes:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchBuses();
-  const poll = setInterval(fetchBuses, 5000);
-  const tick = setInterval(() => forceTick((n) => n + 1), 30000);
-  return () => {
-    clearInterval(poll);
-    clearInterval(tick);
-  };
-}, []);
+    };
+    fetchBuses();
+    const poll = setInterval(fetchBuses, 5000);
+    const tick = setInterval(() => forceTick((n) => n + 1), 30000);
+    return () => {
+      clearInterval(poll);
+      clearInterval(tick);
+    };
+  }, []);
 
   // Report the currently selected bus's state to the parent
   useEffect(() => {
@@ -366,7 +354,10 @@ export default function ActiveRoutesTable({
     onBusStateUpdateRef.current?.(selectedBus?.busState ?? "approaching");
   }, [buses, selectedRouteId]);
 
-  // Compute ETAs
+  // ─────────────────────────────────────────────────────────────────
+  // Compute ETAs — the displayed ETA comes from the leg that matches
+  // the bus's current state, not always the pickup.
+  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     const lastFetched: Record<string, number> = {};
     let cancelled = false;
@@ -376,8 +367,8 @@ export default function ActiveRoutesTable({
 
       for (const bus of buses) {
         const now = Date.now();
-        const activeSelectedRouteId = selectedRouteIdRef.current;
 
+        // Offline → no ETA
         if (bus.deviceStatus === "Offline") {
           nextEtas[bus.id] = null;
           continue;
@@ -386,138 +377,89 @@ export default function ActiveRoutesTable({
           nextEtas[bus.id] = etas[bus.id] ?? null;
           continue;
         }
-        if (bus.pickupLat == null || bus.pickupLng == null) {
+
+        // ── Decide which destination this ETA should point at ────
+        // approaching / trip_done  → pickup  (heading to pick students up)
+        // at_pickup / en_route_to_dropoff → dropoff (heading to drop them off)
+        const etaDestination: "pickup" | "dropoff" =
+          bus.busState === "at_pickup" ||
+          bus.busState === "en_route_to_dropoff"
+            ? "dropoff"
+            : "pickup";
+
+        const destLat =
+          etaDestination === "dropoff" ? bus.dropoffLat : bus.pickupLat;
+        const destLng =
+          etaDestination === "dropoff" ? bus.dropoffLng : bus.pickupLng;
+
+        if (destLat == null || destLng == null) {
+          // Route has no coords for this leg yet — keep previous ETA
           nextEtas[bus.id] = etas[bus.id] ?? null;
           continue;
         }
 
-        const wantDropoff =
-          activeSelectedRouteId != null &&
-          bus.routeId != null &&
-          Number(bus.routeId) === Number(activeSelectedRouteId) &&
-          bus.dropoffLat != null &&
-          bus.dropoffLng != null;
+        // Cache key includes leg + coordinates, so switching legs
+        // (pickup → dropoff) forces a fresh fetch
+        const etaKey = `eta:${bus.id}:${etaDestination}:${destLat},${destLng}`;
+        const cached =
+          lastFetched[etaKey] && now - lastFetched[etaKey] < ETA_CACHE_MS;
 
-        const pickupKey = `pickup:${bus.id}:${bus.pickupLat},${bus.pickupLng}`;
-const dropoffKey = `dropoff:${bus.id}:${bus.dropoffLat},${bus.dropoffLng}`;
-
-        const pickupCached =
-          lastFetched[pickupKey] && now - lastFetched[pickupKey] < ETA_CACHE_MS;
-
-        const dropoffCached =
-          lastFetched[dropoffKey] &&
-          now - lastFetched[dropoffKey] < ETA_CACHE_MS;
-
-        if (pickupCached && (!wantDropoff || dropoffCached)) {
+        if (cached) {
           nextEtas[bus.id] = etas[bus.id] ?? null;
           continue;
         }
 
-        const pickupPromise = pickupCached
-          ? Promise.resolve(null)
-          : fetch(
+        lastFetched[etaKey] = now;
+
+        try {
+          const res = await fetch(
             `/api/admin/eta?${new URLSearchParams({
               originLat: String(bus.lat),
               originLng: String(bus.lng),
-              destLat: String(bus.pickupLat),
-              destLng: String(bus.pickupLng),
+              destLat: String(destLat),
+              destLng: String(destLng),
             })}`,
-          ).then((r) => r.json());
-
-        const dropoffPromise =
-  wantDropoff && !dropoffCached
-    ? fetch(
-        `/api/admin/eta?${new URLSearchParams({
-          originLat: String(bus.lat),
-          originLng: String(bus.lng),
-          destLat: String(bus.dropoffLat!),
-          destLng: String(bus.dropoffLng!),
-        })}`,
-      ).then((r) => r.json())
-    : Promise.resolve(null);
-
-        if (!pickupCached) lastFetched[pickupKey] = now;
-        if (wantDropoff && !dropoffCached) lastFetched[dropoffKey] = now;
-
-        try {
-          const [pickupData, dropoffData] = await Promise.all([
-            pickupPromise,
-            dropoffPromise,
-          ]);
+          );
+          const data = await res.json();
 
           if (cancelled) return;
 
           const previous = etas[bus.id] ?? null;
 
-          let routePath = previous?.routePath ?? null;
-          let travelTimeSeconds = previous?.travelTimeSeconds ?? 0;
-          let noTrafficTravelTimeSeconds =
-            previous?.noTrafficTravelTimeSeconds ?? 0; // ✅
-          let distanceMeters = previous?.distanceMeters ?? 0;
-          let trafficDelaySeconds = previous?.trafficDelaySeconds ?? 0;
-          let source: "tomtom" | "fallback" = previous?.source ?? "fallback";
+          if (data.success) {
+            const polyline = normalisePolyline(data.encodedPolyline);
 
-          if (pickupData) {
-            if (pickupData.success) {
-              routePath = normalisePolyline(pickupData.encodedPolyline);
-              travelTimeSeconds = pickupData.travelTimeSeconds;
-              noTrafficTravelTimeSeconds =
-                pickupData.noTrafficTravelTimeSeconds ??
-                pickupData.travelTimeSeconds; // ✅ fallback
-              distanceMeters = pickupData.distanceMeters;
-              trafficDelaySeconds = pickupData.trafficDelaySeconds;
-              source = "tomtom";
-            } else {
-              const fb = fallbackEta(
-                bus.lat,
-                bus.lng,
-                bus.pickupLat,
-                bus.pickupLng,
-              );
-              routePath = null;
-              travelTimeSeconds = fb.travelTimeSeconds;
-              noTrafficTravelTimeSeconds = fb.noTrafficTravelTimeSeconds;
-              distanceMeters = fb.distanceMeters;
-              trafficDelaySeconds = fb.trafficDelaySeconds;
-              source = "fallback";
-            }
-          } else if (!previous) {
-            const fb = fallbackEta(
+            nextEtas[bus.id] = {
+              travelTimeSeconds: data.travelTimeSeconds,
+              noTrafficTravelTimeSeconds:
+                data.noTrafficTravelTimeSeconds ?? data.travelTimeSeconds,
+              distanceMeters: data.distanceMeters,
+              trafficDelaySeconds: data.trafficDelaySeconds,
+              source: "tomtom",
+              // Store the polyline in the slot that matches this leg
+              routePath:
+                etaDestination === "pickup"
+                  ? polyline
+                  : previous?.routePath ?? null,
+              dropoffPath:
+                etaDestination === "dropoff"
+                  ? polyline
+                  : previous?.dropoffPath ?? null,
+              etaDestination,
+            };
+          } else {
+            // TomTom failed — fall back to haversine for the right leg
+            nextEtas[bus.id] = fallbackEta(
               bus.lat,
               bus.lng,
-              bus.pickupLat,
-              bus.pickupLng,
+              destLat,
+              destLng,
+              etaDestination,
             );
-            travelTimeSeconds = fb.travelTimeSeconds;
-            noTrafficTravelTimeSeconds = fb.noTrafficTravelTimeSeconds;
-            distanceMeters = fb.distanceMeters;
-            trafficDelaySeconds = fb.trafficDelaySeconds;
-            source = "fallback";
           }
-
-          let dropoffPath = previous?.dropoffPath ?? null;
-
-          if (wantDropoff) {
-            if (dropoffData) {
-              dropoffPath = dropoffData.success
-                ? normalisePolyline(dropoffData.encodedPolyline)
-                : null;
-            }
-          } else {
-            dropoffPath = null;
-          }
-
-          nextEtas[bus.id] = {
-            travelTimeSeconds,
-            noTrafficTravelTimeSeconds,
-            distanceMeters,
-            trafficDelaySeconds,
-            source,
-            routePath,
-            dropoffPath,
-          };
         } catch {
           if (cancelled) return;
+          // Network error — keep previous if possible, else fallback
           const prev = etas[bus.id];
           if (prev) {
             nextEtas[bus.id] = prev;
@@ -525,8 +467,9 @@ const dropoffKey = `dropoff:${bus.id}:${bus.dropoffLat},${bus.dropoffLng}`;
             nextEtas[bus.id] = fallbackEta(
               bus.lat,
               bus.lng,
-              bus.pickupLat,
-              bus.pickupLng,
+              destLat,
+              destLng,
+              etaDestination,
             );
           }
         }
@@ -652,6 +595,12 @@ const dropoffKey = `dropoff:${bus.id}:${bus.dropoffLat},${bus.dropoffLng}`;
               const isBreakdown = bus.busStatus === "Breakdown";
               const isDelayed = bus.busStatus === "Delayed";
 
+              // Dynamic label based on which leg the ETA describes
+              const etaLabel =
+                eta?.etaDestination === "dropoff"
+                  ? "To Drop-off"
+                  : "To Pickup";
+
               return (
                 <tr
                   key={bus.id}
@@ -703,7 +652,7 @@ const dropoffKey = `dropoff:${bus.id}:${bus.dropoffLat},${bus.dropoffLng}`;
                     <div className="flex items-center gap-2 flex-wrap">
                       {showEta && eta && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#96DDFF] border border-[#2C2D33]">
-                          To Pickup: {formatDistance(eta.distanceMeters)}
+                          {etaLabel}: {formatDistance(eta.distanceMeters)}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium font-['Inter'] bg-[#171821] text-[#87888C] border border-[#2C2D33]">
