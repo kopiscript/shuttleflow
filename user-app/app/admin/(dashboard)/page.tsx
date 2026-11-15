@@ -7,7 +7,7 @@ import MostViewedRoutesChart from "./components/MostViewedRoutesChart";
 import ActiveRoutesTable, { type BusState } from "./components/ActiveRoutesTable";
 import SmallDropdown from "./components/SmallDropdown";
 import UnresolvedTicketsCard from "./components/UnresolvedTicketsCard";
-import { PickupLegendIcon, DropoffLegendIcon, } from "./components/mapIcons";
+import { PickupLegendIcon, DropoffLegendIcon } from "./components/mapIcons";
 
 const RouteMarkersMap = dynamic(() => import("./components/RouteMarkersMap"), {
   ssr: false,
@@ -69,6 +69,7 @@ interface Bus {
   lat: number;
   lng: number;
   routeId: number | null;
+  routeIds?: number[];
   routeName?: string;
   status?: string;
 }
@@ -110,7 +111,6 @@ export default function AdminDashboard() {
       }
     };
 
-    // Run every 5 minutes
     const interval = setInterval(monitorDelays, 5 * 60 * 1000);
     monitorDelays();
 
@@ -118,15 +118,21 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    let isFirstLoad = true;
+
     const fetchData = async () => {
       try {
-        setLoading(true);
-        setTicketsLoading(true);
+        if (isFirstLoad) {
+          setLoading(true);
+          setTicketsLoading(true);
+        }
+
         const [routesRes, busesRes, ticketsRes] = await Promise.all([
           fetch("/api/admin/routes"),
           fetch("/api/admin/buses"),
           fetch("/api/admin/support-tickets?status=unresolved"),
         ]);
+        
         const routesData = await routesRes.json();
         const busesData = await busesRes.json();
         const ticketsData = await ticketsRes.json();
@@ -139,6 +145,7 @@ export default function AdminDashboard() {
 
         if (busesData.success) {
           const allBuses: any[] = busesData.buses ?? [];
+          
           // Only buses with valid GPS coordinates are placed on the map
           const validBuses = allBuses.filter(
             (b: any) => b.lat != null && b.lng != null
@@ -163,13 +170,20 @@ export default function AdminDashboard() {
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-        setUnresolvedTickets(0);
+        if (isFirstLoad) setUnresolvedTickets(0);
       } finally {
-        setLoading(false);
-        setTicketsLoading(false);
+        if (isFirstLoad) {
+          setLoading(false);
+          setTicketsLoading(false);
+          isFirstLoad = false;
+        }
       }
     };
+
     fetchData();
+    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   const numericRouteId = selectedRouteId ? Number(selectedRouteId) : null;
