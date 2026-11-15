@@ -55,8 +55,6 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
         };
     }, [isOpen, onClose]);
 
-    if (!isOpen) return null;
-
     const menuItems = [
         { name: t("sidebar.home"), href: "/" },
         { name: t("sidebar.about"), href: "/about" },
@@ -66,17 +64,19 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
 
     return (
         <>
-            {/* Backdrop - lighter blur for better performance */}
+            {/* Keep mounted so opening only changes opacity, without a full-screen blur. */}
             <div
-                className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+                aria-hidden="true"
+                className={`fixed inset-0 bg-black/50 z-40 transition-[opacity,visibility] duration-300 motion-reduce:transition-none ${isOpen ? 'visible opacity-100' : 'invisible opacity-0 pointer-events-none [transition-delay:0ms,300ms]'}`}
                 onClick={onClose}
-                style={{ backdropFilter: 'blur(2px)' }}
             />
 
             {/* Sidebar with transform for smooth animation */}
             <div
                 ref={sidebarRef}
-                className={`fixed top-0 left-0 bottom-0 w-[288px] bg-(--sidebar-bg) shadow-2xl z-50 transition-transform duration-300 ease-out will-change-transform ${isOpen ? 'translate-x-0' : '-translate-x-full'
+                inert={!isOpen}
+                aria-hidden={!isOpen}
+                className={`fixed top-0 left-0 bottom-0 w-[288px] bg-(--sidebar-bg) shadow-2xl z-50 transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none ${isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full pointer-events-none [transition-delay:0ms,300ms]'
                     }`}
                 style={{ touchAction: 'manipulation' }}
             >
@@ -107,6 +107,7 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                         <div key={item.name}>
                             <Link
                                 href={item.href}
+                                prefetch={isOpen ? undefined : false}
                                 onClick={onClose}
                                 className="block font-['Bai_Jamjuree'] font-medium text-base text-(--sidebar-text) hover:text-[#99121A] transition-colors mb-3 p-2"
                                 style={{ touchAction: 'manipulation' }}
