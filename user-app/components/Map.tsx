@@ -44,14 +44,15 @@ interface RouteData {
 
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
+// Updated to use Esri Dark Gray Canvas (No API key required)
 const getTileUrl = (dark: boolean) =>
   dark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 const getAttribution = (dark: boolean) =>
   dark
-    ? '&copy; <a href="https://carto.com/attributions">CARTO</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    ? 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 export default function Map({
