@@ -1,3 +1,4 @@
+// app/admin/(dashboard)/components/RouteMarkersMap.tsx
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
@@ -41,7 +42,7 @@ interface RouteMarkersMapProps {
   selectedRouteId?: number | null;
   routePaths?: Record<number, [number, number][] | null>;
   dropoffPaths?: Record<number, [number, number][] | null>;
-  busState?: BusState;   // ← NEW
+  busState?: BusState;
 }
 
 export default function RouteMarkersMap({
@@ -55,6 +56,8 @@ export default function RouteMarkersMap({
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  
+  const hasFitBounds = useRef<boolean>(false);
 
   const pickupIcon = useMemo(() => createPickupIcon(), []);
   const dropoffIcon = useMemo(() => createDropoffIcon(), []);
@@ -90,9 +93,6 @@ export default function RouteMarkersMap({
 
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
-    console.log("[RouteMarkersMap] busState:", busState);
-    console.log("[RouteMarkersMap] dropoffPaths:", dropoffPaths);
-    console.log("[RouteMarkersMap] buses:", buses);
 
     const layer = markersLayerRef.current;
     layer.clearLayers();
@@ -147,7 +147,7 @@ export default function RouteMarkersMap({
       const hasRealDropoffPath =
         Array.isArray(dropoffPath) && dropoffPath.length > 1;
 
-      // ---- Bus → Pickup line (blue) — only when approaching or trip done ----
+      // ---- Bus → Pickup line ---- //
       if (showPickupLine) {
         if (hasRealPickupPath) {
           L.polyline(pickupPath!, {
@@ -183,7 +183,7 @@ export default function RouteMarkersMap({
         }
       }
 
-      // ---- Bus → Dropoff line (dark red) — only when at_pickup or en_route_to_dropoff ----
+      // ---- Bus → Dropoff line ---- //
       if (showDropoffLine && hasRealDropoffPath) {
         L.polyline(dropoffPath!, {
           color: "#bb0c0c",
@@ -200,7 +200,7 @@ export default function RouteMarkersMap({
         for (const coord of dropoffPath!) allCoords.push(coord);
       }
 
-      // Pickup and dropoff markers — always visible regardless of state
+      // Pickup and dropoff markers
       L.marker(pickupCoord, { icon: pickupIcon })
         .bindTooltip(
           `<b>🚏 ${route.routeName}</b><br/>Pickup: ${route.pickupStop ?? ""}`,
@@ -247,7 +247,8 @@ export default function RouteMarkersMap({
       allCoords.push(coord);
     });
 
-    if (allCoords.length > 0) {
+    // 👈 NEW: Only fit bounds ONCE on initial load to prevent animation freezing
+    if (allCoords.length > 0 && !hasFitBounds.current) {
       const validCoords = allCoords.filter(
         ([lat, lng]) =>
           Number.isFinite(lat) &&
@@ -259,6 +260,7 @@ export default function RouteMarkersMap({
         mapRef.current.fitBounds(L.latLngBounds(validCoords), {
           padding: [50, 50],
         });
+        hasFitBounds.current = true; // Lock it so it never snaps again
       }
     }
   }, [
@@ -267,7 +269,7 @@ export default function RouteMarkersMap({
     selectedRouteId,
     routePaths,
     dropoffPaths,
-    busState,   // ← NEW
+    busState,
     pickupIcon,
     dropoffIcon,
     busIcon,
