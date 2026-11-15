@@ -380,23 +380,56 @@ export default function HomePage() {
 
         // 2. FALLBACK: If the API failed (no GPS), draw a straight line
         if (!newPickupPath && !newDropoffPath) {
+          let pLat, pLng, dLat, dLng;
+
+          // Check the local routes array first
           const route = routes.find((r) => String(r.id) === selectedRoute);
+          if (route) {
+            pLat = route.pickupLat;
+            pLng = route.pickupLng;
+            dLat = route.dropoffLat;
+            dLng = route.dropoffLng;
+          }
+
+          // If missing from local array, fetch directly from the API
+          if (!pLat || !pLng || !dLat || !dLng) {
+            console.log("⚠️ Coordinates missing from dropdown data, fetching route details...");
+            const detailRes = await fetch(`/api/routes/${selectedRoute}`);
+            const detailData = await detailRes.json();
+            
+            console.log("📡 Route Detail API Response:", detailData);
+
+            if (detailData.success && detailData.route) {
+              pLat = detailData.route.pickupLat;
+              pLng = detailData.route.pickupLng;
+              dLat = detailData.route.dropoffLat;
+              dLng = detailData.route.dropoffLng;
+            }
+          }
+
+          // Ensure they are valid numbers before drawing
+          const validPickupLat = Number(pLat);
+          const validPickupLng = Number(pLng);
+          const validDropoffLat = Number(dLat);
+          const validDropoffLng = Number(dLng);
+
           if (
-            route &&
-            route.pickupLat &&
-            route.pickupLng &&
-            route.dropoffLat &&
-            route.dropoffLng
+            !isNaN(validPickupLat) && validPickupLat !== 0 &&
+            !isNaN(validPickupLng) && validPickupLng !== 0 &&
+            !isNaN(validDropoffLat) && validDropoffLat !== 0 &&
+            !isNaN(validDropoffLng) && validDropoffLng !== 0
           ) {
             const straightLine: [number, number][] = [
-              [route.pickupLat, route.pickupLng],
-              [route.dropoffLat, route.dropoffLng],
+              [validPickupLat, validPickupLng],
+              [validDropoffLat, validDropoffLng],
             ];
             newPickupPath = straightLine;
             newDropoffPath = straightLine;
             console.log("✅ Fallback line created:", straightLine);
           } else {
-            console.error("❌ Cannot create fallback: Missing coordinates in route data", route);
+            console.error("❌ Cannot create fallback: Invalid or missing coordinates.", {
+              pLat, pLng, dLat, dLng
+            });
           }
         }
 
@@ -404,23 +437,6 @@ export default function HomePage() {
         setDropoffPath(newDropoffPath);
       } catch (err) {
         console.error("Failed to fetch paths:", err);
-        
-        // Fallback on network error too
-        const route = routes.find((r) => String(r.id) === selectedRoute);
-        if (
-          route &&
-          route.pickupLat &&
-          route.pickupLng &&
-          route.dropoffLat &&
-          route.dropoffLng
-        ) {
-          const straightLine: [number, number][] = [
-            [route.pickupLat, route.pickupLng],
-            [route.dropoffLat, route.dropoffLng],
-          ];
-          setPickupPath(straightLine);
-          setDropoffPath(straightLine);
-        }
       }
     };
 
