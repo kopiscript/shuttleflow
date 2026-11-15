@@ -34,7 +34,6 @@ export async function GET() {
           licensePlate: loc.bus?.licensePlate,
           status: loc.bus?.status, // "Active" | "Delayed" | "Breakdown"
           driverName: loc.bus?.driverName || null,
-          driverPhone: loc.bus?.driverPhone || null,
           // Return ALL route IDs so frontend can filter
           routeIds: activeAssignments.map(a => a.routeId),
           routeNames: activeAssignments.map(a => a.route?.routeName),

@@ -50,8 +50,6 @@ interface ActiveAlert {
   busId: number;
   busName: string;
   status: "Breakdown" | "Delayed";
-  driverName?: string | null;
-  driverPhone?: string | null;
   message: string;
 }
 
@@ -156,7 +154,6 @@ export default function HomePage() {
 
   // Active Incident Alert State (your friend's)
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
-  const [showDriverModal, setShowDriverModal] = useState(false);
 
   // Path state (yours)
   const [pickupPath, setPickupPath] = useState<[number, number][] | null>(null);
@@ -237,8 +234,6 @@ export default function HomePage() {
                 busId: matchingLoc.busId,
                 busName: matchingLoc.bus.busName,
                 status: matchingLoc.bus.status,
-                driverName: matchingLoc.bus.driverName,
-                driverPhone: matchingLoc.bus.driverPhone,
                 message:
                   matchingLoc.bus.status === "Breakdown"
                     ? "This bus reported a breakdown. Please take alternative transport."
@@ -313,13 +308,10 @@ export default function HomePage() {
             busId: data.busId,
             busName: data.busName,
             status: data.status,
-            driverName: data.driverName,
-            driverPhone: data.driverPhone,
             message: data.message,
           });
         } else if (data.status === "Active") {
           setActiveAlert(null);
-          setShowDriverModal(false);
         }
       }
     });
@@ -410,7 +402,6 @@ export default function HomePage() {
     setEtaData(null);
     setProximityData(null);
     setActiveAlert(null);
-    setShowDriverModal(false);
     setPickupPath(null);
     setDropoffPath(null);
     setBusState("approaching");
@@ -513,29 +504,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Driver Contact Trigger Button */}
-              {activeAlert.driverPhone && (
-                <button
-                  type="button"
-                  onClick={() => setShowDriverModal(true)}
-                  className="w-full mt-1 py-1.5 px-3 bg-black/25 hover:bg-black/40 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/20 transition cursor-pointer"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
-                  Contact Driver ({activeAlert.driverName || "Assigned Driver"})
-                </button>
-              )}
             </div>
           )}
 
@@ -596,49 +564,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* DRIVER CONTACT MODAL */}
-        {showDriverModal && activeAlert && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#2B2B36] rounded-2xl max-w-xs w-full p-5 shadow-2xl text-center">
-              <div className="w-12 h-12 bg-[#99121A]/10 text-[#99121A] dark:text-[#96DDFF] rounded-full flex items-center justify-center mx-auto text-xl mb-3">
-                👤
-              </div>
-              <h3 className="font-bold text-base text-gray-900 dark:text-white">
-                {activeAlert.driverName || "Shuttle Driver"}
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {activeAlert.busName} Operator
-              </p>
-
-              <div className="my-4 p-3 bg-gray-50 dark:bg-[#1D1E27] rounded-xl border border-gray-200 dark:border-gray-700">
-                <span className="text-xs text-gray-500 block mb-1">
-                  Direct Contact
-                </span>
-                <span className="font-mono font-bold text-gray-800 dark:text-gray-200 text-sm">
-                  {activeAlert.driverPhone || "Not Available"}
-                </span>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDriverModal(false)}
-                  className="flex-1 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition cursor-pointer"
-                >
-                  Close
-                </button>
-                {activeAlert.driverPhone && (
-                  <a
-                    href={`tel:${activeAlert.driverPhone}`}
-                    className="flex-1 py-2 text-xs font-semibold bg-[#99121A] text-white rounded-lg hover:bg-[#7a0e14] transition flex items-center justify-center gap-1"
-                  >
-                    Call Now
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </PageShell>
   );

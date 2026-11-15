@@ -137,7 +137,6 @@ export async function POST(request: Request) {
                     status: "Breakdown",
                     routeIds: currentRouteIds,
                     driverName: bus.driverName,
-                    driverPhone: bus.driverPhone,
                     title: `🚨 ${bus.busName} Breakdown`,
                     message: `Bus ${bus.busName} has encountered a breakdown or incident. Please seek alternative transportation immediately.`,
                     timestamp: new Date().toISOString()
@@ -169,7 +168,6 @@ export async function POST(request: Request) {
                     status: "Delayed",
                     routeIds: currentRouteIds,
                     driverName: bus.driverName,
-                    driverPhone: bus.driverPhone,
                     title: `⚠️ ${bus.busName} Service Delay`,
                     message: `Bus ${bus.busName} is experiencing unexpected delays. Arrival times may be extended.`,
                     timestamp: new Date().toISOString()
