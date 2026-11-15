@@ -394,6 +394,9 @@ export default function HomePage() {
             ];
             newPickupPath = straightLine;
             newDropoffPath = straightLine;
+            console.log("✅ Fallback line created:", straightLine);
+          } else {
+            console.error("❌ Cannot create fallback: Missing coordinates in route data", route);
           }
         }
 
