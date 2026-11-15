@@ -583,7 +583,9 @@ export default function HomePage() {
             </div>
 
             {/* Proximity Status — only show when bus is approaching */}
-            {proximityData && proximityData.isNear && (
+            {proximityData && 
+             proximityData.isNear && 
+             proximityData.busState === "approaching" && (
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs font-medium text-green-600 dark:text-green-400">
                   🚌 Approaching {proximityData.destination}!
