@@ -10,6 +10,7 @@ import {
   hasErrors,
   RouteValidationErrors,
 } from "@/lib/validation";
+import FindOnMapButton from "../../components/FindOnMapButton";
 
 const RoutePickerMap = dynamic(
   () => import("../../components/RoutePickerMap"),
@@ -22,7 +23,7 @@ const RoutePickerMap = dynamic(
         </span>
       </div>
     ),
-  },
+  }
 );
 
 export default function AddRoutePage() {
@@ -40,6 +41,10 @@ export default function AddRoutePage() {
     intermediateStops: "",
   });
 
+  // Feedback state for geocoding
+  const [pickupGeocoded, setPickupGeocoded] = useState(false);
+  const [dropoffGeocoded, setDropoffGeocoded] = useState(false);
+
   // Refs for scroll-to-error
   const routeNameRef = useRef<HTMLInputElement>(null);
   const pickupStopRef = useRef<HTMLInputElement>(null);
@@ -51,7 +56,7 @@ export default function AddRoutePage() {
   const intermediateStopsRef = useRef<HTMLTextAreaElement>(null);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -60,17 +65,21 @@ export default function AddRoutePage() {
     if (errors[name as keyof RouteValidationErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+
+    // If the user manually edits the address, reset the "geocoded" hint
+    if (name === "pickupStop") setPickupGeocoded(false);
+    if (name === "dropoffStop") setDropoffGeocoded(false);
   };
 
   // Stable callbacks for the map component
   const handlePickupChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, pickupLat: lat, pickupLng: lng }));
-    // Clear pickup coord errors when the map updates them
     setErrors((prev) => ({
       ...prev,
       pickupLat: undefined,
       pickupLng: undefined,
     }));
+    setPickupGeocoded(false); // map drag overrides geocode hint
   }, []);
 
   const handleDropoffChange = useCallback((lat: string, lng: string) => {
@@ -80,9 +89,48 @@ export default function AddRoutePage() {
       dropoffLat: undefined,
       dropoffLng: undefined,
     }));
+    setDropoffGeocoded(false);
   }, []);
 
-  // Helper: scroll + focus the first field that has an error
+  // Geocode result handlers
+  const handlePickupResolved = useCallback(
+    (lat: number, lng: number, formattedAddress: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        pickupStop: prev.pickupStop,
+        pickupLat: String(lat),
+        pickupLng: String(lng),
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        pickupLat: undefined,
+        pickupLng: undefined,
+        pickupStop: undefined,
+      }));
+      setPickupGeocoded(true);
+    },
+    []
+  );
+
+  const handleDropoffResolved = useCallback(
+    (lat: number, lng: number, formattedAddress: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        dropoffStop: prev.dropoffStop,
+        dropoffLat: String(lat),
+        dropoffLng: String(lng),
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        dropoffLat: undefined,
+        dropoffLng: undefined,
+        dropoffStop: undefined,
+      }));
+      setDropoffGeocoded(true);
+    },
+    []
+  );
+
   const scrollToFirstError = (validationErrors: RouteValidationErrors) => {
     const fieldOrder: (keyof RouteValidationErrors)[] = [
       "routeName",
@@ -124,7 +172,6 @@ export default function AddRoutePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ Client-side validation
     const validationErrors = validateRouteFields({
       routeName: formData.routeName,
       pickupStop: formData.pickupStop,
@@ -175,7 +222,6 @@ export default function AddRoutePage() {
       if (data.success) {
         router.push("/admin/routes");
       } else {
-        // Server-side error: scroll to a field if we can guess which one
         if (data.error?.toLowerCase().includes("route name")) {
           routeNameRef.current?.scrollIntoView({
             behavior: "smooth",
@@ -183,7 +229,7 @@ export default function AddRoutePage() {
           });
           setTimeout(
             () => routeNameRef.current?.focus({ preventScroll: true }),
-            300,
+            300
           );
         }
         alert(data.error || "Failed to add route");
@@ -287,6 +333,20 @@ export default function AddRoutePage() {
                         {errors.pickupStop}
                       </p>
                     )}
+
+                    {/* NEW: Find on Map button + success hint */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <FindOnMapButton
+                        address={formData.pickupStop}
+                        onResolved={handlePickupResolved}
+                        label="Find Pickup on Map"
+                      />
+                      {pickupGeocoded && (
+                        <span className="text-[#3EB900] font-['Inter'] text-xs">
+                          ✓ Coordinates filled
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -371,6 +431,20 @@ export default function AddRoutePage() {
                         {errors.dropoffStop}
                       </p>
                     )}
+
+                    {/* NEW: Find on Map button + success hint */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <FindOnMapButton
+                        address={formData.dropoffStop}
+                        onResolved={handleDropoffResolved}
+                        label="Find Drop-off on Map"
+                      />
+                      {dropoffGeocoded && (
+                        <span className="text-[#3EB900] font-['Inter'] text-xs">
+                          ✓ Coordinates filled
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

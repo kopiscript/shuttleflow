@@ -5,7 +5,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { validateRouteFields, hasErrors, RouteValidationErrors } from "@/lib/validation";
+import {
+  validateRouteFields,
+  hasErrors,
+  RouteValidationErrors,
+} from "@/lib/validation";
+import FindOnMapButton from "../../../components/FindOnMapButton";
 
 const RoutePickerMap = dynamic(
   () => import("../../../components/RoutePickerMap"),
@@ -57,6 +62,10 @@ export default function EditRoutePage({ params }: PageProps) {
   });
   const [errors, setErrors] = useState<RouteValidationErrors>({});
 
+  // Feedback state for geocoding
+  const [pickupGeocoded, setPickupGeocoded] = useState(false);
+  const [dropoffGeocoded, setDropoffGeocoded] = useState(false);
+
   // Refs for scroll-to-error
   const routeNameRef = useRef<HTMLInputElement>(null);
   const pickupStopRef = useRef<HTMLInputElement>(null);
@@ -67,7 +76,6 @@ export default function EditRoutePage({ params }: PageProps) {
   const dropoffLngRef = useRef<HTMLInputElement>(null);
   const intermediateStopsRef = useRef<HTMLTextAreaElement>(null);
 
-  // Unwrap params and fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -113,7 +121,6 @@ export default function EditRoutePage({ params }: PageProps) {
     fetchData();
   }, [params]);
 
-  // Helper: scroll + focus the first field that has an error
   const scrollToFirstError = (validationErrors: RouteValidationErrors) => {
     const fieldOrder: (keyof RouteValidationErrors)[] = [
       "routeName",
@@ -158,36 +165,75 @@ export default function EditRoutePage({ params }: PageProps) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear error for this field when user starts typing
     if (errors[name as keyof RouteValidationErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
+
+    if (name === "pickupStop") setPickupGeocoded(false);
+    if (name === "dropoffStop") setDropoffGeocoded(false);
   };
 
   const handlePickupChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, pickupLat: lat, pickupLng: lng }));
-    // Clear coordinate errors when map updates them
     setErrors((prev) => ({
       ...prev,
       pickupLat: undefined,
       pickupLng: undefined,
     }));
+    setPickupGeocoded(false);
   }, []);
 
   const handleDropoffChange = useCallback((lat: string, lng: string) => {
     setFormData((prev) => ({ ...prev, dropoffLat: lat, dropoffLng: lng }));
-    // Clear coordinate errors when map updates them
     setErrors((prev) => ({
       ...prev,
       dropoffLat: undefined,
       dropoffLng: undefined,
     }));
+    setDropoffGeocoded(false);
   }, []);
+
+  const handlePickupResolved = useCallback(
+    (lat: number, lng: number, formattedAddress: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        pickupStop: prev.pickupStop,
+        pickupLat: String(lat),
+        pickupLng: String(lng),
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        pickupLat: undefined,
+        pickupLng: undefined,
+        pickupStop: undefined,
+      }));
+      setPickupGeocoded(true);
+    },
+    []
+  );
+
+  const handleDropoffResolved = useCallback(
+    (lat: number, lng: number, formattedAddress: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        dropoffStop: prev.dropoffStop,
+        dropoffLat: String(lat),
+        dropoffLng: String(lng),
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        dropoffLat: undefined,
+        dropoffLng: undefined,
+        dropoffStop: undefined,
+      }));
+      setDropoffGeocoded(true);
+    },
+    []
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ Client-side validation
     const validationErrors = validateRouteFields({
       routeName: formData.routeName,
       pickupStop: formData.pickupStop,
@@ -238,7 +284,6 @@ export default function EditRoutePage({ params }: PageProps) {
       if (data.success) {
         router.push(`/admin/routes/${routeId}`);
       } else {
-        // Server-side error handling
         if (data.error?.toLowerCase().includes("route name")) {
           routeNameRef.current?.scrollIntoView({
             behavior: "smooth",
@@ -269,7 +314,6 @@ export default function EditRoutePage({ params }: PageProps) {
     );
   }
 
-  // Helper for input className with error state
   const inputClass = (hasError: boolean) =>
     `w-full px-3 py-2 bg-[#21222D] text-white rounded-lg border font-['Inter'] text-sm placeholder:text-[#2B2B36] focus:outline-none transition ${
       hasError
@@ -375,6 +419,20 @@ export default function EditRoutePage({ params }: PageProps) {
                         {errors.pickupStop}
                       </p>
                     )}
+
+                    {/* NEW: Find on Map button + success hint */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <FindOnMapButton
+                        address={formData.pickupStop}
+                        onResolved={handlePickupResolved}
+                        label="Find Pickup on Map"
+                      />
+                      {pickupGeocoded && (
+                        <span className="text-[#3EB900] font-['Inter'] text-xs">
+                          ✓ Coordinates filled
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -447,6 +505,20 @@ export default function EditRoutePage({ params }: PageProps) {
                         {errors.dropoffStop}
                       </p>
                     )}
+
+                    {/* NEW: Find on Map button + success hint */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <FindOnMapButton
+                        address={formData.dropoffStop}
+                        onResolved={handleDropoffResolved}
+                        label="Find Drop-off on Map"
+                      />
+                      {dropoffGeocoded && (
+                        <span className="text-[#3EB900] font-['Inter'] text-xs">
+                          ✓ Coordinates filled
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
