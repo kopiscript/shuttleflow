@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import AdminIncidentDialog from "@/components/AdminIncidentDialog";
 
 interface AdminInfo {
   id: number;
@@ -133,6 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     // Changed from h-screen to min-h-screen so it expands with content
     <div className="min-h-screen bg-[#171821] flex flex-col">
+      {admin && <AdminIncidentDialog />}
       
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (

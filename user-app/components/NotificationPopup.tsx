@@ -3,15 +3,12 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import Pusher from "pusher-js";
 
 type NotificationPopupType = {
   id: string;
   title: string;
   message: string;
   type?: string;
-  driverName?: string | null;
-  driverPhone?: string | null;
 };
 
 export default function NotificationPopup() {
@@ -34,33 +31,8 @@ export default function NotificationPopup() {
 
     window.addEventListener("new-notification" as any, handleNewNotification);
 
-    // Subscribe to Pusher for real-time ESP32 hardware alerts
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
-    let pusher: Pusher | null = null;
-
-    if (pusherKey && pusherCluster) {
-      pusher = new Pusher(pusherKey, { cluster: pusherCluster });
-      const alertChannel = pusher.subscribe("fleet-alerts");
-
-      alertChannel.bind("bus-status-change", (data: any) => {
-        addNotification(
-          {
-            id: `${data.busId}-${Date.now()}`,
-            title: data.title || `Bus Status: ${data.status}`,
-            message: data.message,
-            type: data.status, // "Breakdown" | "Delayed" | "Active"
-            driverName: data.driverName,
-            driverPhone: data.driverPhone,
-          },
-          8000
-        );
-      });
-    }
-
     return () => {
       window.removeEventListener("new-notification" as any, handleNewNotification);
-      if (pusher) pusher.unsubscribe("fleet-alerts");
     };
   }, []);
 
@@ -96,21 +68,6 @@ export default function NotificationPopup() {
             <h4 className="text-white font-semibold pr-5">{notif.title}</h4>
             <p className="text-white/80 text-sm mt-0.5">{notif.message}</p>
 
-            {(notif.driverName || notif.driverPhone) && (
-              <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center justify-between text-xs">
-                <span className="text-white/80">
-                  Driver: <strong className="text-white">{notif.driverName || "Assigned"}</strong>
-                </span>
-                {notif.driverPhone && (
-                  <a
-                    href={`tel:${notif.driverPhone}`}
-                    className="text-[#96DDFF] hover:underline font-mono font-semibold"
-                  >
-                    📞 {notif.driverPhone}
-                  </a>
-                )}
-              </div>
-            )}
           </div>
         );
       })}

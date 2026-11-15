@@ -149,6 +149,9 @@ function computeBusState(
 // GET - list all buses
 export async function GET() {
   try {
+    if (!(await getSession())) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const buses = await prisma.bus.findMany({
       orderBy: { id: "asc" },
       include: {

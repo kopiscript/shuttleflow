@@ -18,6 +18,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    if (!(await getSession())) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const { id } = await params;
     const busId = parseInt(id);
 
