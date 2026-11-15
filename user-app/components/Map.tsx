@@ -219,6 +219,12 @@ export default function Map({
     const showDropoffLine =
       busState === "at_pickup" || busState === "en_route_to_dropoff";
 
+    // If no GPS, we use the fallback straight line from page.tsx
+    // We detect a straight line by checking if it has exactly 2 points
+    const isFallbackPickup = pickupPath && pickupPath.length === 2;
+    const isFallbackDropoff = dropoffPath && dropoffPath.length === 2;
+
+    // Draw Pickup Line (Blue)
     if (showPickupLine && pickupPath && pickupPath.length > 1) {
       const line = L.polyline(pickupPath, {
         color: "#3b82f6",
@@ -226,12 +232,19 @@ export default function Map({
         opacity: 0.9,
         lineCap: "round",
         lineJoin: "round",
+        dashArray: isFallbackPickup ? "10, 10" : undefined,
       })
-        .bindTooltip(`Bus → ${routeData.pickupStop}`, { sticky: true })
+        .bindTooltip(
+          isFallbackPickup
+            ? "Estimated Route (No GPS)"
+            : `Bus → ${routeData.pickupStop}`,
+          { sticky: true }
+        )
         .addTo(mapRef.current!);
       polylinesRef.current.push(line);
     }
 
+    // Draw Dropoff Line (Red)
     if (showDropoffLine && dropoffPath && dropoffPath.length > 1) {
       const line = L.polyline(dropoffPath, {
         color: "#bb0c0c",
@@ -239,11 +252,27 @@ export default function Map({
         opacity: 0.85,
         lineCap: "round",
         lineJoin: "round",
+        dashArray: isFallbackDropoff ? "10, 10" : undefined,
       })
-        .bindTooltip(`Bus → ${routeData.dropoffStop}`, { sticky: true })
+        .bindTooltip(
+          isFallbackDropoff
+            ? "Estimated Route (No GPS)"
+            : `Bus → ${routeData.dropoffStop}`,
+          { sticky: true }
+        )
         .addTo(mapRef.current!);
       polylinesRef.current.push(line);
     }
+
+    // Auto-fit the map to the drawn line if it's a fallback
+    if ((isFallbackPickup || isFallbackDropoff) && mapRef.current) {
+       const activePath = showPickupLine ? pickupPath : dropoffPath;
+       if (activePath) {
+          const bounds = L.latLngBounds(activePath);
+          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+       }
+    }
+
   }, [pickupPath, dropoffPath, busState, routeData, mapReady]);
 
   const fitMapToBounds = () => {

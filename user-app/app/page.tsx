@@ -147,15 +147,15 @@ export default function HomePage() {
     lng: number;
   } | null>(null);
 
-  // Proximity state (yours)
+  // Proximity state
   const [proximityData, setProximityData] = useState<ProximityData | null>(
     null
   );
 
-  // Active Incident Alert State (your friend's)
+  // Active Incident Alert State
   const [activeAlert, setActiveAlert] = useState<ActiveAlert | null>(null);
 
-  // Path state (yours)
+  // Path state
   const [pickupPath, setPickupPath] = useState<[number, number][] | null>(null);
   const [dropoffPath, setDropoffPath] = useState<[number, number][] | null>(
     null
@@ -181,7 +181,6 @@ export default function HomePage() {
           });
           setRoutes(sortedRoutes);
 
-          // Restore the route from the URL if it is still available.
           const url = new URL(window.location.href);
           const savedRouteId = url.searchParams.get("routeId");
           const routeExists = sortedRoutes.some(
@@ -218,7 +217,6 @@ export default function HomePage() {
             lng: parseFloat(loc.longitude),
           });
 
-          // Sync active alert status for the selected route (your friend's)
           if (selectedRoute) {
             const routeIdNum = parseInt(selectedRoute);
             const matchingLoc = data.locations.find((l: any) =>
@@ -250,7 +248,6 @@ export default function HomePage() {
         console.error("Failed to fetch bus location and alerts:", error);
       }
 
-      // Proximity check for the selected route
       if (selectedRoute) {
         try {
           const res = await fetch(
@@ -321,17 +318,13 @@ export default function HomePage() {
     };
   }, [selectedRoute]);
 
-  // ─────────────────────────────────────────────────────────────
   // FETCH ETA — DESTINATION SWITCHES BASED ON busState
-  // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!selectedRoute) {
       setEtaData(null);
       return;
     }
 
-    // The effect depends on `goingToDropoff`, so the ETA refetches
-    // automatically when busState transitions approaching → at_pickup.
     const dest = goingToDropoff ? "dropoff" : "pickup";
 
     const fetchEta = async () => {
@@ -357,7 +350,7 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [selectedRoute, goingToDropoff]);
 
-  // Fetch both paths (bus → pickup and bus → dropoff)
+  // Fetch both paths + FALLBACK LOGIC
   useEffect(() => {
     if (!selectedRoute) {
       setPickupPath(null);
@@ -374,31 +367,68 @@ export default function HomePage() {
         const pickupData = await pickupRes.json();
         const dropoffData = await dropoffRes.json();
 
+        let newPickupPath: [number, number][] | null = null;
+        let newDropoffPath: [number, number][] | null = null;
+
+        // 1. Try to get the road-following paths from the API
         if (pickupData.success && pickupData.eta?.encodedPolyline) {
-          setPickupPath(normalisePolyline(pickupData.eta.encodedPolyline));
-        } else {
-          setPickupPath(null);
+          newPickupPath = normalisePolyline(pickupData.eta.encodedPolyline);
+        }
+        if (dropoffData.success && dropoffData.eta?.encodedPolyline) {
+          newDropoffPath = normalisePolyline(dropoffData.eta.encodedPolyline);
         }
 
-        if (dropoffData.success && dropoffData.eta?.encodedPolyline) {
-          setDropoffPath(normalisePolyline(dropoffData.eta.encodedPolyline));
-        } else {
-          setDropoffPath(null);
+        // 2. FALLBACK: If the API failed (no GPS), draw a straight line
+        if (!newPickupPath && !newDropoffPath) {
+          const route = routes.find((r) => String(r.id) === selectedRoute);
+          if (
+            route &&
+            route.pickupLat &&
+            route.pickupLng &&
+            route.dropoffLat &&
+            route.dropoffLng
+          ) {
+            const straightLine: [number, number][] = [
+              [route.pickupLat, route.pickupLng],
+              [route.dropoffLat, route.dropoffLng],
+            ];
+            newPickupPath = straightLine;
+            newDropoffPath = straightLine;
+          }
         }
+
+        setPickupPath(newPickupPath);
+        setDropoffPath(newDropoffPath);
       } catch (err) {
         console.error("Failed to fetch paths:", err);
+        
+        // Fallback on network error too
+        const route = routes.find((r) => String(r.id) === selectedRoute);
+        if (
+          route &&
+          route.pickupLat &&
+          route.pickupLng &&
+          route.dropoffLat &&
+          route.dropoffLng
+        ) {
+          const straightLine: [number, number][] = [
+            [route.pickupLat, route.pickupLng],
+            [route.dropoffLat, route.dropoffLng],
+          ];
+          setPickupPath(straightLine);
+          setDropoffPath(straightLine);
+        }
       }
     };
 
     fetchPaths();
     const interval = setInterval(fetchPaths, 10000);
     return () => clearInterval(interval);
-  }, [selectedRoute]);
+  }, [selectedRoute, routes]);
 
   const handleRouteChange = (routeId: string) => {
     setSelectedRoute(routeId);
 
-    // Clear previous route's information while new data loads
     setEtaData(null);
     setProximityData(null);
     setActiveAlert(null);
@@ -406,7 +436,6 @@ export default function HomePage() {
     setDropoffPath(null);
     setBusState("approaching");
 
-    // Save selection in URL without reloading
     const url = new URL(window.location.href);
     if (routeId) {
       url.searchParams.set("routeId", routeId);
@@ -415,7 +444,6 @@ export default function HomePage() {
     }
     window.history.replaceState(window.history.state, "", url.toString());
 
-    // Log view (fire-and-forget) for analytics
     if (routeId) {
       fetch(`/api/routes/${routeId}/view`, {
         method: "POST",
@@ -503,7 +531,6 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
-
             </div>
           )}
 
@@ -521,12 +548,8 @@ export default function HomePage() {
                   {etaData.distance && (
                     <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
                       📍 {etaData.distance} from {etaData.pickupStop}
-                      {/* etaData.pickupStop actually holds the destination stop name
-                          from the API — which is pickup OR dropoff depending on `to`.
-                          Rename in API if you want cleaner code, but this works. */}
                     </span>
                   )}
-                  {/* Show which leg this ETA refers to */}
                   <span className="text-[10px] uppercase tracking-wide text-(--disclaimer-text) opacity-60 mt-1">
                     {etaDestination === "dropoff"
                       ? "Heading to drop-off"
