@@ -44,7 +44,6 @@ interface RouteData {
 
 const isDarkMode = () => document.documentElement.classList.contains("dark");
 
-// Updated to use Esri Dark Gray Canvas (No API key required)
 const getTileUrl = (dark: boolean) =>
   dark
     ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
@@ -209,23 +208,38 @@ export default function Map({
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
 
+    // ==========================================
+    // DEBUG LOGS START
+    // ==========================================
+    console.log("🗺️ MAP DEBUG:", {
+      busState,
+      hasPickupPath: !!pickupPath,
+      pickupPathLength: pickupPath?.length,
+      hasDropoffPath: !!dropoffPath,
+      dropoffPathLength: dropoffPath?.length,
+      routeData: !!routeData,
+    });
+    // ==========================================
+
     polylinesRef.current.forEach((p) => p.remove());
     polylinesRef.current = [];
 
-    if (!routeData) return;
+    if (!routeData) {
+      console.log("❌ DEBUG: No routeData, aborting line draw.");
+      return;
+    }
 
     const showPickupLine =
       busState === "approaching" || busState === "trip_done";
     const showDropoffLine =
       busState === "at_pickup" || busState === "en_route_to_dropoff";
 
-    // If no GPS, we use the fallback straight line from page.tsx
-    // We detect a straight line by checking if it has exactly 2 points
     const isFallbackPickup = pickupPath && pickupPath.length === 2;
     const isFallbackDropoff = dropoffPath && dropoffPath.length === 2;
 
     // Draw Pickup Line (Blue)
     if (showPickupLine && pickupPath && pickupPath.length > 1) {
+      console.log("✅ DEBUG: Drawing Blue Pickup Line");
       const line = L.polyline(pickupPath, {
         color: "#3b82f6",
         weight: 5,
@@ -240,12 +254,16 @@ export default function Map({
             : `Bus → ${routeData.pickupStop}`,
           { sticky: true }
         )
-        .addTo(mapRef.current!);
+        .addTo(mapRef.current!)
+        .bringToFront(); // <-- Ensures it sits above the map tiles
       polylinesRef.current.push(line);
+    } else {
+      console.log("❌ DEBUG: Not drawing Blue Pickup Line. showPickupLine:", showPickupLine, "Valid Path:", !!pickupPath);
     }
 
     // Draw Dropoff Line (Red)
     if (showDropoffLine && dropoffPath && dropoffPath.length > 1) {
+      console.log("✅ DEBUG: Drawing Red Dropoff Line");
       const line = L.polyline(dropoffPath, {
         color: "#bb0c0c",
         weight: 5,
@@ -260,19 +278,13 @@ export default function Map({
             : `Bus → ${routeData.dropoffStop}`,
           { sticky: true }
         )
-        .addTo(mapRef.current!);
+        .addTo(mapRef.current!)
+        .bringToFront(); // <-- Ensures it sits above the map tiles
       polylinesRef.current.push(line);
+    } else {
+      console.log("❌ DEBUG: Not drawing Red Dropoff Line. showDropoffLine:", showDropoffLine, "Valid Path:", !!dropoffPath);
     }
-
-    // Auto-fit the map to the drawn line if it's a fallback
-    if ((isFallbackPickup || isFallbackDropoff) && mapRef.current) {
-       const activePath = showPickupLine ? pickupPath : dropoffPath;
-       if (activePath) {
-          const bounds = L.latLngBounds(activePath);
-          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-       }
-    }
-
+    
   }, [pickupPath, dropoffPath, busState, routeData, mapReady]);
 
   const fitMapToBounds = () => {
