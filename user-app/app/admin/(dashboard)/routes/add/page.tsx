@@ -313,7 +313,7 @@ export default function AddRoutePage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address <span className="text-[#EA1701]">*</span>
+                      Name / Address <span className="text-[#EA1701]">*</span>
                     </label>
                     <input
                       ref={pickupStopRef}
@@ -411,7 +411,7 @@ export default function AddRoutePage() {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address <span className="text-[#EA1701]">*</span>
+                      Name / Address <span className="text-[#EA1701]">*</span>
                     </label>
                     <input
                       ref={dropoffStopRef}

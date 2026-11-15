@@ -403,7 +403,7 @@ export default function EditRoutePage({ params }: PageProps) {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address
+                      Name / Address
                     </label>
                     <input
                       ref={pickupStopRef}
@@ -489,7 +489,7 @@ export default function EditRoutePage({ params }: PageProps) {
                 <div className="space-y-3">
                   <div>
                     <label className="text-[#87888C] font-['Inter'] text-xs block mb-1">
-                      Address
+                      Name / Address
                     </label>
                     <input
                       ref={dropoffStopRef}
