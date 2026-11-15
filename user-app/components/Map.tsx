@@ -46,12 +46,12 @@ const isDarkMode = () => document.documentElement.classList.contains("dark");
 
 const getTileUrl = (dark: boolean) =>
   dark
-    ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
     : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 const getAttribution = (dark: boolean) =>
   dark
-    ? '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    ? '&copy; <a href="https://carto.com/attributions">CARTO</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 export default function Map({
@@ -65,7 +65,7 @@ export default function Map({
   const markersRef = useRef<L.Marker[]>([]);
   const pickupMarkerRef = useRef<L.Marker | null>(null);
   const destinationMarkerRef = useRef<L.Marker | null>(null);
-  const polylinesRef = useRef<L.Polyline[]>([]);   // ← NEW
+  const polylinesRef = useRef<L.Polyline[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -204,11 +204,10 @@ export default function Map({
     setTimeout(() => fitMapToBounds(), 200);
   }, [routeData, mapReady]);
 
-  // ✅ NEW: Polyline effect — draws the visible paths based on busState
+  // Polyline effect — draws the visible paths based on busState
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
 
-    // Clear old polylines
     polylinesRef.current.forEach((p) => p.remove());
     polylinesRef.current = [];
 
@@ -219,7 +218,6 @@ export default function Map({
     const showDropoffLine =
       busState === "at_pickup" || busState === "en_route_to_dropoff";
 
-    // Bus → pickup (blue)
     if (showPickupLine && pickupPath && pickupPath.length > 1) {
       const line = L.polyline(pickupPath, {
         color: "#3b82f6",
@@ -233,7 +231,6 @@ export default function Map({
       polylinesRef.current.push(line);
     }
 
-    // Bus → dropoff (dark red)
     if (showDropoffLine && dropoffPath && dropoffPath.length > 1) {
       const line = L.polyline(dropoffPath, {
         color: "#bb0c0c",
@@ -339,6 +336,7 @@ export default function Map({
       if (!mapRef.current || !tileLayerRef.current) return;
       const dark = isDarkMode();
       tileLayerRef.current.setUrl(getTileUrl(dark));
+      tileLayerRef.current.options.attribution = getAttribution(dark);
     };
 
     const observer = new MutationObserver(handleThemeChange);
