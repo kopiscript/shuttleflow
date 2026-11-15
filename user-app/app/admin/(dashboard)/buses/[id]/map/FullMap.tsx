@@ -18,11 +18,15 @@ interface Bus {
   id: number;
   busName: string;
   licensePlate: string;
+  capacity: number;
+  status: string;
   device?: {
+    id: number;
+    deviceName: string;
+    status: string;
+    lastSeen: string;
     lastLat?: number;
     lastLng?: number;
-    lastSeen: string;
-    status: string;
   };
 }
 
@@ -30,8 +34,10 @@ export default function FullMap({ busId }: { busId: string }) {
   const [bus, setBus] = useState<Bus | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapInitialized, setMapInitialized] = useState(false);
+  
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const hasCenteredRef = useRef(false); // Prevents map from snapping back while admin drags
 
   // Use a ref callback to ensure we get the DOM element when ready
   const mapContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -39,10 +45,6 @@ export default function FullMap({ busId }: { busId: string }) {
 
     // If map already exists, don't reinitialize
     if (mapRef.current) return;
-
-    console.log("✅ Map container node is ready:", node);
-    console.log("📏 Container height:", node.clientHeight);
-    console.log("📏 Container width:", node.clientWidth);
 
     const defaultLat = 3.0742;
     const defaultLng = 101.5913;
@@ -55,27 +57,17 @@ export default function FullMap({ busId }: { busId: string }) {
         maxZoom: 19,
       }).addTo(mapRef.current);
 
-      markerRef.current = L.marker([defaultLat, defaultLng])
-        .bindPopup("Bus Location")
-        .addTo(mapRef.current);
-
-      console.log("✅ Map initialized successfully");
       setMapInitialized(true);
 
-      // Force map to render correctly after mount
       setTimeout(() => {
-        if (mapRef.current) {
-          console.log("🔄 Invalidating map size...");
-          mapRef.current.invalidateSize();
-        }
+        if (mapRef.current) mapRef.current.invalidateSize();
       }, 100);
-
     } catch (error) {
-      console.error("❌ Error initializing map:", error);
+      console.error("Error initializing map:", error);
     }
   }, []);
 
-  // Fetch bus data
+  // Fetch bus data every 5 seconds (Polling)
   useEffect(() => {
     const fetchBus = async () => {
       try {
@@ -90,36 +82,55 @@ export default function FullMap({ busId }: { busId: string }) {
         setLoading(false);
       }
     };
+
     fetchBus();
+    const interval = setInterval(fetchBus, 5000);
+    return () => clearInterval(interval);
   }, [busId]);
 
-  // Update marker when bus data loads AND map is initialized
+  // Update marker based on bus data (matches LeafletMap logic)
   useEffect(() => {
-    if (!bus || !mapInitialized || !mapRef.current || !markerRef.current) {
-      console.log("⏳ Waiting for map or bus data...", {
-        hasBus: !!bus,
-        mapInitialized,
-        hasMap: !!mapRef.current,
-        hasMarker: !!markerRef.current
-      });
+    if (!bus || !mapRef.current || !mapInitialized) {
       return;
     }
 
-    const lat = bus.device?.lastLat;
-    const lng = bus.device?.lastLng;
+    const hasDevice = !!bus.device?.id;
+    const hasLocation = !!bus.device?.lastLat && !!bus.device?.lastLng;
 
-    if (typeof lat === "number" && typeof lng === "number") {
-      console.log(`📍 Updating marker to: ${lat}, ${lng}`);
+    // Case 1: No device OR no location → remove marker
+    if (!hasDevice || !hasLocation) {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      return;
+    }
+
+    // Case 2: Device + location → show marker
+    const lat = bus.device!.lastLat!;
+    const lng = bus.device!.lastLng!;
+
+    if (!markerRef.current) {
+      markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
+    } else {
       markerRef.current.setLatLng([lat, lng]);
-      markerRef.current.setPopupContent(
-        `<b>${bus.busName}</b><br/>${bus.licensePlate}`
-      );
-      mapRef.current.setView([lat, lng], 15);
+    }
+
+    markerRef.current.setPopupContent(
+      `<b>${bus.busName}</b><br/>${bus.licensePlate}<br/>Status: ${
+        bus.device?.status || "Unknown"
+      }`
+    );
+
+    // Center map on first load only
+    if (!hasCenteredRef.current) {
+      mapRef.current.setView([lat, lng], 16);
+      hasCenteredRef.current = true;
     }
   }, [bus, mapInitialized]);
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return "No signal";
     const date = new Date(dateString);
     return date.toLocaleString("en-US", {
       year: "numeric",
@@ -135,7 +146,6 @@ export default function FullMap({ busId }: { busId: string }) {
   useEffect(() => {
     return () => {
       if (mapRef.current) {
-        console.log("🧹 Cleaning up map...");
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -169,14 +179,37 @@ export default function FullMap({ busId }: { busId: string }) {
         </div>
       </div>
 
-      {/* Full Screen Map - with explicit height */}
+      {/* Full Screen Map */}
       <div className="flex-1 relative min-h-0 bg-[#1D1E27]">
-        {/* Map container with ref callback */}
         <div
           ref={mapContainerRef}
           className="w-full h-full"
-          style={{ minHeight: "calc(100vh - 80px)" }} // Force height
+          style={{ minHeight: "calc(100vh - 80px)" }}
         />
+
+        {/* No device overlay */}
+        {bus && !bus.device?.id && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: 1000 }}
+          >
+            <div className="bg-black/70 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-lg font-['Inter'] text-center max-w-[80%]">
+              No device assigned to this bus. Location unavailable.
+            </div>
+          </div>
+        )}
+
+        {/* Device assigned but no location */}
+        {bus && bus.device?.id && !bus.device.lastLat && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: 1000 }}
+          >
+            <div className="bg-black/70 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-lg font-['Inter'] text-center max-w-[80%]">
+              Device assigned but no location data received yet.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
