@@ -1,3 +1,4 @@
+// components/Map.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -208,26 +209,10 @@ export default function Map({
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
 
-    // ==========================================
-    // DEBUG LOGS START
-    // ==========================================
-    console.log("🗺️ MAP DEBUG:", {
-      busState,
-      hasPickupPath: !!pickupPath,
-      pickupPathLength: pickupPath?.length,
-      hasDropoffPath: !!dropoffPath,
-      dropoffPathLength: dropoffPath?.length,
-      routeData: !!routeData,
-    });
-    // ==========================================
-
     polylinesRef.current.forEach((p) => p.remove());
     polylinesRef.current = [];
 
-    if (!routeData) {
-      console.log("❌ DEBUG: No routeData, aborting line draw.");
-      return;
-    }
+    if (!routeData) return;
 
     const showPickupLine =
       busState === "approaching" || busState === "trip_done";
@@ -239,7 +224,6 @@ export default function Map({
 
     // Draw Pickup Line (Blue)
     if (showPickupLine && pickupPath && pickupPath.length > 1) {
-      console.log("✅ DEBUG: Drawing Blue Pickup Line");
       const line = L.polyline(pickupPath, {
         color: "#3b82f6",
         weight: 5,
@@ -255,15 +239,12 @@ export default function Map({
           { sticky: true }
         )
         .addTo(mapRef.current!)
-        .bringToFront(); // <-- Ensures it sits above the map tiles
+        .bringToFront();
       polylinesRef.current.push(line);
-    } else {
-      console.log("❌ DEBUG: Not drawing Blue Pickup Line. showPickupLine:", showPickupLine, "Valid Path:", !!pickupPath);
     }
 
     // Draw Dropoff Line (Red)
     if (showDropoffLine && dropoffPath && dropoffPath.length > 1) {
-      console.log("✅ DEBUG: Drawing Red Dropoff Line");
       const line = L.polyline(dropoffPath, {
         color: "#bb0c0c",
         weight: 5,
@@ -279,12 +260,9 @@ export default function Map({
           { sticky: true }
         )
         .addTo(mapRef.current!)
-        .bringToFront(); // <-- Ensures it sits above the map tiles
+        .bringToFront();
       polylinesRef.current.push(line);
-    } else {
-      console.log("❌ DEBUG: Not drawing Red Dropoff Line. showDropoffLine:", showDropoffLine, "Valid Path:", !!dropoffPath);
     }
-    
   }, [pickupPath, dropoffPath, busState, routeData, mapReady]);
 
   const fitMapToBounds = () => {
@@ -390,7 +368,8 @@ export default function Map({
   }, []);
 
   return (
-    <div className="relative w-full h-full">
+    // 👈 ADDED OUTERMOST WRAPPER HERE TOO
+    <div className="relative w-full h-full overflow-hidden">
       <div
         ref={mapContainerRef}
         className="w-full h-full"

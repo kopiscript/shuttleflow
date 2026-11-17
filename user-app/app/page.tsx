@@ -473,142 +473,148 @@ export default function HomePage() {
   };
 
   return (
-    <PageShell
-      fullHeight={true}
-      noScroll={true}
-      header={
-        <>
-          <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold mt-6">
-            {t("home.title")}
-          </h1>
-          <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
-            {t("home.subtitle")}
-          </p>
-        </>
-      }
-    >
-      <div className="relative w-full h-full overflow-hidden">
-        <div
-          className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
-          style={{
-            left: "calc(50% - 568.85px/2 - 280px)",
-            transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)",
-          }}
-        />
-        <div
-          className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
-          style={{
-            left: "calc(50% - 604px/2 + 31.5px)",
-            transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)",
-          }}
-        />
-
-        {/* Map */}
-        <div className="absolute inset-0 z-0">
-          <Map
-            selectedRoute={selectedRoute}
-            pickupPath={pickupPath}
-            dropoffPath={dropoffPath}
-            busState={busState}
+    <div className="w-screen h-screen overflow-hidden relative">
+      <PageShell
+        fullHeight={true}
+        noScroll={true}
+        header={
+          <>
+            <h1 className="font-['Bai_Jamjuree'] text-center text-foreground text-3xl font-bold mt-6">
+              {t("home.title")}
+            </h1>
+            <p className="font-['Bai_Jamjuree'] text-center text-foreground text-base font-medium mt-2 px-4">
+              {t("home.subtitle")}
+            </p>
+          </>
+        }
+      >
+        {/* Inner wrapper for the map and floating UI */}
+        <div className="relative w-full h-full overflow-hidden">
+          {/* Gradients - These are now safely contained */}
+          <div
+            className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
+            style={{
+              left: "calc(50% - 568.85px/2 - 280px)",
+              transform: "matrix(-1, 0.03, 0.03, 1, 0, 0)",
+            }}
           />
-        </div>
-
-        {/* Route Dropdown */}
-        <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
-          <CustomDropdown
-            options={routes}
-            value={selectedRoute}
-            onChange={handleRouteChange}
-            loading={loading}
-            placeholder={t("home.selectRoute")}
+          <div
+            className="absolute w-151 h-217.75 -top-80.5 bg-(--gradient-2-bg) blur-(--gradient-2-blur) opacity-(--gradient-2-opacity) pointer-events-none"
+            style={{
+              left: "calc(50% - 604px/2 + 31.5px)",
+              transform: "matrix(-0.93, 0.37, 0.37, 0.93, 0, 0)",
+            }}
           />
-        </div>
 
-        {/* Floating Bottom Panel: Alert Banner & ETA Card (both) */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20 flex flex-col gap-2.5">
-          {/* DYNAMIC DRIVER INCIDENT BANNER */}
-          {activeAlert && (
-            <div
-              className={`rounded-2xl p-3.5 shadow-xl text-white transition-all backdrop-blur-md flex flex-col gap-2 ${
-                activeAlert.status === "Breakdown"
-                  ? "bg-red-600/90 border border-red-400"
-                  : "bg-amber-600/90 border border-amber-400"
-              }`}
-            >
-              <div className="flex items-start gap-2.5">
-                <span className="text-xl">
-                  {activeAlert.status === "Breakdown" ? "🚨" : "⚠️"}
-                </span>
-                <div className="flex-1">
-                  <h4 className="font-bold text-sm leading-tight">
-                    {activeAlert.status === "Breakdown"
-                      ? "Bus Breakdown Alert"
-                      : "Major Route Delay"}
-                  </h4>
-                  <p className="text-xs opacity-95 mt-0.5 leading-snug">
-                    {activeAlert.message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Map */}
+          <div className="absolute inset-0 z-0 overflow-hidden">
+            <Map
+              selectedRoute={selectedRoute}
+              pickupPath={pickupPath}
+              dropoffPath={dropoffPath}
+              busState={busState}
+            />
+          </div>
 
-          {/* Standard ETA Card */}
-          <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
-            <div className="flex items-center gap-2">
-              {etaData ? (
-                <div className="flex flex-col w-full">
-                  <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
-                    🚌 {etaData.minutesDisplay}
-                    <span className="text-xs font-normal opacity-70 ml-2">
-                      • Arrive at {etaData.arrivalTime}
-                    </span>
+          {/* Route Dropdown */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20">
+            <CustomDropdown
+              options={routes}
+              value={selectedRoute}
+              onChange={handleRouteChange}
+              loading={loading}
+              placeholder={t("home.selectRoute")}
+            />
+          </div>
+
+          {/* Floating Bottom Panel */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-20 flex flex-col gap-2.5">
+            {/* ... (keep your activeAlert and ETA Card exactly the same) ... */}
+            {/* Just ensure the closing tags match up */}
+            
+            {/* DYNAMIC DRIVER INCIDENT BANNER */}
+            {activeAlert && (
+              <div
+                className={`rounded-2xl p-3.5 shadow-xl text-white transition-all backdrop-blur-md flex flex-col gap-2 ${
+                  activeAlert.status === "Breakdown"
+                    ? "bg-red-600/90 border border-red-400"
+                    : "bg-amber-600/90 border border-amber-400"
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xl">
+                    {activeAlert.status === "Breakdown" ? "🚨" : "⚠️"}
                   </span>
-                  {etaData.distance && (
-                    <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
-                      📍 {etaData.distance} from {etaData.pickupStop}
-                    </span>
-                  )}
-                  <span className="text-[10px] uppercase tracking-wide text-(--disclaimer-text) opacity-60 mt-1">
-                    {etaDestination === "dropoff"
-                      ? "Heading to drop-off"
-                      : "Heading to pickup"}
-                  </span>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-sm leading-tight">
+                      {activeAlert.status === "Breakdown"
+                        ? "Bus Breakdown Alert"
+                        : "Major Route Delay"}
+                    </h4>
+                    <p className="text-xs opacity-95 mt-0.5 leading-snug">
+                      {activeAlert.message}
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
-                  {t("home.selectRouteHint")}
-                </span>
-              )}
-            </div>
-
-            {/* Proximity Status — only show when bus is approaching */}
-            {proximityData && 
-             proximityData.isNear && 
-             proximityData.busState === "approaching" && (
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                  🚌 Approaching {proximityData.destination}!
-                </span>
               </div>
             )}
 
-            <div className="flex items-center gap-2 mt-2">
-              <svg
-                className="w-4 h-4 text-[#99121A]"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              <span className="font-['Inter'] text-(--disclaimer-text) text-xs">
-                {t("home.disclaimer")}
-              </span>
+            {/* Standard ETA Card */}
+            <div className="bg-(--card-bg) rounded-2xl shadow-lg p-4">
+              <div className="flex items-center gap-2">
+                {etaData ? (
+                  <div className="flex flex-col w-full">
+                    <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
+                      🚌 {etaData.minutesDisplay}
+                      <span className="text-xs font-normal opacity-70 ml-2">
+                        • Arrive at {etaData.arrivalTime}
+                      </span>
+                    </span>
+                    {etaData.distance && (
+                      <span className="text-xs text-(--disclaimer-text) opacity-70 mt-0.5">
+                        📍 {etaData.distance} from {etaData.pickupStop}
+                      </span>
+                    )}
+                    <span className="text-[10px] uppercase tracking-wide text-(--disclaimer-text) opacity-60 mt-1">
+                      {etaDestination === "dropoff"
+                        ? "Heading to drop-off"
+                        : "Heading to pickup"}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="font-['Inter'] text-(--eta-text) font-semibold text-sm">
+                    {t("home.selectRouteHint")}
+                  </span>
+                )}
+              </div>
+
+              {proximityData && 
+               proximityData.isNear && 
+               proximityData.busState === "approaching" && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                    🚌 Approaching {proximityData.destination}!
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 mt-2">
+                <svg
+                  className="w-4 h-4 text-[#99121A]"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span className="font-['Inter'] text-(--disclaimer-text) text-xs">
+                  {t("home.disclaimer")}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-      </div>
-    </PageShell>
+        </div>
+      </PageShell>
+    </div>
   );
 }

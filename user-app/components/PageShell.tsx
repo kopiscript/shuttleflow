@@ -8,9 +8,9 @@ import SidebarMenu from "./SidebarMenu";
 interface PageShellProps {
     children: ReactNode;
     showBackButton?: boolean;
-    header?: ReactNode;  // Custom header content (title, subtitle, etc.)
-    fullHeight?: boolean; // For pages that need full screen height (like map)
-    noScroll?: boolean; // For pages that should not scroll
+    header?: ReactNode;
+    fullHeight?: boolean;
+    noScroll?: boolean;
 }
 
 export default function PageShell({
@@ -30,14 +30,12 @@ export default function PageShell({
             const data = await response.json();
 
             if (data.success && data.notifications) {
-                // Get read IDs from localStorage
                 const readIdsRaw = localStorage.getItem('readNotifications');
                 let readIds: number[] = [];
                 if (readIdsRaw) {
                     readIds = JSON.parse(readIdsRaw);
                 }
 
-                // Count unread notifications
                 const unread = data.notifications.filter((n: any) => !readIds.includes(n.id)).length;
                 setUnreadCount(unread);
             }
@@ -48,15 +46,15 @@ export default function PageShell({
 
     useEffect(() => {
         fetchUnreadCount();
-        // Auto-refresh every 30 seconds
         const interval = setInterval(fetchUnreadCount, 30000);
         return () => clearInterval(interval);
     }, []);
 
     return (
         <>
-            <div className={`relative flex flex-col bg-background overflow-x-auto ${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
-                {/* Gradient Background Elements - Using CSS Variables */}
+            <div className={`relative flex flex-col bg-background overflow-hidden ${fullHeight ? 'h-screen' : 'min-h-screen'}`}>
+                
+                {/* Gradient Background Elements */}
                 <div
                     className="absolute w-142.25 h-103.5 -top-26.5 bg-(--gradient-1-bg) blur-(--gradient-1-blur) opacity-(--gradient-1-opacity) pointer-events-none"
                     style={{
@@ -75,7 +73,6 @@ export default function PageShell({
 
                 {/* Header */}
                 <div className="relative z-10 px-6 pt-5 shrink-0">
-                    {/* Top Bar (same for all pages) */}
                     <div className="flex items-center justify-between">
                         {showBackButton ? (
                             <Link href="/" className="w-5 h-5 flex items-center justify-center">
@@ -100,11 +97,11 @@ export default function PageShell({
                                 alt="Logo"
                                 width={148}
                                 height={34}
-                                className="object-contain"
+                                loading="eager"
+                                className="object-contain w-auto h-auto" 
                             />
                         </Link>
 
-                        {/* Bell Notification Icon with unread badge */}
                         <Link
                             href="/notifications"
                             className="relative block cursor-pointer transition-transform hover:scale-105 active:scale-95"
@@ -131,7 +128,6 @@ export default function PageShell({
                         </Link>
                     </div>
 
-                    {/* Custom Header Content from each page */}
                     {header && (
                         <div className="mt-8 mb-10">
                             {header}

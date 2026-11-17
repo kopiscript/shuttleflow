@@ -95,10 +95,10 @@ export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
                     <Image
                         src="/logo.png"
                         alt="Logo"
-                        width={120}
-                        height={28}
-                        className="object-contain"
-                        priority
+                        width={148}
+                        height={34}
+                        loading="eager"
+                        className="object-contain w-auto h-auto"
                     />
                 </div>
 
